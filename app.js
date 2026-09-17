@@ -1,9 +1,8 @@
 let currentUser = "";
 let isAdmin = false;
-const ADMIN_USERS = ["thegodsk", "saikiran", "lichi"];
+const ADMIN_USERS = ["thegodsk", "saikiran"];
 
 window.addEventListener('load', () => {
-    // If it's a standalone exam tab, skip the boot splash
     if (window.location.search.includes('mode=exam')) {
         const splash = document.getElementById('boot-splash');
         if (splash) splash.style.display = 'none';
@@ -91,6 +90,7 @@ document.addEventListener("DOMContentLoaded", function() {
     safeBind('logout-btn', 'click', logout);
     safeBind('launch-btn', 'click', startExam);
     safeBind('exit-exam-btn', 'click', confirmExitExam);
+    safeBind('pause-timer-btn', 'click', toggleTimerPause);
     safeBind('fullscreen-btn', 'click', toggleFullscreen);
     safeBind('bookmark-btn', 'click', toggleBookmark);
     safeBind('prev-btn', 'click', () => navigateQ(-1));
@@ -106,7 +106,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     safeBind('new-quiz-btn', 'click', () => {
         if (window.location.search.includes('mode=exam')) {
-            window.close(); // Close the standalone tab safely
+            window.close(); 
         } else {
             resetExamUI();
         }
@@ -130,8 +130,8 @@ document.addEventListener("DOMContentLoaded", function() {
     if (countInput) {
         countInput.addEventListener('input', function() {
             if (!isAdmin) {
-                const maxVal = parseInt(this.max) || 100;
-                if (parseInt(this.value) > maxVal) this.value = maxVal;
+                const STRICT_LIMIT = 10;
+                if (parseInt(this.value) > STRICT_LIMIT) this.value = STRICT_LIMIT;
             }
             if (parseInt(this.value) < 1 && this.value !== "") this.value = 1;
         });
@@ -182,7 +182,6 @@ function processLogin(user) {
 
     applySessionEnvironment();
 
-    // Trigger Standalone Exam Mode if URL has query parameter
     if (window.location.search.includes('mode=exam')) {
         if (typeof initStandaloneExam === 'function') {
             initStandaloneExam();
@@ -195,11 +194,13 @@ function applySessionEnvironment() {
     const diffContainer = document.getElementById('difficulty-container');
     const adminPrompt = document.getElementById('admin-prompt');
     const adminVault = document.getElementById('admin-vault-editor');
+    const pauseTimerBtn = document.getElementById('pause-timer-btn');
 
     if (!isAdmin) {
         if (diffContainer) diffContainer.style.display = 'none';
         if (adminPrompt) adminPrompt.style.display = 'none';
         if (adminVault) adminVault.style.display = 'none';
+        if (pauseTimerBtn) pauseTimerBtn.style.display = 'none';
         if (orgSelect) {
             Array.from(orgSelect.options).forEach(opt => {
                 opt.style.display = (opt.value === 'gemini') ? 'block' : 'none';
@@ -211,6 +212,7 @@ function applySessionEnvironment() {
         if (diffContainer) diffContainer.style.display = 'block';
         if (adminPrompt) adminPrompt.style.display = 'block';
         if (adminVault) adminVault.style.display = 'block';
+        if (pauseTimerBtn) pauseTimerBtn.style.display = 'inline-block';
         if (orgSelect) {
             orgSelect.disabled = false;
             Array.from(orgSelect.options).forEach(opt => {
@@ -230,7 +232,7 @@ function logout() {
 function confirmExitExam() {
     if (confirm("Are you sure you want to exit the examination? Current progress will be lost.")) {
         if (window.location.search.includes('mode=exam')) {
-            window.close(); // Close the standalone tab
+            window.close(); 
         } else {
             if (typeof cancelActiveRequest === 'function') cancelActiveRequest();
             resetExamUI();
@@ -284,36 +286,19 @@ function updateQuotaDisplay() {
 }
 
 function enforceLanguageConstraints() {
-    const modelSelect = document.getElementById('model-select');
-    const langSelect = document.getElementById('lang');
     const countInput = document.getElementById('count');
     const countLabel = document.getElementById('count-label');
-    const orgSelect = document.getElementById('org-select');
-    const diffSelect = document.getElementById('difficulty');
     
-    if (!modelSelect || !langSelect || !countInput || !orgSelect) return;
-
-    let baseLimit = 75;
-    const list = PROVIDER_MODELS[orgSelect.value] || [];
-    const found = list.find(m => m.id === modelSelect.value);
-    if (found) baseLimit = found.maxLimit;
-
-    let diffMultiplier = 1.0;
-    if (diffSelect) {
-        if (diffSelect.value === "4") diffMultiplier = 0.6; 
-        if (diffSelect.value === "5") diffMultiplier = 0.4; 
-    }
-    baseLimit = Math.floor(baseLimit * diffMultiplier);
-
-    if (langSelect.value === 'Odia') baseLimit = Math.floor(baseLimit * 0.70);
+    if (!countInput) return;
 
     if (isAdmin) {
         countInput.removeAttribute('max');
         if (countLabel) countLabel.textContent = `Questions (Admin Unlocked)`;
     } else {
-        countInput.max = baseLimit;
-        if (countLabel) countLabel.textContent = `Questions (Max ${baseLimit})`;
-        if (parseInt(countInput.value) > baseLimit) countInput.value = baseLimit;
+        const STRICT_LIMIT = 10;
+        countInput.max = STRICT_LIMIT;
+        if (countLabel) countLabel.textContent = `Questions (Max ${STRICT_LIMIT})`;
+        if (parseInt(countInput.value) > STRICT_LIMIT) countInput.value = STRICT_LIMIT;
     }
 }
 
