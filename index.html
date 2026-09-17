@@ -176,6 +176,15 @@
             <div id="page-settings" class="page">
                 <h1 class="header-title">System Config</h1>
                 <div class="glass-card">
+                    <h3 style="color: var(--neon-cyan); margin-top:0;">API Token Manager</h3>
+                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Update your active Gemini or Groq tokens on the fly.</p>
+                    <label>Update Gemini API Key</label>
+                    <input type="password" id="update-gemini" placeholder="New AIzaSy...">
+                    <label>Update Groq API Key</label>
+                    <input type="password" id="update-groq" placeholder="New gsk_...">
+                    <button id="save-tokens-btn" class="cyber-btn" style="width: auto; margin-top: 16px;">Save New Tokens</button>
+                    <p id="token-update-msg" style="color: var(--neon-green); font-size: 13px; display: none; margin-top: 10px; font-weight: 600;">Tokens updated successfully!</p>
+                    <hr style="border: none; border-top: 1px solid var(--border-glow); margin: 28px 0;">
                     <h3 style="color: var(--neon-cyan); margin-top:0;">Telemetry & Storage</h3>
                     <p style="color: var(--neon-green); font-size: 14px; font-weight: 600;">● Secure Local Storage Active</p>
                     <button id="export-btn" class="cyber-btn secondary" style="color: var(--text-main); width: auto;">Export Backup (JSON)</button>
