@@ -2,92 +2,328 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXUS OS | CBT Suite</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEXUS OS | Pro CBT Suite</title>
     <style>
-        body { background: #030712; color: #f8fafc; font-family: sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .card { background: #0f172a; border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 16px; padding: 24px; width: 100%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
-        input, select { width: 100%; padding: 12px; margin-top: 6px; margin-bottom: 16px; background: #000; border: 1px solid #334151; color: #fff; border-radius: 8px; box-sizing: border-box; }
-        button { width: 100%; padding: 14px; background: linear-gradient(135deg, #00f2fe, #4facfe); border: none; color: #020617; font-weight: bold; border-radius: 8px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
-        .error { color: #ef4444; font-size: 13px; font-weight: bold; text-align: center; margin-top: 10px; display: none; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+
+        :root {
+            --bg-deep: #030712;
+            --bg-card: #0f172a;
+            --border-glow: rgba(56, 189, 248, 0.2);
+            --neon-cyan: #00f2fe;
+            --neon-blue: #4facfe;
+            --neon-green: #10b981;
+            --neon-yellow: #f59e0b;
+            --neon-red: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            margin: 0; padding: 0; min-height: 100vh;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+        ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.4); border-radius: 10px; }
+
+        .app-shell { display: flex; min-height: 100vh; }
+        
+        .sidebar {
+            display: none; width: 260px; background: #030712;
+            border-right: 1px solid var(--border-glow); padding: 24px;
+            position: fixed; height: 100vh; z-index: 100;
+        }
+        .sidebar-brand { font-size: 20px; font-weight: 800; color: var(--neon-cyan); letter-spacing: 2px; margin-bottom: 40px; text-transform: uppercase; }
+        .sidebar-nav-item {
+            padding: 14px 18px; border-radius: 12px; cursor: pointer; color: var(--text-muted);
+            font-weight: 600; font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px;
+            transition: all 0.2s;
+        }
+        .sidebar-nav-item:hover, .sidebar-nav-item.active { background: rgba(0, 242, 254, 0.1); color: var(--neon-cyan); }
+
+        .main-content { flex: 1; padding: 24px; max-width: 900px; margin: 0 auto; padding-bottom: 120px; }
+
+        @media (min-width: 768px) {
+            .sidebar { display: block; }
+            .main-content { margin-left: 260px; padding: 40px; max-width: 1000px; }
+            .bottom-nav { display: none !important; }
+        }
+
+        .page { display: none; }
+        .page.active { display: block; }
+
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: #030712; border-top: 1px solid var(--border-glow); 
+            display: flex; justify-content: space-around; padding: 12px 0; z-index: 1000;
+        }
+        .nav-item { color: var(--text-muted); text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase; cursor: pointer; }
+        .nav-item.active { color: var(--neon-cyan); }
+        .nav-icon { font-size: 20px; display: block; margin-bottom: 3px; }
+
+        .glass-card {
+            background: var(--bg-card); border: 1px solid var(--border-glow); border-radius: 20px;
+            padding: 28px; margin-bottom: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .header-title {
+            font-weight: 800; font-size: 28px; margin-bottom: 24px;
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        label { display: block; margin-top: 18px; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
+        input, select {
+            width: 100%; padding: 14px 18px; margin-top: 8px; border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.1); background: #000; color: white; font-size: 15px; box-sizing: border-box;
+        }
+        input:focus, select:focus { outline: none; border-color: var(--neon-cyan); }
+        select option { background: #0f172a; color: white; }
+
+        .cyber-btn {
+            padding: 14px 20px; border-radius: 12px; border: none;
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue));
+            color: #020617; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+            cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 24px;
+        }
+        .cyber-btn.secondary { background: rgba(255,255,255,0.08); color: var(--text-main); border: 1px solid rgba(255,255,255,0.15); }
+        .cyber-btn.danger { background: #ef4444; color: white; }
+
+        .cbt-header {
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;
+            background: #020617; padding: 16px 24px; border-radius: 16px; border: 1px solid var(--border-glow); margin-bottom: 20px;
+        }
+        .progress-bar-container { width: 100%; background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; overflow: hidden; margin-top: 12px; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue)); width: 0%; transition: width 0.3s ease; }
+        .timer-badge { font-family: 'JetBrains Mono', monospace; background: rgba(245, 158, 11, 0.15); border: 1px solid var(--neon-yellow); color: var(--neon-yellow); padding: 6px 14px; border-radius: 8px; font-weight: 700; }
+
+        .q-palette-grid { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; padding: 14px; background: #020617; border-radius: 14px; border: 1px solid var(--border-glow); max-height: 120px; overflow-y: auto; }
+        .pal-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); color: var(--text-muted); font-weight: 700; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .pal-btn.answered { background: rgba(16, 185, 129, 0.2); border-color: var(--neon-green); color: var(--neon-green); }
+        .pal-btn.bookmarked { background: rgba(245, 158, 11, 0.2); border-color: var(--neon-yellow); color: var(--neon-yellow); }
+        .pal-btn.current { border: 2px solid var(--neon-cyan); box-shadow: 0 0 10px rgba(0,242,254,0.4); }
+
+        .q-text { font-size: 18px; line-height: 1.6; color: #fff; margin-bottom: 20px; font-weight: 600; }
+        .option-card {
+            display: flex; align-items: center; padding: 16px 20px; background: rgba(0,0,0,0.4);
+            margin: 12px 0; border-radius: 14px; border: 1px solid rgba(255,255,255,0.06); cursor: pointer; font-size: 15px; transition: 0.2s;
+        }
+        .option-card:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.2); }
+        .option-card.selected { border-color: var(--neon-cyan); background: rgba(0, 242, 254, 0.1); }
+        .option-card.correct { background: rgba(16, 185, 129, 0.2) !important; border-color: var(--neon-green) !important; color: #a7f3d0; }
+        .option-card.wrong { background: rgba(239, 68, 68, 0.2) !important; border-color: var(--neon-red) !important; color: #fecaca; }
+
+        .cbt-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; flex-wrap: wrap; gap: 12px; }
+        #terminal { background: #000; color: var(--neon-cyan); padding: 20px; border-radius: 14px; font-family: 'JetBrains Mono', monospace; height: 300px; overflow-y: auto; font-size: 12px; border: 1px solid var(--border-glow); display: none; }
+        .pulse-text { animation: pulse 2s infinite; color: var(--neon-cyan); font-weight: 700; font-size: 14px; text-align: center; }
+        .chat-box { height: calc(100vh - 320px); overflow-y: auto; display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px; padding-right: 8px; }
+        .msg { padding: 14px 18px; border-radius: 16px; max-width: 85%; font-size: 15px; }
+        .msg.user { background: var(--neon-blue); color: #020617; font-weight: 600; align-self: flex-end; }
+        .msg.ai { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); align-self: flex-start; }
+        .score-banner { font-size: 28px; font-weight: 800; text-align: center; color: var(--neon-green); margin: 20px 0; padding: 24px; background: rgba(16, 185, 129, 0.1); border-radius: 20px; border: 1px solid var(--neon-green); }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
     </style>
 </head>
 <body>
 
     <!-- LOGIN SCREEN -->
-    <div id="login-screen" class="card">
-        <h2 style="text-align: center; color: #00f2fe; margin-top:0;">NEXUS OS</h2>
-        <p style="font-size: 12px; color: #94a3b8; text-align: center;">Enter PIN and at least one API Key.</p>
-        
-        <label style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">Master Passcode</label>
-        <input type="password" id="input-pass" value="admin2026">
-        
-        <label style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">Gemini API Key (Optional)</label>
-        <input type="password" id="input-gemini" placeholder="AIzaSy...">
-        
-        <label style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">Groq API Key (Optional)</label>
-        <input type="password" id="input-groq" placeholder="gsk_...">
-        
-        <button onclick="handleLoginBtn()">Initialize Session</button>
-        <div id="err-msg" class="error"></div>
+    <div id="page-login" class="app-shell" style="align-items: center; justify-content: center; min-height: 100vh;">
+        <div class="glass-card" style="width: 100%; max-width: 440px; margin: 20px;">
+            <h1 class="header-title" style="font-size: 26px; text-align: center; margin-bottom: 10px;">NEXUS OS</h1>
+            <p style="font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 24px;">Enter PIN and at least one API Key.</p>
+            
+            <label>Master Passcode</label>
+            <input type="password" id="app-pass" value="admin2026">
+            
+            <label>Gemini API Key (Optional)</label>
+            <input type="password" id="gemini-key" placeholder="AIzaSy...">
+            
+            <label>Groq API Key (Optional)</label>
+            <input type="password" id="groq-key" placeholder="gsk_...">
+            
+            <button class="cyber-btn" onclick="executeLogin()">Initialize Access</button>
+            <p id="login-err" style="color: var(--neon-red); font-size: 13px; text-align: center; display: none; margin-top: 16px; font-weight: 600;"></p>
+        </div>
     </div>
 
-    <!-- MAIN APP SCREEN (Initially Hidden) -->
-    <div id="main-screen" class="card" style="display: none; max-width: 600px;">
-        <h2 style="color: #10b981; margin-top:0;">System Online</h2>
-        <p>Authentication successful. Engine ready for configuration.</p>
-        <button onclick="localStorage.clear(); location.reload();" style="background: #ef4444; color: #fff;">Terminate Session</button>
+    <!-- MAIN APP SHELL -->
+    <div id="main-app" class="app-shell" style="display: none;">
+        <div class="sidebar">
+            <div class="sidebar-brand">NEXUS OS</div>
+            <div class="sidebar-nav-item active" id="side-exam" onclick="switchTab('exam')">📝 Exam Engine</div>
+            <div class="sidebar-nav-item" id="side-vault" onclick="switchTab('vault')">🧠 Mistake Vault</div>
+            <div class="sidebar-nav-item" id="side-chat" onclick="switchTab('chat')">🤖 NEXUS AI</div>
+            <div class="sidebar-nav-item" id="side-settings" onclick="switchTab('settings')">⚙️ Config</div>
+        </div>
+
+        <div class="main-content">
+            <!-- EXAM ENGINE -->
+            <div id="page-exam" class="page active">
+                <h1 class="header-title">Exam Engine</h1>
+                <div id="exam-setup" class="glass-card">
+                    <label>Neural Engine Model</label>
+                    <select id="model-select">
+                        <option value="gemini-2.5-pro">Gemini 2.5 Pro (Deep Logic)</option>
+                        <option value="gemini-3.8-flash">Gemini 3.8 Flash (High Speed)</option>
+                        <option value="groq:llama-3.3-70b-versatile">Groq Backup: Llama 3.3 70B</option>
+                        <option value="groq:llama-3.1-8b-instant">Groq Backup: Llama 3.1 8B</option>
+                    </select>
+
+                    <label>Target Standard</label>
+                    <input type="text" id="exam" value="OPSC ASO / UPSC">
+                    
+                    <label>Syllabus Topic</label>
+                    <input type="text" id="topic" value="Tatsama sabda">
+                    
+                    <div style="display:flex; gap: 16px;">
+                        <div style="flex: 1;"><label>Questions</label><input type="number" id="count" value="5" min="1" max="100"></div>
+                        <div style="flex: 1;">
+                            <label>Language</label>
+                            <select id="lang"><option value="Odia">Odia</option><option value="English">English</option></select>
+                        </div>
+                    </div>
+
+                    <label>Timer (Minutes)</label>
+                    <input type="number" id="timer-mins" value="10" min="1" max="180">
+                    
+                    <button class="cyber-btn" onclick="startExam()">Launch Examination</button>
+                </div>
+
+                <div id="terminal-screen" class="glass-card" style="display: none;">
+                    <p class="pulse-text">Generating CBT Assessment...</p>
+                    <div id="terminal"></div>
+                </div>
+
+                <div id="exam-active" style="display: none;">
+                    <div class="cbt-header">
+                        <div>
+                            <span id="q-counter" style="font-weight: 700; font-size: 15px; color: var(--neon-cyan);">Question 1 of 5</span>
+                            <div class="progress-bar-container"><div id="progress-fill" class="progress-bar-fill"></div></div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <div id="timer-display" class="timer-badge">10:00</div>
+                            <button class="cyber-btn secondary" style="padding: 6px 12px; font-size: 12px; margin:0; width:auto;" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+                        </div>
+                    </div>
+
+                    <div id="q-palette" class="q-palette-grid"></div>
+
+                    <div class="glass-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                            <span id="bookmark-badge" style="font-size: 12px; font-weight: 700; color: var(--neon-yellow);"></span>
+                            <button class="cyber-btn secondary" style="padding: 4px 10px; font-size: 11px; margin:0; width:auto;" onclick="toggleBookmark()">🔖 Bookmark</button>
+                        </div>
+                        <h4 class="q-text" id="active-q-text">Loading...</h4>
+                        <div id="active-options-container"></div>
+                    </div>
+
+                    <div class="cbt-footer">
+                        <div style="display:flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="cyber-btn secondary" style="margin:0; width:auto;" onclick="navigateQ(-1)">← Prev</button>
+                            <button class="cyber-btn secondary" style="margin:0; width:auto;" onclick="skipQ()">Skip</button>
+                            <button class="cyber-btn secondary" style="margin:0; width:auto;" onclick="clearAnswer()">Clear</button>
+                        </div>
+                        <div style="display:flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="cyber-btn" style="margin:0; width:auto;" onclick="navigateQ(1)">Next →</button>
+                            <button class="cyber-btn danger" style="margin:0; width:auto;" onclick="confirmSubmit()">Submit</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="exam-results" class="glass-card" style="display: none;">
+                    <h2 class="header-title" style="text-align: center; margin-bottom: 10px;">Assessment Report</h2>
+                    <div id="score-summary-banner"></div>
+                    <div style="display: flex; gap: 12px; justify-content: center; margin: 24px 0; flex-wrap: wrap;">
+                        <button class="cyber-btn" style="margin:0; width:auto;" onclick="filterReview('all')">Review All</button>
+                        <button class="cyber-btn secondary" style="margin:0; width:auto;" onclick="filterReview('wrong')">Review Mistakes</button>
+                        <button class="cyber-btn secondary" style="margin:0; width:auto;" onclick="restartSameQuiz()">Try Again</button>
+                        <button class="cyber-btn secondary" style="margin:0; width:auto;" onclick="resetExamUI()">New Quiz</button>
+                    </div>
+                    <div id="review-container"></div>
+                </div>
+            </div>
+
+            <!-- MISTAKE VAULT -->
+            <div id="page-vault" class="page">
+                <h1 class="header-title">Mistake Vault</h1>
+                <div class="glass-card">
+                    <p style="font-size: 13px; color: var(--text-muted); margin-top:0;">Failed questions saved for review.</p>
+                    <div id="vault-container"></div>
+                    <button class="cyber-btn danger" onclick="clearVault()" id="clear-vault-btn">Purge Vault</button>
+                </div>
+            </div>
+
+            <!-- NEXUS AI -->
+            <div id="page-chat" class="page">
+                <h1 class="header-title">NEXUS AI</h1>
+                <div class="glass-card" style="padding: 20px;">
+                    <div class="chat-box" id="chat-box">
+                        <div class="msg ai">Neural tutor online. Ready for queries.</div>
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <input type="text" id="chat-input" placeholder="Ask syllabus doubt..." onkeypress="if(event.key === 'Enter') sendChat()">
+                        <button class="cyber-btn" style="width: 65px; margin:0;" onclick="sendChat()">➤</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SETTINGS -->
+            <div id="page-settings" class="page">
+                <h1 class="header-title">System Config</h1>
+                <div class="glass-card">
+                    <h3 style="color: var(--neon-cyan); margin-top:0;">Telemetry & Storage</h3>
+                    <p style="color: var(--neon-green); font-size: 14px; font-weight: 600;">● Secure Local Storage Active</p>
+                    <button class="cyber-btn secondary" style="color: var(--text-main); width: auto;" onclick="exportLocalStorage()">Export Backup (JSON)</button>
+                    <hr style="border: none; border-top: 1px solid var(--border-glow); margin: 28px 0;">
+                    <button class="cyber-btn danger" style="width: auto;" onclick="logout()">Terminate Session</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom-nav">
+            <div class="nav-item active" id="nav-exam" onclick="switchTab('exam')"><span class="nav-icon">📝</span>Engine</div>
+            <div class="nav-item" id="nav-vault" onclick="switchTab('vault')"><span class="nav-icon">🧠</span>Vault</div>
+            <div class="nav-item" id="nav-chat" onclick="switchTab('chat')"><span class="nav-icon">🤖</span>NEXUS</div>
+            <div class="nav-item" id="nav-settings" onclick="switchTab('settings')"><span class="nav-icon">⚙️</span>Config</div>
+        </div>
     </div>
 
     <script>
-        // Force test execution on click
-        function handleLoginBtn() {
-            try {
-                const passField = document.getElementById('input-pass').value.trim();
-                const geminiField = document.getElementById('input-gemini').value.trim();
-                const groqField = document.getElementById('input-groq').value.trim();
-                const errBox = document.getElementById('err-msg');
+        const MASTER_PASS = "admin2026";
+        let gKey = "";
+        let grKey = "";
+        let currentQuizData = [];
+        let userAnswers = {};
+        let userBookmarks = {};
+        let currentQIndex = 0;
+        let timerInterval = null;
+        let secondsLeft = 0;
+        let totalSecondsTaken = 0;
+        let mistakeVault = [];
 
-                if (passField !== "admin2026") {
-                    errBox.style.display = 'block';
-                    errBox.innerText = "Invalid Passcode. Default is admin2026";
-                    return;
-                }
+        try { mistakeVault = JSON.parse(localStorage.getItem("NEXUS_VAULT")) || []; } catch(e) { mistakeVault = []; }
 
-                if (!geminiField && !groqField) {
-                    errBox.style.display = 'block';
-                    errBox.innerText = "Please provide at least one API Key.";
-                    return;
-                }
-
-                // Save to local storage safely
-                localStorage.setItem("APP_PASS", passField);
-                if (geminiField) localStorage.setItem("GEMINI_KEY", geminiField);
-                if (groqField) localStorage.setItem("GROQ_KEY", groqField);
-
-                // Switch UI views instantly
-                document.getElementById('login-screen').style.display = 'none';
-                document.getElementById('main-screen').style.display = 'block';
-
-            } catch (err) {
-                alert("Critical Execution Error: " + err.message);
-            }
-        }
-
-        // Auto-login check on page load
         window.onload = function() {
             try {
-                if (localStorage.getItem("APP_PASS") === "admin2026") {
-                    const g = localStorage.getItem("GEMINI_KEY");
-                    const gr = localStorage.getItem("GROQ_KEY");
-                    if (g || gr) {
-                        document.getElementById('login-screen').style.display = 'none';
-                        document.getElementById('main-screen').style.display = 'block';
+                if (localStorage.getItem("APP_PASS") === MASTER_PASS) {
+                    gKey = localStorage.getItem("GEMINI_KEY") || "";
+                    grKey = localStorage.getItem("GROQ_KEY") || "";
+                    if (gKey || grKey) {
+                        document.getElementById('page-login').style.display = 'none';
+                        document.getElementById('main-app').style.display = 'flex';
+                        renderVault();
                     }
                 }
             } catch(e) {}
         };
-    </script>
-</body>
-</html>
 
+        function executeLogin() {
+            const pass = document.getElementById('app-pass').valu
