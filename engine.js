@@ -55,7 +55,7 @@ async function startExam() {
     document.getElementById('terminal-screen').style.display = 'block';
     const terminal = document.getElementById('terminal');
     terminal.style.display = 'block';
-    terminal.innerHTML = "";
+    terminal.innerHTML = "<span style='color: var(--neon-cyan);'>[CORE INITIALIZED]: Connecting to neural parameters...</span><br>";
 
     const rawModel = document.getElementById('model-select').value;
     const count = document.getElementById('count').value;
@@ -108,7 +108,7 @@ RULES:
                     model: rawModel, 
                     messages: [{ role: "user", content: prompt }], 
                     temperature: 0.4, 
-                    max_tokens: 8192, // Set token output limit to max
+                    max_tokens: 8192,
                     response_format: { type: "json_object" } 
                 })
             });
@@ -125,7 +125,7 @@ RULES:
                 body: JSON.stringify({ 
                     contents: [{ parts: [{ text: prompt }] }],
                     generationConfig: {
-                        maxOutputTokens: 8192, // Set Gemini token limit to max
+                        maxOutputTokens: 8192,
                         temperature: 0.4
                     }
                 })
@@ -160,7 +160,7 @@ RULES:
 
     } catch (err) {
         terminal.style.color = "var(--neon-red)";
-        terminal.textContent += `\n\n[FAILURE]: ${err.message}`;
+        terminal.innerHTML += `<br><br>[FAILURE]: ${err.message}`;
         setTimeout(resetExamUI, 6000);
     }
 }
