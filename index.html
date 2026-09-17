@@ -9,7 +9,7 @@
 
         :root {
             --bg-deep: #030712;
-            --bg-card: rgba(15, 23, 42, 0.75);
+            --bg-card: rgba(15, 23, 42, 0.85);
             --border-glow: rgba(56, 189, 248, 0.2);
             --neon-cyan: #00f2fe;
             --neon-blue: #4facfe;
@@ -152,15 +152,18 @@
 
     <!-- AUTHENTICATION PAGE -->
     <div id="page-login" class="app-shell" style="align-items: center; justify-content: center; min-height: 100vh;">
-        <div class="glass-card" style="width: 100%; max-width: 420px; margin: 20px;">
+        <div class="glass-card" style="width: 100%; max-width: 440px; margin: 20px;">
             <h1 class="header-title" style="font-size: 26px; text-align: center; margin-bottom: 10px;">NEXUS OS</h1>
-            <p style="font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 24px;">Professional CBT Suite Gateway</p>
+            <p style="font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 24px;">Provide at least one API key to initialize.</p>
             
             <label>Master Passcode</label>
             <input type="password" id="app-pass" value="admin2026" placeholder="PIN">
             
-            <label>API Key (Gemini / Groq)</label>
-            <input type="password" id="api-key" placeholder="AIzaSy... or gsk_...">
+            <label>Gemini API Key (Optional if Groq provided)</label>
+            <input type="password" id="gemini-key" placeholder="AIzaSy...">
+            
+            <label>Groq API Key (Optional if Gemini provided)</label>
+            <input type="password" id="groq-key" placeholder="gsk_...">
             
             <button class="cyber-btn" onclick="login()" style="width:100%; margin-top:24px;">Initialize Access</button>
             <p id="login-err" style="color: var(--neon-red); font-size: 13px; text-align: center; display: none; margin-top: 16px; font-weight: 600;"></p>
@@ -315,7 +318,4 @@
 
         </div>
 
-        <!-- MOBILE BOTTOM DOCK -->
-        <div class="bottom-nav">
-            <div class="nav-item active" id="nav-exam" onclick="switchTab('exam')"><span class="nav-icon">📝</span>Engine</div>
-      
+        <!-- MOBILE BOTT
