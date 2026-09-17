@@ -224,7 +224,18 @@ function renderQuestion(index) {
     updatePaletteStates();
 }
 
-function selectOption(qIdx, oIdx) { userAnswers[qIdx] = oIdx; renderQuestion(qIdx); }
+function selectOption(qIdx, oIdx) { 
+    userAnswers[qIdx] = oIdx; 
+    try {
+        localStorage.setItem("NEXUS_ACTIVE_PROGRESS", JSON.stringify({
+            quizData: currentQuizData,
+            answers: userAnswers,
+            currentIndex: qIdx,
+            secondsLeft: secondsLeft
+        }));
+    } catch(e) {}
+    renderQuestion(qIdx); 
+}
 function clearAnswer() { delete userAnswers[currentQIndex]; renderQuestion(currentQIndex); }
 function skipQ() { navigateQ(1); }
 function toggleBookmark() { userBookmarks[currentQIndex] = !userBookmarks[currentQIndex]; renderQuestion(currentQIndex); }
