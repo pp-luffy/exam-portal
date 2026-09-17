@@ -87,6 +87,7 @@
             <div class="sidebar-nav-item" id="side-settings" onclick="switchTab('settings')">⚙️ Config</div>
         </div>
         <div class="main-content">
+            <!-- EXAM ENGINE PAGE -->
             <div id="page-exam" class="page active">
                 <h1 class="header-title">Exam Engine</h1>
                 <div id="exam-setup" class="glass-card">
@@ -113,14 +114,14 @@
                     
                     <div style="display:flex; gap: 16px;">
                         <div style="flex: 1;">
-                            <label>Questions (Maxes adapted)</label>
+                            <label>Questions</label>
                             <input type="number" id="count" value="10" min="1" max="100">
                         </div>
                         <div style="flex: 1;">
                             <label>Language</label>
                             <select id="lang">
                                 <option value="English">English</option>
-                                <option value="Odia">Odia (Multi-Byte Weight)</option>
+                                <option value="Odia">Odia</option>
                             </select>
                         </div>
                     </div>
@@ -209,7 +210,7 @@
                 </div>
             </div>
 
-            <!-- SETTINGS -->
+            <!-- CONFIG / SETTINGS -->
             <div id="page-settings" class="page">
                 <h1 class="header-title">System Config</h1>
                 <div class="glass-card">
