@@ -276,6 +276,7 @@ async function sendChat() {
     orKey = localStorage.getItem("OPENROUTER_KEY") || orKey;
 
     const org = document.getElementById('org-select').value;
+    const rawModel = document.getElementById('model-select').value;
     const activeKey = org === 'groq' ? grKey : (org === 'openrouter' ? orKey : gKey);
     
     if (!activeKey) {
@@ -294,7 +295,7 @@ async function sendChat() {
 
     const ai = document.createElement('div');
     ai.className = "msg ai";
-    ai.innerText = "Analyzing...";
+    ai.innerText = `Analyzing with ${rawModel}...`;
     box.appendChild(ai);
     
     try {
@@ -304,21 +305,27 @@ async function sendChat() {
                 ? "https://openrouter.ai/api/v1/chat/completions" 
                 : "https://api.groq.com/openai/v1/chat/completions";
 
+            const headers = { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${activeKey}` 
+            };
+            if (org === 'openrouter') {
+                headers['HTTP-Referer'] = window.location.href;
+                headers['X-Title'] = 'NEXUS OS CBT Suite';
+            }
+
             const res = await fetch(apiUrl, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': `Bearer ${activeKey}` 
-                },
+                headers: headers,
                 body: JSON.stringify({ 
-                    model: org === 'openrouter' ? "nvidia/nemotron-3-ultra-550b-a55b:free" : "llama-3.3-70b-versatile", 
+                    model: rawModel, 
                     messages: [{ role: "user", content: "Tutor: " + msg }] 
                 })
             });
             const data = await res.json();
             resText = data.choices[0].message.content;
         } else {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${activeKey}`, {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${rawModel}:generateContent?key=${activeKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ contents: [{ parts: [{ text: "Tutor: " + msg }] }] })
@@ -327,7 +334,9 @@ async function sendChat() {
             resText = data.candidates[0].content.parts[0].text;
         }
         ai.innerText = resText;
-    } catch(e) { ai.innerText = "Connection error."; }
+    } catch(e) { 
+        ai.innerText = "Connection error: " + e.message; 
+    }
     box.scrollTop = box.scrollHeight;
 }
 
