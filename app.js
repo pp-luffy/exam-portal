@@ -1,6 +1,6 @@
 let currentUser = "";
 let isAdmin = false;
-const ADMIN_USERS = ["thegodsk", "saikiran"];
+const ADMIN_USERS = ["thegodsk", "saikiran", "lichi"];
 
 window.addEventListener('load', () => {
     // If it's a standalone exam tab, skip the boot splash
