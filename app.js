@@ -90,14 +90,28 @@ document.addEventListener("DOMContentLoaded", function() {
     safeBind('clear-vault-btn', 'click', clearVault);
     safeBind('export-btn', 'click', exportLocalStorage);
 
+    // Admin Vault JSON Editor Bindings
+    safeBind('save-vault-json-btn', 'click', () => {
+        try {
+            mistakeVault = JSON.parse(document.getElementById('vault-json-textarea').value);
+            localStorage.setItem("NEXUS_VAULT", JSON.stringify(mistakeVault));
+            renderVault();
+            alert("Vault JSON Updated Successfully.");
+        } catch(e) {
+            alert("Invalid JSON format! Please correct errors.");
+        }
+    });
+
     const langSelect = document.getElementById('lang');
     if (langSelect) langSelect.addEventListener('change', enforceLanguageConstraints);
 
     const countInput = document.getElementById('count');
     if (countInput) {
         countInput.addEventListener('input', function() {
-            const maxVal = parseInt(this.max) || 100;
-            if (parseInt(this.value) > maxVal) this.value = maxVal;
+            if (!isAdmin) {
+                const maxVal = parseInt(this.max) || 100;
+                if (parseInt(this.value) > maxVal) this.value = maxVal;
+            }
             if (parseInt(this.value) < 1 && this.value !== "") this.value = 1;
         });
     }
@@ -151,9 +165,13 @@ function processLogin(user) {
 function applySessionEnvironment() {
     const orgSelect = document.getElementById('org-select');
     const diffContainer = document.getElementById('difficulty-container');
+    const adminPrompt = document.getElementById('admin-prompt');
+    const adminVault = document.getElementById('admin-vault-editor');
 
     if (!isAdmin) {
         if (diffContainer) diffContainer.style.display = 'none';
+        if (adminPrompt) adminPrompt.style.display = 'none';
+        if (adminVault) adminVault.style.display = 'none';
         if (orgSelect) {
             Array.from(orgSelect.options).forEach(opt => {
                 opt.style.display = (opt.value === 'gemini') ? 'block' : 'none';
@@ -163,6 +181,8 @@ function applySessionEnvironment() {
         }
     } else {
         if (diffContainer) diffContainer.style.display = 'block';
+        if (adminPrompt) adminPrompt.style.display = 'block';
+        if (adminVault) adminVault.style.display = 'block';
         if (orgSelect) {
             orgSelect.disabled = false;
             Array.from(orgSelect.options).forEach(opt => {
@@ -250,9 +270,14 @@ function enforceLanguageConstraints() {
 
     if (langSelect.value === 'Odia') baseLimit = Math.floor(baseLimit * 0.70);
 
-    countInput.max = baseLimit;
-    if (countLabel) countLabel.textContent = `Questions (Max ${baseLimit})`;
-    if (parseInt(countInput.value) > baseLimit) countInput.value = baseLimit;
+    if (isAdmin) {
+        countInput.removeAttribute('max');
+        if (countLabel) countLabel.textContent = `Questions (Admin Unlocked)`;
+    } else {
+        countInput.max = baseLimit;
+        if (countLabel) countLabel.textContent = `Questions (Max ${baseLimit})`;
+        if (parseInt(countInput.value) > baseLimit) countInput.value = baseLimit;
+    }
 }
 
 function updateTokens() {
