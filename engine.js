@@ -438,7 +438,6 @@ function emailAssessmentReport() {
     const format = document.getElementById('export-format').value;
     const exam = document.getElementById('exam').value || "Assessment";
     
-    // Force Local Download first due to mailto security blocks on attachments
     alert(`Downloading the ${format.toUpperCase()} report now. Please ATTACH this downloaded file to the email window that opens next.`);
     downloadAssessmentReport();
 
