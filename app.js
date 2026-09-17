@@ -16,34 +16,47 @@ document.addEventListener("DOMContentLoaded", function() {
     gKey = localStorage.getItem("GEMINI_KEY") || "";
     grKey = localStorage.getItem("GROQ_KEY") || "";
 
-    // Pre-populate config fields if keys exist
-    if (gKey) document.getElementById('update-gemini').value = gKey;
-    if (grKey) document.getElementById('update-groq').value = grKey;
+    // Safely pre-populate config fields if they exist in DOM
+    const geminiInput = document.getElementById('update-gemini');
+    const groqInput = document.getElementById('update-groq');
+    if (geminiInput && gKey) geminiInput.value = gKey;
+    if (groqInput && grKey) groqInput.value = grKey;
 
-    document.getElementById('launch-btn').addEventListener('click', startExam);
-    document.getElementById('fullscreen-btn').addEventListener('click', toggleFullscreen);
-    document.getElementById('bookmark-btn').addEventListener('click', toggleBookmark);
-    document.getElementById('prev-btn').addEventListener('click', () => navigateQ(-1));
-    document.getElementById('skip-btn').addEventListener('click', skipQ);
-    document.getElementById('clear-btn').addEventListener('click', clearAnswer);
-    document.getElementById('next-btn').addEventListener('click', () => navigateQ(1));
-    document.getElementById('submit-btn').addEventListener('click', confirmSubmit);
-    document.getElementById('rev-all-btn').addEventListener('click', () => filterReview('all'));
-    document.getElementById('rev-wrong-btn').addEventListener('click', () => filterReview('wrong'));
-    document.getElementById('retry-btn').addEventListener('click', restartSameQuiz);
-    document.getElementById('new-quiz-btn').addEventListener('click', resetExamUI);
-    document.getElementById('clear-vault-btn').addEventListener('click', clearVault);
-    document.getElementById('send-chat-btn').addEventListener('click', sendChat);
-    document.getElementById('chat-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendChat(); });
-    document.getElementById('export-btn').addEventListener('click', exportLocalStorage);
-    document.getElementById('save-tokens-btn').addEventListener('click', updateTokens);
+    // Bind all interactive elements safely
+    safeBind('launch-btn', 'click', startExam);
+    safeBind('fullscreen-btn', 'click', toggleFullscreen);
+    safeBind('bookmark-btn', 'click', toggleBookmark);
+    safeBind('prev-btn', 'click', () => navigateQ(-1));
+    safeBind('skip-btn', 'click', skipQ);
+    safeBind('clear-btn', 'click', clearAnswer);
+    safeBind('next-btn', 'click', () => navigateQ(1));
+    safeBind('submit-btn', 'click', confirmSubmit);
+    safeBind('rev-all-btn', 'click', () => filterReview('all'));
+    safeBind('rev-wrong-btn', 'click', () => filterReview('wrong'));
+    safeBind('retry-btn', 'click', restartSameQuiz);
+    safeBind('new-quiz-btn', 'click', resetExamUI);
+    safeBind('clear-vault-btn', 'click', clearVault);
+    safeBind('send-chat-btn', 'click', sendChat);
+    safeBind('save-tokens-btn', 'click', updateTokens);
+    safeBind('export-btn', 'click', exportLocalStorage);
+
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) {
+        chatInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendChat(); });
+    }
 
     renderVault();
 });
 
+// Helper to prevent null-element crashes
+function safeBind(id, event, fn) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(event, fn);
+}
+
 function updateTokens() {
-    const newGemini = document.getElementById('update-gemini').value.trim();
-    const newGroq = document.getElementById('update-groq').value.trim();
+    const newGemini = document.getElementById('update-gemini')?.value.trim() || "";
+    const newGroq = document.getElementById('update-groq')?.value.trim() || "";
     const msgEl = document.getElementById('token-update-msg');
 
     if (!newGemini && !newGroq) {
@@ -61,8 +74,12 @@ function updateTokens() {
             grKey = newGroq;
         }
         
-        msgEl.style.display = 'block';
-        setTimeout(() => { msgEl.style.display = 'none'; }, 4000);
+        if (msgEl) {
+            msgEl.style.display = 'block';
+            setTimeout(() => { msgEl.style.display = 'none'; }, 4000);
+        } else {
+            alert("Tokens updated successfully!");
+        }
     } catch(e) {
         alert("Failed to save tokens: " + e.message);
     }
@@ -83,7 +100,10 @@ function switchTab(tab) {
 }
 
 async function startExam() {
+    gKey = localStorage.getItem("GEMINI_KEY") || gKey;
+    grKey = localStorage.getItem("GROQ_KEY") || grKey;
     const activeKey = gKey || grKey;
+    
     if (!activeKey) {
         alert("API Key missing! Please go to the Config tab and enter your Gemini or Groq API Key before launching.");
         switchTab('settings');
@@ -313,7 +333,9 @@ function renderVault() {
 function clearVault() { if(confirm("Purge vault?")) { mistakeVault = []; localStorage.removeItem("NEXUS_VAULT"); renderVault(); } }
 
 async function sendChat() {
+    gKey = localStorage.getItem("GEMINI_KEY") || gKey;
     const activeKey = gKey || grKey;
+    
     if (!activeKey) {
         alert("API Key missing! Please go to the Config tab to enter your key.");
         switchTab('settings');
@@ -362,4 +384,4 @@ function resetExamUI() {
     document.getElementById('exam-results').style.display = 'none';
     document.getElementById('exam-active').style.display = 'none';
     document.getElementById('exam-setup').style.display = 'block';
-                               }
+}
