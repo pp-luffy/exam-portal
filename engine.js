@@ -9,6 +9,24 @@ let mistakeVault = [];
 
 try { mistakeVault = JSON.parse(localStorage.getItem("NEXUS_VAULT")) || []; } catch(e) { mistakeVault = []; }
 
+document.addEventListener("DOMContentLoaded", function() {
+    const clearChatBtn = document.getElementById('clear-chat-btn');
+    if (clearChatBtn) {
+        clearChatBtn.addEventListener('click', clearChatHistory);
+    }
+});
+
+function clearChatHistory() {
+    const box = document.getElementById('chat-box');
+    if (box) {
+        box.innerHTML = `
+            <div class="msg-wrapper ai" style="display: flex; flex-direction: column; align-items: flex-start;">
+                <div class="msg ai">Chat history cleared. Ready for new queries.</div>
+                <span class="timestamp" style="font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-left: 4px;">Just now</span>
+            </div>`;
+    }
+}
+
 async function startExam() {
     gKey = localStorage.getItem("GEMINI_KEY") || gKey;
     grKey = localStorage.getItem("GROQ_KEY") || grKey;
@@ -295,15 +313,26 @@ async function sendChat() {
     const inp = document.getElementById('chat-input');
     const msg = inp.value.trim();
     if (!msg) return;
+
+    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const box = document.getElementById('chat-box');
-    box.innerHTML += `<div class="msg user">${msg}</div>`;
+
+    box.innerHTML += `
+        <div class="msg-wrapper user" style="display: flex; flex-direction: column; align-items: flex-end;">
+            <div class="msg user">${msg}</div>
+            <span class="timestamp" style="font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-right: 4px;">${currentTime}</span>
+        </div>`;
+    
     inp.value = "";
     box.scrollTop = box.scrollHeight;
 
-    const ai = document.createElement('div');
-    ai.className = "msg ai";
-    ai.innerText = `Analyzing with ${rawModel}...`;
-    box.appendChild(ai);
+    const aiWrapperId = 'ai-msg-' + Date.now();
+    box.innerHTML += `
+        <div id="${aiWrapperId}" class="msg-wrapper ai" style="display: flex; flex-direction: column; align-items: flex-start;">
+            <div class="msg ai">Analyzing with ${rawModel}...</div>
+            <span class="timestamp" style="font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-left: 4px;">${currentTime}</span>
+        </div>`;
+    box.scrollTop = box.scrollHeight;
     
     try {
         let resText = "";
@@ -347,9 +376,21 @@ async function sendChat() {
             }
             resText = data.candidates[0].content.parts[0].text;
         }
-        ai.innerText = resText;
+
+        const wrapper = document.getElementById(aiWrapperId);
+        if (wrapper) {
+            const finalTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            wrapper.innerHTML = `
+                <div class="msg ai">${resText}</div>
+                <span class="timestamp" style="font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-left: 4px;">${finalTime}</span>`;
+        }
     } catch(e) { 
-        ai.innerText = `[Error]: ${e.message}`; 
+        const wrapper = document.getElementById(aiWrapperId);
+        if (wrapper) {
+            wrapper.innerHTML = `
+                <div class="msg ai" style="color: var(--neon-red);">[Error]: ${e.message}</div>
+                <span class="timestamp" style="font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-left: 4px;">Failed</span>`;
+        }
     }
     box.scrollTop = box.scrollHeight;
 }
