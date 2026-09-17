@@ -2,6 +2,9 @@
 let currentUser = "";
 let isAdmin = false;
 
+// List of authorized admin handles
+const ADMIN_USERS = ["thegodsk", "saikiran"];
+
 // System Boot Sequence & Auth Handler
 window.addEventListener('load', () => {
     setTimeout(() => {
@@ -118,7 +121,7 @@ function checkAuth() {
 }
 
 function handleLogin() {
-    const user = document.getElementById('login-username').value.trim();
+    const user = document.getElementById('login-username').value.trim().toLowerCase();
     if (!user) {
         alert("Operator ID required.");
         return;
@@ -127,15 +130,15 @@ function handleLogin() {
 }
 
 function processLogin(user) {
-    currentUser = user;
-    isAdmin = (user.trim() === "thegodsk");
-    localStorage.setItem("NEXUS_USER", user);
+    currentUser = user.toLowerCase();
+    isAdmin = ADMIN_USERS.includes(currentUser); // Checks against the admin list
+    localStorage.setItem("NEXUS_USER", currentUser);
     
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('main-app').style.display = 'flex';
     
     const operatorSpan = document.getElementById('active-operator-name');
-    if (operatorSpan) operatorSpan.textContent = user;
+    if (operatorSpan) operatorSpan.textContent = currentUser;
 
     applySessionEnvironment();
 }
