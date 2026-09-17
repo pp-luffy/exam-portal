@@ -1,6 +1,6 @@
 let gKey = "";
 let grKey = "";
-let orKey = ""; // OpenRouter Key
+let orKey = "";
 let currentQuizData = [];
 let userAnswers = {};
 let userBookmarks = {};
@@ -10,7 +10,7 @@ let secondsLeft = 0;
 let totalSecondsTaken = 0;
 let mistakeVault = [];
 
-// Provider library including Gemini, Groq, and OpenRouter free models
+// Clean provider models map
 const PROVIDER_MODELS = {
     gemini: [
         { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash (High Speed / Latest)", maxLimit: 50 },
@@ -50,6 +50,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const modelSelect = document.getElementById('model-select');
     if (modelSelect) modelSelect.addEventListener('change', updateQuotaDisplay);
 
+    // Force populate dropdown immediately on boot
     updateModelDropdown();
 
     safeBind('launch-btn', 'click', startExam);
@@ -86,9 +87,11 @@ function safeBind(id, event, fn) {
 }
 
 function updateModelDropdown() {
-    const org = document.getElementById('org-select').value;
+    const orgSelect = document.getElementById('org-select');
     const modelSelect = document.getElementById('model-select');
-    if (!modelSelect) return;
+    if (!orgSelect || !modelSelect) return;
+
+    const org = orgSelect.value;
     modelSelect.innerHTML = "";
     
     const list = PROVIDER_MODELS[org] || [];
@@ -103,15 +106,24 @@ function updateModelDropdown() {
 
 function updateQuotaDisplay() {
     const statusVal = document.getElementById('quota-status-val');
-    if (!statusVal) return;
-    const org = document.getElementById('org-select').value;
-    
-    if (org === 'openrouter') {
-        statusVal.textContent = "Free Tier: ~20 RPM / 200 RPD (OpenRouter)";
-    } else if (org === 'groq') {
-        statusVal.textContent = "Free Tier: ~30 RPM / 14.4K RPD (Groq LPU)";
+    const orgSelect = document.getElementById('org-select');
+    const modelSelect = document.getElementById('model-select');
+    if (!statusVal || !orgSelect || !modelSelect) return;
+
+    const modelId = modelSelect.value;
+    const org = orgSelect.value;
+    const cachedQuota = localStorage.getItem(`QUOTA_${modelId}`);
+
+    if (cachedQuota) {
+        statusVal.textContent = cachedQuota;
     } else {
-        statusVal.textContent = "Free Tier: Standard Rate Limits (Gemini)";
+        if (org === 'openrouter') {
+            statusVal.textContent = "Free Tier: ~20 RPM / 200 RPD (OpenRouter)";
+        } else if (org === 'groq') {
+            statusVal.textContent = "Free Tier: ~30 RPM / 14.4K RPD (Groq LPU)";
+        } else {
+            statusVal.textContent = "Free Tier: Standard Rate Limits (Gemini)";
+        }
     }
     enforceLanguageConstraints();
 }
@@ -458,16 +470,4 @@ async function sendChat() {
     const inp = document.getElementById('chat-input');
     const msg = inp.value.trim();
     if (!msg) return;
-    const box = document.getElementById('chat-box');
-    box.innerHTML += `<div class="msg user">${msg}</div>`;
-    inp.value = "";
-    box.scrollTop = box.scrollHeight;
-
-    const ai = document.createElement('div');
-    ai.className = "msg ai";
-    ai.innerText = "Analyzing...";
-    box.appendChild(ai);
-    
-    try {
-        let resText = "";
-        if (org === 'groq' || org === 'openrouter')
+    const box 
