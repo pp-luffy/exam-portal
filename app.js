@@ -2,28 +2,28 @@ let gKey = "";
 let grKey = "";
 let orKey = "";
 
-// Calibrated realistic generation limits based on output token thresholds & JSON structure safety
+// Expanded base limits designed for maximum depth without breaking JSON buffers
 const PROVIDER_MODELS = {
     gemini: [
-        { id: "gemini-3.7-flash", name: "Gemini 3.7 Flash", maxLimit: 30 },
-        { id: "gemini-3.6-flash", name: "Gemini 3.6 Flash", maxLimit: 30 },
-        { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash", maxLimit: 30 },
-        { id: "gemini-3.5-flash", name: "Gemini 3.5 Flash", maxLimit: 30 },
-        { id: "gemini-3.5-flash-lite", name: "Gemini 3.5 Flash Lite", maxLimit: 25 },
-        { id: "gemini-3.1-flash-lite", name: "Gemini 3.1 Flash Lite", maxLimit: 25 }
+        { id: "gemini-3.7-flash", name: "Gemini 3.7 Flash", maxLimit: 75 },
+        { id: "gemini-3.6-flash", name: "Gemini 3.6 Flash", maxLimit: 75 },
+        { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash", maxLimit: 75 },
+        { id: "gemini-3.5-flash", name: "Gemini 3.5 Flash", maxLimit: 75 },
+        { id: "gemini-3.5-flash-lite", name: "Gemini 3.5 Flash Lite", maxLimit: 60 },
+        { id: "gemini-3.1-flash-lite", name: "Gemini 3.1 Flash Lite", maxLimit: 60 }
     ],
     groq: [
-        { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B", maxLimit: 25 },
-        { id: "llama-3.1-8b-instant", name: "Llama 3.1 8B Instant", maxLimit: 20 }
+        { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B", maxLimit: 60 },
+        { id: "llama-3.1-8b-instant", name: "Llama 3.1 8B Instant", maxLimit: 40 }
     ],
     openrouter: [
-        { id: "nvidia/nemotron-3-ultra-550b-a55b:free", name: "Nemotron 3 Ultra", maxLimit: 40 },
-        { id: "nvidia/nemotron-3-super:free", name: "Nemotron 3 Super", maxLimit: 40 },
-        { id: "google/gemma-4-31b-it:free", name: "Gemma 4 31B", maxLimit: 30 },
-        { id: "google/gemma-4-26b-a4b-it:free", name: "Gemma 4 26B", maxLimit: 30 },
-        { id: "nvidia/nemotron-3.5-lightning:free", name: "Nemotron 3.5 Lightning", maxLimit: 30 },
-        { id: "nvidia/nemotron-nano-9b-v2:free", name: "Nemotron Nano 9B", maxLimit: 25 },
-        { id: "dots-studio/dots3-note-preview:free", name: "Dots3 Note Preview", maxLimit: 30 }
+        { id: "nvidia/nemotron-3-ultra-550b-a55b:free", name: "Nemotron 3 Ultra", maxLimit: 100 },
+        { id: "nvidia/nemotron-3-super:free", name: "Nemotron 3 Super", maxLimit: 100 },
+        { id: "google/gemma-4-31b-it:free", name: "Gemma 4 31B", maxLimit: 75 },
+        { id: "google/gemma-4-26b-a4b-it:free", name: "Gemma 4 26B", maxLimit: 75 },
+        { id: "nvidia/nemotron-3.5-lightning:free", name: "Nemotron 3.5 Lightning", maxLimit: 75 },
+        { id: "nvidia/nemotron-nano-9b-v2:free", name: "Nemotron Nano 9B", maxLimit: 50 },
+        { id: "dots-studio/dots3-note-preview:free", name: "Dots3 Note Preview", maxLimit: 75 }
     ]
 };
 
@@ -66,9 +66,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
     const countInput = document.getElementById('count');
     if (countInput) {
-        // Strictly prevent typing or pasting numbers higher than the dynamic max
         countInput.addEventListener('input', function() {
-            const maxVal = parseInt(this.max) || 50;
+            const maxVal = parseInt(this.max) || 100;
             if (parseInt(this.value) > maxVal) {
                 this.value = maxVal;
             }
@@ -142,14 +141,14 @@ function enforceLanguageConstraints() {
     
     if (!modelSelect || !langSelect || !countInput || !orgSelect) return;
 
-    let baseLimit = 30;
+    let baseLimit = 75;
     const list = PROVIDER_MODELS[orgSelect.value] || [];
     const found = list.find(m => m.id === modelSelect.value);
     if (found) baseLimit = found.maxLimit;
 
-    // Adjust limit down for Odia language due to multi-byte token expansion weight
+    // Independent language scaling: Odia text requires more token length allocation per question block
     if (langSelect.value === 'Odia') {
-        baseLimit = Math.floor(baseLimit * 0.75);
+        baseLimit = Math.floor(baseLimit * 0.70);
     }
 
     countInput.max = baseLimit;
@@ -157,7 +156,6 @@ function enforceLanguageConstraints() {
         countLabel.textContent = `Questions (Max ${baseLimit})`;
     }
     
-    // Hard clamp current value if it exceeds the new limit
     if (parseInt(countInput.value) > baseLimit) {
         countInput.value = baseLimit;
     }
