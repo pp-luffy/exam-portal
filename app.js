@@ -66,6 +66,9 @@ document.addEventListener("DOMContentLoaded", function() {
     const modelSelect = document.getElementById('model-select');
     if (modelSelect) modelSelect.addEventListener('change', updateQuotaDisplay);
 
+    const diffSelect = document.getElementById('difficulty');
+    if (diffSelect) diffSelect.addEventListener('change', enforceLanguageConstraints);
+
     const saveTokensBtn = document.getElementById('save-tokens-btn');
     if (saveTokensBtn) saveTokensBtn.addEventListener('click', updateTokens);
 
@@ -90,7 +93,6 @@ document.addEventListener("DOMContentLoaded", function() {
     safeBind('clear-vault-btn', 'click', clearVault);
     safeBind('export-btn', 'click', exportLocalStorage);
 
-    // Admin Vault JSON Editor Bindings
     safeBind('save-vault-json-btn', 'click', () => {
         try {
             mistakeVault = JSON.parse(document.getElementById('vault-json-textarea').value);
@@ -260,6 +262,7 @@ function enforceLanguageConstraints() {
     const countInput = document.getElementById('count');
     const countLabel = document.getElementById('count-label');
     const orgSelect = document.getElementById('org-select');
+    const diffSelect = document.getElementById('difficulty');
     
     if (!modelSelect || !langSelect || !countInput || !orgSelect) return;
 
@@ -267,6 +270,13 @@ function enforceLanguageConstraints() {
     const list = PROVIDER_MODELS[orgSelect.value] || [];
     const found = list.find(m => m.id === modelSelect.value);
     if (found) baseLimit = found.maxLimit;
+
+    let diffMultiplier = 1.0;
+    if (diffSelect) {
+        if (diffSelect.value === "4") diffMultiplier = 0.6; 
+        if (diffSelect.value === "5") diffMultiplier = 0.4; 
+    }
+    baseLimit = Math.floor(baseLimit * diffMultiplier);
 
     if (langSelect.value === 'Odia') baseLimit = Math.floor(baseLimit * 0.70);
 
