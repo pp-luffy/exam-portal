@@ -100,32 +100,28 @@ RULES:
             const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeKey}` };
             if (org === 'openrouter') { headers['HTTP-Referer'] = window.location.href; headers['X-Title'] = 'NEXUS OS CBT Suite'; }
 
+            const payload = { 
+                model: rawModel, 
+                messages: [{ role: "user", content: prompt }], 
+                temperature: 0.4, 
+                max_tokens: 8192 
+            };
+
+            if (org === 'groq') {
+                payload.response_format = { type: "json_object" };
+            }
+
             const res = await fetch(apiUrl, {
                 method: 'POST',
                 headers: headers,
-                body: JSON.stringify({ 
-                    model: rawModel, 
-                    messages: [{ role: "user", content: prompt }], 
-                    temperature: 0.4, 
-                    max_tokens: 8192,
-                    response_format: { type: "json_object" } 
-                })
+                body: JSON.stringify(payload)
             });
             
-            // Dynamic Rate Limit Header Interception
             const remainingTokens = res.headers.get('x-ratelimit-remaining-tokens') || res.headers.get('x-ratelimit-tokens-remaining');
-            const remainingRequests = res.headers.get('x-ratelimit-remaining-requests') || res.headers.get('x-ratelimit-requests-remaining');
-            
-            if (remainingTokens || remainingRequests) {
-                let statusMsg = `Remaining Tokens: ${remainingTokens || 'N/A'}`;
+            if (remainingTokens) {
+                let statusMsg = `Remaining Tokens: ${remainingTokens}`;
                 document.getElementById('quota-status-val').textContent = statusMsg;
                 localStorage.setItem(`QUOTA_${rawModel}`, statusMsg);
-                
-                // Throttle max input UI dynamically if token capacity gets dangerously low
-                if (remainingTokens && parseInt(remainingTokens) < 2500) {
-                    const countInput = document.getElementById('count');
-                    if (parseInt(countInput.value) > 10) countInput.value = 10;
-                }
             }
             
             const data = await res.json();
@@ -133,13 +129,12 @@ RULES:
             fullResponse = data.choices[0].message.content;
 
         } else {
-            // Gemini Stream Block
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${rawModel}:streamGenerateContent?key=${activeKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: { maxOutputTokens: 8192, temperature: 0.4 }
+                    generationConfig: { maxOutputTokens: 65536, temperature: 0.4 }
                 })
             });
             
@@ -147,6 +142,7 @@ RULES:
                 const errJson = await res.json();
                 throw new Error(errJson.error?.message || `HTTP error ${res.status}`);
             }
+            
             const reader = res.body.getReader();
             const decoder = new TextDecoder();
             while (true) {
@@ -391,7 +387,7 @@ async function sendChat() {
     
     let org = "gemini";
     if (rawModel.includes(":free")) org = "openrouter";
-    else if (rawModel.includes("llama") || rawModel.includes("mixtral") || rawModel.includes("gemma2-9b-it") || rawModel.includes("versatile") || rawModel.includes("instant")) org = "groq";
+    else if (rawModel.includes("openai/") || rawModel.includes("qwen/") || rawModel.includes("groq/")) org = "groq";
 
     const activeKey = org === 'groq' ? grKey : (org === 'openrouter' ? orKey : gKey);
     
@@ -485,4 +481,9 @@ function resetExamUI() {
     document.getElementById('exam-results').style.display = 'none';
     document.getElementById('exam-active').style.display = 'none';
     document.getElementById('exam-setup').style.display = 'block';
+
+    if (typeof isAdmin !== 'undefined' && !isAdmin) {
+        const diffSelect = document.getElementById('difficulty');
+        if (diffSelect) diffSelect.value = "2";
+    }
 }
