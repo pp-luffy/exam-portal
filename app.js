@@ -148,7 +148,7 @@ function applySessionEnvironment() {
     const diffContainer = document.getElementById('difficulty-container');
 
     if (!isAdmin) {
-        if (diffContainer) diffContainer.style.display = 'none'; // Completely hide difficulty for non-admins
+        if (diffContainer) diffContainer.style.display = 'none';
         if (orgSelect) {
             Array.from(orgSelect.options).forEach(opt => {
                 opt.style.display = (opt.value === 'gemini') ? 'block' : 'none';
@@ -247,10 +247,10 @@ function updateTokens() {
     const msgEl = document.getElementById('token-update-msg');
 
     try {
-        if (newMail) localStorage.setItem("DEST_MAIL", newMail);
-        if (newGemini) { localStorage.setItem("GEMINI_KEY", newGemini); gKey = newGemini; }
-        if (newGroq) { localStorage.setItem("GROQ_KEY", newGroq); grKey = newGroq; }
-        if (newOpenRouter) { localStorage.setItem("OPENROUTER_KEY", newOpenRouter); orKey = newOpenRouter; }
+        if (newMail !== "") localStorage.setItem("DEST_MAIL", newMail);
+        if (newGemini !== "") { localStorage.setItem("GEMINI_KEY", newGemini); gKey = newGemini; }
+        if (newGroq !== "") { localStorage.setItem("GROQ_KEY", newGroq); grKey = newGroq; }
+        if (newOpenRouter !== "") { localStorage.setItem("OPENROUTER_KEY", newOpenRouter); orKey = newOpenRouter; }
         
         if (msgEl) {
             msgEl.style.display = 'block';
