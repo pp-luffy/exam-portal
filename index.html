@@ -2,105 +2,324 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Exam Portal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEXUS OS | Exam Portal</title>
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 15px; }
-        .container { max-width: 800px; margin: 0 auto; padding-bottom: 50px; }
-        h1 { text-align: center; color: #3b82f6; font-size: 24px; margin-bottom: 25px; }
-        .card { background: #1e293b; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #334155; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
-        label { display: block; margin-top: 15px; font-weight: 500; color: #94a3b8; font-size: 14px; }
-        input { width: 100%; padding: 12px; margin-top: 8px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white; font-size: 16px; box-sizing: border-box; }
-        button { width: 100%; background: #3b82f6; color: white; border: none; cursor: pointer; font-weight: bold; padding: 14px; border-radius: 6px; font-size: 16px; margin-top: 25px; transition: background 0.2s; }
-        button:active { background: #2563eb; }
-        #terminal { background: #000; color: #10b981; padding: 15px; border-radius: 8px; font-family: monospace; height: 300px; overflow-y: auto; white-space: pre-wrap; font-size: 12px; display: none; border: 1px solid #334155; }
-        .q-block { background: #1e293b; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #334155; }
-        .q-block h4 { margin-top: 0; font-size: 16px; line-height: 1.5; color: #f1f5f9; }
-        .option-label { display: block; padding: 14px; background: #0f172a; margin: 10px 0; border-radius: 6px; cursor: pointer; border: 1px solid #334155; }
-        .correct { background: #064e3b !important; border-color: #10b981 !important; color: #34d399; font-weight: bold; }
-        .wrong { background: #7f1d1d !important; border-color: #ef4444 !important; color: #fca5a5; font-weight: bold; }
-        input[type="radio"] { margin-right: 12px; transform: scale(1.2); }
-        .hidden { display: none; }
-        #score-board { font-size: 22px; font-weight: bold; text-align: center; color: #10b981; margin-bottom: 20px; padding: 15px; background: #064e3b; border-radius: 8px; border: 1px solid #10b981; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+        :root {
+            --bg-color: #030712;
+            --glass-bg: rgba(17, 24, 39, 0.7);
+            --glass-border: rgba(56, 189, 248, 0.15);
+            --accent-cyan: #06b6d4;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(6, 182, 212, 0.08), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.08), transparent 25%);
+            color: var(--text-main);
+            margin: 0; padding: 0; min-height: 100vh;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Scrollbar customization */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.3); border-radius: 10px; }
+
+        .app-container { padding: 24px; padding-bottom: 100px; max-width: 800px; margin: 0 auto; }
+        .page { display: none; animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .page.active { display: block; }
+        
+        /* Glass Navigation Bar */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: rgba(3, 7, 18, 0.85);
+            backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+            border-top: 1px solid var(--glass-border);
+            display: flex; justify-content: space-around;
+            padding: 16px 0 calc(16px + env(safe-area-inset-bottom));
+            z-index: 1000; box-shadow: 0 -10px 40px rgba(0,0,0,0.6);
+        }
+        .nav-item {
+            color: var(--text-muted); text-align: center; font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px; cursor: pointer; transition: all 0.3s;
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+        }
+        .nav-item.active { color: var(--accent-cyan); text-shadow: 0 0 12px rgba(6, 182, 212, 0.6); transform: translateY(-2px); }
+        .nav-icon { font-size: 22px; }
+
+        /* Typography & Cards */
+        .header-title {
+            text-align: center; font-weight: 700; font-size: 26px; margin-bottom: 24px;
+            background: linear-gradient(to right, var(--accent-cyan), var(--accent-blue));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 1px;
+        }
+
+        .glass-card {
+            background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border); border-radius: 16px;
+            padding: 24px; margin-bottom: 24px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .glass-card:hover { border-color: rgba(6, 182, 212, 0.3); }
+
+        /* Inputs */
+        label { display: block; margin-top: 16px; font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 500; }
+        input, select {
+            width: 100%; padding: 14px 16px; margin-top: 8px; border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.5);
+            color: white; font-size: 15px; box-sizing: border-box; transition: all 0.3s ease;
+            appearance: none;
+        }
+        input:focus, select:focus { outline: none; border-color: var(--accent-cyan); box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15); background: rgba(0,0,0,0.7); }
+        select option { background: #111827; color: white; }
+
+        .cyber-btn {
+            width: 100%; padding: 16px; margin-top: 24px; border-radius: 12px; border: none;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            color: white; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;
+            cursor: pointer; box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3); transition: all 0.2s;
+        }
+        .cyber-btn:active { transform: scale(0.97); box-shadow: 0 2px 8px rgba(6, 182, 212, 0.2); }
+        .cyber-btn.danger { background: linear-gradient(135deg, #ef4444, #b91c1c); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
+
+        /* Terminal & Exam UI */
+        #terminal {
+            background: rgba(0,0,0,0.9); color: var(--accent-cyan); padding: 20px; border-radius: 12px;
+            font-family: 'JetBrains Mono', monospace; height: 280px; overflow-y: auto; font-size: 12px;
+            border: 1px solid var(--glass-border); display: none; box-shadow: inset 0 0 20px rgba(0,0,0,1);
+        }
+        .pulse-text { animation: pulse 2s infinite; color: var(--accent-cyan); font-weight: bold; font-size: 14px; text-align: center; letter-spacing: 1px; }
+
+        .q-text { font-size: 17px; line-height: 1.6; color: #fff; margin-bottom: 16px; margin-top: 0; font-weight: 500; }
+        .option-label {
+            display: flex; align-items: center; padding: 14px 16px; background: rgba(0,0,0,0.3);
+            margin: 10px 0; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);
+            cursor: pointer; transition: all 0.2s; font-size: 15px;
+        }
+        .option-label:hover { background: rgba(255,255,255,0.05); }
+        .option-label.selected { border-color: var(--accent-cyan); background: rgba(6, 182, 212, 0.1); }
+        
+        .correct { background: rgba(16, 185, 129, 0.15) !important; border-color: var(--accent-green) !important; color: #a7f3d0; }
+        .wrong { background: rgba(239, 68, 68, 0.15) !important; border-color: var(--accent-red) !important; color: #fecaca; }
+        input[type="radio"] { margin-right: 16px; width: 20px; height: 20px; accent-color: var(--accent-cyan); }
+
+        /* Chat HUD */
+        .chat-box { height: calc(100vh - 350px); overflow-y: auto; display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px; padding-right: 8px; }
+        .msg { padding: 14px 18px; border-radius: 18px; max-width: 85%; font-size: 15px; line-height: 1.5; }
+        .msg.user { background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan)); align-self: flex-end; border-bottom-right-radius: 4px; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2); }
+        .msg.ai { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); align-self: flex-start; border-bottom-left-radius: 4px; }
+        .chat-input-area { display: flex; gap: 12px; }
+        .chat-input-area input { margin-top: 0; flex: 1; }
+        .chat-input-area button { margin-top: 0; width: 65px; padding: 0; border-radius: 12px; }
+
+        /* Stats & Vault */
+        .score-banner {
+            font-size: 28px; font-weight: 700; text-align: center; color: var(--accent-green);
+            margin: 30px 0; padding: 24px; background: rgba(16, 185, 129, 0.1);
+            border-radius: 16px; border: 1px solid var(--accent-green); box-shadow: 0 0 30px rgba(16, 185, 129, 0.2);
+        }
+        .vault-item { border-left: 4px solid var(--accent-red); margin-bottom: 16px; }
+
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; text-shadow: 0 0 15px var(--accent-cyan); } 100% { opacity: 0.6; } }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>OPSC / UPSC Portal</h1>
 
-        <!-- API Key Setup (Saved to Phone) -->
-        <div id="key-screen" class="card">
-            <h2 style="margin-top: 0; font-size: 18px;">Security Setup</h2>
-            <p style="color: #94a3b8; font-size: 14px;">Enter your Gemini API Key. It is saved securely in this browser and never uploaded.</p>
+    <!-- SECURE GATEWAY (Auth) -->
+    <div id="page-login" class="app-container page active">
+        <h1 class="header-title" style="margin-top: 15vh; font-size: 32px;">NEXUS OS</h1>
+        <div class="glass-card">
+            <h2 style="font-size: 18px; color: var(--accent-cyan); margin-top:0;">System Authentication</h2>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 24px;">Establish secure neural link. Keys are encrypted in local storage.</p>
+            
+            <label>Master Passcode</label>
+            <input type="password" id="app-pass" placeholder="Enter PIN">
+            
+            <label>Gemini API Token</label>
             <input type="password" id="api-key" placeholder="AIzaSy...">
-            <button onclick="saveKey()">Save & Continue</button>
+            
+            <button class="cyber-btn" onclick="login()">Initialize System</button>
+            <p id="login-err" style="color: var(--accent-red); font-size: 13px; text-align: center; display: none; margin-top: 16px; font-weight: 500;">Access Denied. Invalid Credentials.</p>
         </div>
+    </div>
+
+    <!-- MAIN OS SHELL -->
+    <div id="main-app" style="display: none;">
         
-        <!-- Setup Exam -->
-        <div id="setup-screen" class="card hidden">
-            <h2 style="margin-top: 0; font-size: 18px;">Configure Exam</h2>
-            <label>Topic / Concept</label>
-            <input type="text" id="topic" value="ତତ୍ସମ ଶବ୍ଦ (Tatsama Sabda)">
-            <label>Question Count (Max 100)</label>
-            <input type="number" id="count" value="50" min="1" max="100">
-            <label>Language</label>
-            <input type="text" id="lang" value="Odia">
-            <button onclick="startGeneration()">Launch Exam Engine</button>
-            <p style="text-align:center; margin-top:20px; font-size:12px; color:#ef4444;" onclick="resetKey()">Reset API Key</p>
+        <!-- EXAM ENGINE PAGE -->
+        <div id="page-exam" class="app-container page active">
+            <h1 class="header-title">Exam Engine</h1>
+            
+            <div id="exam-setup" class="glass-card">
+                <label>Neural Engine</label>
+                <select id="model-select">
+                    <option value="gemini-3.7-pro">Gemini 3.7 Pro (Heavyweight Logic)</option>
+                    <option value="gemini-3.5-flash">Gemini 3.5 Flash (Ultra-Fast Prep)</option>
+                </select>
+
+                <label>Target Standard</label>
+                <input type="text" id="exam" value="OPSC / UPSC" placeholder="e.g. UPSC Prelims">
+                
+                <label>Concept / Syllabus Topic</label>
+                <input type="text" id="topic" value="ତତ୍ସମ ଶବ୍ଦ (Tatsama Sabda)" placeholder="e.g. Indian Polity">
+                
+                <div style="display:flex; gap: 16px;">
+                    <div style="flex: 1;">
+                        <label>Questions</label>
+                        <input type="number" id="count" value="10" min="1" max="100">
+                    </div>
+                    <div style="flex: 1;">
+                        <label>Language</label>
+                        <input type="text" id="lang" value="Odia">
+                    </div>
+                </div>
+                
+                <button class="cyber-btn" onclick="startExam()">Generate Exam</button>
+            </div>
+
+            <!-- Terminal Stream -->
+            <div id="terminal-screen" class="glass-card" style="display: none;">
+                <p class="pulse-text">Bypassing Timeouts & Streaming Data...</p>
+                <div id="terminal"></div>
+            </div>
+
+            <!-- Active Test -->
+            <div id="exam-active" style="display: none;">
+                <div id="questions-container"></div>
+                <button class="cyber-btn" id="submit-btn" onclick="submitExam()">Analyze & Score</button>
+                <div id="score-board" style="display: none;"></div>
+                <button class="cyber-btn" id="reset-btn" style="display: none; background: #374151; box-shadow: none;" onclick="resetExamUI()">Start New Exam</button>
+            </div>
         </div>
 
-        <!-- Terminal Screen -->
-        <div id="terminal-screen" class="hidden">
-            <h3 style="text-align: center; font-size: 16px; color: #3b82f6;">Streaming directly from Gemini...</h3>
-            <div id="terminal"></div>
+        <!-- MISTAKE VAULT PAGE -->
+        <div id="page-vault" class="app-container page">
+            <h1 class="header-title">Mistake Vault</h1>
+            <div class="glass-card">
+                <p style="font-size: 13px; color: var(--text-muted); margin-top:0;">Questions you answered incorrectly are stored here for spaced repetition.</p>
+                <div id="vault-container"></div>
+                <button class="cyber-btn danger" onclick="clearVault()" id="clear-vault-btn">Purge Vault</button>
+            </div>
         </div>
 
-        <!-- Exam Screen -->
-        <div id="exam-screen" class="hidden">
-            <div id="score-board" class="hidden"></div>
-            <div id="questions-container"></div>
-            <button id="submit-btn" onclick="submitExam()">Submit Exam</button>
+        <!-- NEXUS AI CHAT PAGE -->
+        <div id="page-chat" class="app-container page">
+            <h1 class="header-title">NEXUS AI</h1>
+            <div class="glass-card" style="padding: 16px;">
+                <div class="chat-box" id="chat-box">
+                    <div class="msg ai">System online. I am optimized for UPSC/OPSC syllabus queries. How can I assist?</div>
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="chat-input" placeholder="Type query..." onkeypress="if(event.key === 'Enter') sendChat()">
+                    <button class="cyber-btn" onclick="sendChat()">➤</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SETTINGS PAGE -->
+        <div id="page-settings" class="app-container page">
+            <h1 class="header-title">System Settings</h1>
+            <div class="glass-card">
+                <h3 style="color: var(--accent-cyan); margin-top:0;">Telemetry</h3>
+                <p style="color: var(--accent-green); font-size: 14px; font-weight: 500;">● Secure Local Storage Active</p>
+                <p style="color: var(--text-muted); font-size: 13px;">API keys and Mistake Vault data never leave this device.</p>
+                <hr style="border: none; border-top: 1px solid var(--glass-border); margin: 24px 0;">
+                <button class="cyber-btn danger" onclick="logout()">Terminate Session (Logout)</button>
+            </div>
+        </div>
+
+        <!-- BOTTOM NAVIGATION DOCK -->
+        <div class="bottom-nav">
+            <div class="nav-item active" id="nav-exam" onclick="switchTab('exam')">
+                <span class="nav-icon">📝</span>Engine
+            </div>
+            <div class="nav-item" id="nav-vault" onclick="switchTab('vault')">
+                <span class="nav-icon">🧠</span>Vault
+            </div>
+            <div class="nav-item" id="nav-chat" onclick="switchTab('chat')">
+                <span class="nav-icon">🤖</span>NEXUS
+            </div>
+            <div class="nav-item" id="nav-settings" onclick="switchTab('settings')">
+                <span class="nav-icon">⚙️</span>Config
+            </div>
         </div>
     </div>
 
     <script>
-        let quizData = [];
+        // ==========================================
+        // SYSTEM CORE & AUTH
+        // ==========================================
+        const MASTER_PASS = "admin2026"; 
+        let activeKey = "";
+        let currentQuizData = [];
+        let mistakeVault = JSON.parse(localStorage.getItem("NEXUS_VAULT")) || [];
 
-        // Check if key exists in mobile local storage
         window.onload = () => {
-            if (localStorage.getItem("GEMINI_KEY")) {
-                document.getElementById('key-screen').classList.add('hidden');
-                document.getElementById('setup-screen').classList.remove('hidden');
+            if (localStorage.getItem("APP_PASS") === MASTER_PASS && localStorage.getItem("GEMINI_KEY")) {
+                activeKey = localStorage.getItem("GEMINI_KEY");
+                document.getElementById('page-login').classList.remove('active');
+                document.getElementById('main-app').style.display = 'block';
+                renderVault(); // Pre-load vault
             }
         };
 
-        function saveKey() {
+        function login() {
+            const pass = document.getElementById('app-pass').value;
             const key = document.getElementById('api-key').value.trim();
-            if (key) {
+            if (pass === MASTER_PASS && key) {
+                localStorage.setItem("APP_PASS", pass);
                 localStorage.setItem("GEMINI_KEY", key);
-                document.getElementById('key-screen').classList.add('hidden');
-                document.getElementById('setup-screen').classList.remove('hidden');
+                activeKey = key;
+                document.getElementById('page-login').classList.remove('active');
+                document.getElementById('main-app').style.display = 'block';
+                renderVault();
+            } else {
+                document.getElementById('login-err').style.display = 'block';
             }
         }
 
-        function resetKey() {
-            localStorage.removeItem("GEMINI_KEY");
+        function logout() {
+            localStorage.clear();
             location.reload();
         }
 
-        async function startGeneration() {
-            document.getElementById('setup-screen').classList.add('hidden');
-            document.getElementById('terminal-screen').classList.remove('hidden');
+        function switchTab(tab) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById('page-' + tab).classList.add('active');
+            document.getElementById('nav-' + tab).classList.add('active');
+            if(tab === 'vault') renderVault();
+        }
+
+        // ==========================================
+        // EXAM ENGINE (GENERATOR)
+        // ==========================================
+        async function startExam() {
+            document.getElementById('exam-setup').style.display = 'none';
+            document.getElementById('terminal-screen').style.display = 'block';
             const terminal = document.getElementById('terminal');
             terminal.style.display = 'block';
+            terminal.innerHTML = "";
             
+            const model = document.getElementById('model-select').value;
+            const exam = document.getElementById('exam').value;
             const topic = document.getElementById('topic').value;
             const count = document.getElementById('count').value;
             const lang = document.getElementById('lang').value;
-            const apiKey = localStorage.getItem("GEMINI_KEY");
             
-            const prompt = `You are an expert examiner. Generate EXACTLY ${count} TRICKY practice questions about "${topic}". Target language: ${lang}. 
-RULES: 1. NO EXPLANATIONS. 2. Distractors must be highly plausible. 3. Output ONLY a valid JSON array.
+            const prompt = `You are a strict expert examiner for ${exam}. Generate EXACTLY ${count} TRICKY practice questions about "${topic}". Target language: ${lang}. 
+RULES: 1. NO EXPLANATIONS. 2. Distractors must be highly plausible traps. 3. Output ONLY a valid JSON array.
 FORMAT:
 [
   {
@@ -111,73 +330,65 @@ FORMAT:
 ]`;
 
             try {
-                // Connect directly to Google API from mobile browser
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-pro:streamGenerateContent?key=${apiKey}`, {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${activeKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: { temperature: 0.3, maxOutputTokens: 65536, responseMimeType: 'application/json' }
+                        generationConfig: { temperature: 0.3, maxOutputTokens: 65536 }
                     })
                 });
 
-                if (!response.ok) throw new Error("API Error: Check your API Key or Network.");
+                if (!response.ok) throw new Error("API Error. Check tokens/network.");
 
                 const reader = response.body.getReader();
-                const decoder = new TextDecoder("utf-8");
-                let fullNetworkResponse = "";
-                let visualText = "";
+                const decoder = new TextDecoder();
+                let fullResponse = "";
 
-                // Stream processing loop
                 while (true) {
                     const { value, done } = await reader.read();
                     if (done) break;
+                    const chunk = decoder.decode(value, { stream: true });
+                    fullResponse += chunk;
                     
-                    const chunkStr = decoder.decode(value, { stream: true });
-                    fullNetworkResponse += chunkStr;
-                    
-                    // Regex for cool terminal visual effect while generating
-                    const textMatches = [...chunkStr.matchAll(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/g)];
+                    const textMatches = [...chunk.matchAll(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/g)];
                     for (const match of textMatches) {
-                        visualText += match[1].replace(/\\n/g, '\\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\\\');
-                        terminal.textContent = visualText;
+                        terminal.textContent += match[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
                         terminal.scrollTop = terminal.scrollHeight;
                     }
                 }
 
-                // Parse the complete raw array returned by Gemini
-                const geminiArray = JSON.parse(fullNetworkResponse);
-                let completeText = "";
-                geminiArray.forEach(block => {
-                    if (block.candidates && block.candidates[0].content) {
-                        completeText += block.candidates[0].content.parts[0].text;
-                    }
-                });
-
-                // Clean and extract the actual JSON
-                let jsonString = completeText;
-                const jsonMatch = completeText.match(/\\[[\\s\\S]*\\]/);
-                if (jsonMatch) jsonString = jsonMatch[0];
-
-                quizData = JSON.parse(jsonString);
-                renderExam();
+                // Parse standard or nested JSON structure
+                const geminiArray = JSON.parse(fullResponse);
+                let rawJsonStr = "";
+                geminiArray.forEach(b => { if (b.candidates) rawJsonStr += b.candidates[0].content.parts[0].text; });
+                
+                const match = rawJsonStr.match(/\[[\s\S]*\]/);
+                if (match) currentQuizData = JSON.parse(match[0]);
+                
+                renderExamUI();
 
             } catch (err) {
-                terminal.textContent += `\\n\\n[CRASH ERROR] ${err.message}`;
+                terminal.style.color = "var(--accent-red)";
+                terminal.textContent += `\n\n[CRITICAL FAILURE] ${err.message}`;
+                setTimeout(resetExamUI, 3000);
             }
         }
 
-        function renderExam() {
-            document.getElementById('terminal-screen').classList.add('hidden');
-            document.getElementById('exam-screen').classList.remove('hidden');
+        // ==========================================
+        // EXAM RENDERER & LOGIC
+        // ==========================================
+        function renderExamUI() {
+            document.getElementById('terminal-screen').style.display = 'none';
+            document.getElementById('exam-active').style.display = 'block';
             const container = document.getElementById('questions-container');
             container.innerHTML = "";
 
-            quizData.forEach((q, qIndex) => {
-                let html = `<div class="q-block"><h4>Q${qIndex + 1}. ${q.question}</h4>`;
-                q.options.forEach((opt, oIndex) => {
-                    html += `<label class="option-label" id="label-${qIndex}-${oIndex}">
-                                <input type="radio" name="q-${qIndex}" value="${oIndex}"> ${opt}
+            currentQuizData.forEach((q, i) => {
+                let html = `<div class="glass-card"><h4 class="q-text">Q${i + 1}. ${q.question}</h4>`;
+                q.options.forEach((opt, oIdx) => {
+                    html += `<label class="option-label" id="lbl-${i}-${oIdx}">
+                                <input type="radio" name="q-${i}" value="${oIdx}" onchange="selectOption(${i}, ${oIdx})"> ${opt}
                              </label>`;
                 });
                 html += `</div>`;
@@ -185,30 +396,128 @@ FORMAT:
             });
         }
 
+        // Style the active radio selection
+        function selectOption(qIdx, oIdx) {
+            document.querySelectorAll(`input[name="q-${qIdx}"]`).forEach((r, idx) => {
+                document.getElementById(`lbl-${qIdx}-${idx}`).classList.remove('selected');
+            });
+            document.getElementById(`lbl-${qIdx}-${oIdx}`).classList.add('selected');
+        }
+
         function submitExam() {
             let score = 0;
-            quizData.forEach((q, qIndex) => {
-                const selected = document.querySelector(`input[name="q-${qIndex}"]:checked`);
+            currentQuizData.forEach((q, i) => {
+                const selected = document.querySelector(`input[name="q-${i}"]:checked`);
                 const correctIdx = q.correct_option_index;
                 
-                const correctLabel = document.getElementById(`label-${qIndex}-${correctIdx}`);
-                if (correctLabel) correctLabel.classList.add('correct');
+                document.getElementById(`lbl-${i}-${correctIdx}`).classList.add('correct');
                 
                 if (selected) {
                     const selectedIdx = parseInt(selected.value);
                     if (selectedIdx === correctIdx) {
                         score++;
                     } else {
-                        const wrongLabel = document.getElementById(`label-${qIndex}-${selectedIdx}`);
-                        if (wrongLabel) wrongLabel.classList.add('wrong');
+                        document.getElementById(`lbl-${i}-${selectedIdx}`).classList.add('wrong');
+                        // SAVE TO MISTAKE VAULT
+                        addToVault(q, selectedIdx);
                     }
+                } else {
+                    // Unanswered counts as mistake for the vault
+                    addToVault(q, null);
                 }
             });
+
             document.getElementById('submit-btn').style.display = 'none';
-            const scoreboard = document.getElementById('score-board');
-            scoreboard.innerText = `Final Score: ${score} / ${quizData.length}`;
-            scoreboard.classList.remove('hidden');
+            const board = document.getElementById('score-board');
+            const accuracy = Math.round((score / currentQuizData.length) * 100);
+            board.innerHTML = `<div class="score-banner">SCORE: ${score} / ${currentQuizData.length}<br><span style="font-size: 16px; color: var(--text-main); font-weight: 400;">Accuracy: ${accuracy}%</span></div>`;
+            board.style.display = 'block';
+            document.getElementById('reset-btn').style.display = 'block';
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function resetExamUI() {
+            document.getElementById('exam-active').style.display = 'none';
+            document.getElementById('score-board').style.display = 'none';
+            document.getElementById('reset-btn').style.display = 'none';
+            document.getElementById('submit-btn').style.display = 'block';
+            document.getElementById('exam-setup').style.display = 'block';
+        }
+
+        // ==========================================
+        // MISTAKE VAULT
+        // ==========================================
+        function addToVault(questionObj, wrongSelectedIdx) {
+            // Avoid duplicates
+            if (!mistakeVault.some(v => v.question === questionObj.question)) {
+                questionObj.user_failed_at = new Date().toLocaleDateString();
+                mistakeVault.push(questionObj);
+                localStorage.setItem("NEXUS_VAULT", JSON.stringify(mistakeVault));
+            }
+        }
+
+        function renderVault() {
+            const vContainer = document.getElementById('vault-container');
+            const btn = document.getElementById('clear-vault-btn');
+            vContainer.innerHTML = "";
+
+            if (mistakeVault.length === 0) {
+                vContainer.innerHTML = `<p style="color: var(--accent-green); text-align: center; padding: 20px;">Vault is empty. Flawless execution.</p>`;
+                btn.style.display = 'none';
+                return;
+            }
+            
+            btn.style.display = 'block';
+            mistakeVault.forEach((q, i) => {
+                let html = `<div class="glass-card vault-item" style="padding: 16px;">
+                    <p style="font-size: 12px; color: var(--accent-red); margin:0 0 8px 0; font-weight:bold;">Failed on: ${q.user_failed_at}</p>
+                    <p class="q-text" style="font-size: 15px; margin-bottom: 8px;">${q.question}</p>
+                    <p style="color: var(--accent-green); font-size: 14px; margin:0;">✔ ${q.options[q.correct_option_index]}</p>
+                </div>`;
+                vContainer.innerHTML += html;
+            });
+        }
+
+        function clearVault() {
+            if(confirm("Purge all recorded mistakes? This cannot be undone.")) {
+                mistakeVault = [];
+                localStorage.removeItem("NEXUS_VAULT");
+                renderVault();
+            }
+        }
+
+        // ==========================================
+        // NEXUS AI CHAT (Using lightweight Flash)
+        // ==========================================
+        async function sendChat() {
+            const inputEl = document.getElementById('chat-input');
+            const msg = inputEl.value.trim();
+            if (!msg) return;
+
+            const chatBox = document.getElementById('chat-box');
+            chatBox.innerHTML += `<div class="msg user">${msg}</div>`;
+            inputEl.value = "";
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            const aiBubble = document.createElement('div');
+            aiBubble.className = "msg ai";
+            aiBubble.innerText = "Analyzing...";
+            chatBox.appendChild(aiBubble);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${activeKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: "You are a concise UPSC tutor. User says: " + msg }] }] })
+                });
+                const data = await res.json();
+                aiBubble.innerText = data.candidates[0].content.parts[0].text;
+            } catch (err) {
+                aiBubble.innerText = "Network interference detected.";
+                aiBubble.style.color = "var(--accent-red)";
+            }
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
     </script>
 </body>
