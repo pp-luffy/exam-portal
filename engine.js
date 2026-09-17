@@ -91,7 +91,6 @@ RULES:
 
     try {
         let fullResponse = "";
-        let finalResponseData = null;
 
         if (org === 'groq' || org === 'openrouter') {
             const apiUrl = org === 'openrouter' 
@@ -113,7 +112,7 @@ RULES:
                 })
             });
             
-            // Dynamic Rate Limit Header Checks
+            // Dynamic Rate Limit Header Interception
             const remainingTokens = res.headers.get('x-ratelimit-remaining-tokens') || res.headers.get('x-ratelimit-tokens-remaining');
             const remainingRequests = res.headers.get('x-ratelimit-remaining-requests') || res.headers.get('x-ratelimit-requests-remaining');
             
@@ -122,7 +121,7 @@ RULES:
                 document.getElementById('quota-status-val').textContent = statusMsg;
                 localStorage.setItem(`QUOTA_${rawModel}`, statusMsg);
                 
-                // Throttle max input UI dynamically if token capacity gets dangerous
+                // Throttle max input UI dynamically if token capacity gets dangerously low
                 if (remainingTokens && parseInt(remainingTokens) < 2500) {
                     const countInput = document.getElementById('count');
                     if (parseInt(countInput.value) > 10) countInput.value = 10;
@@ -134,7 +133,7 @@ RULES:
             fullResponse = data.choices[0].message.content;
 
         } else {
-            // Gemini API
+            // Gemini Stream Block
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${rawModel}:streamGenerateContent?key=${activeKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -391,8 +390,8 @@ async function sendChat() {
     const rawModel = chatModelSelect ? chatModelSelect.value : "gemini-3.8-flash";
     
     let org = "gemini";
-    if (rawModel.includes("llama") || rawModel.includes("instant")) org = "groq";
-    else if (rawModel.includes("nvidia") || rawModel.includes("google/gemma") || rawModel.includes("dots-studio")) org = "openrouter";
+    if (rawModel.includes(":free")) org = "openrouter";
+    else if (rawModel.includes("llama") || rawModel.includes("mixtral") || rawModel.includes("gemma2-9b-it") || rawModel.includes("versatile") || rawModel.includes("instant")) org = "groq";
 
     const activeKey = org === 'groq' ? grKey : (org === 'openrouter' ? orKey : gKey);
     
@@ -433,14 +432,8 @@ async function sendChat() {
                 ? "https://openrouter.ai/api/v1/chat/completions" 
                 : "https://api.groq.com/openai/v1/chat/completions";
 
-            const headers = { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${activeKey}` 
-            };
-            if (org === 'openrouter') {
-                headers['HTTP-Referer'] = window.location.href;
-                headers['X-Title'] = 'NEXUS OS CBT Suite';
-            }
+            const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeKey}` };
+            if (org === 'openrouter') { headers['HTTP-Referer'] = window.location.href; headers['X-Title'] = 'NEXUS OS CBT Suite'; }
 
             const res = await fetch(apiUrl, {
                 method: 'POST',
@@ -453,9 +446,7 @@ async function sendChat() {
             });
             
             const data = await res.json();
-            if (!res.ok) {
-                throw new Error(data.error?.message || `${org.toUpperCase()} HTTP ${res.status} error`);
-            }
+            if (!res.ok) throw new Error(data.error?.message || `${org.toUpperCase()} HTTP ${res.status} error`);
             resText = data.choices[0].message.content;
         } else {
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${rawModel}:generateContent?key=${activeKey}`, {
@@ -467,9 +458,7 @@ async function sendChat() {
                 })
             });
             const data = await res.json();
-            if (!res.ok) {
-                throw new Error(data.error?.message || `HTTP ${res.status} error`);
-            }
+            if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status} error`);
             resText = data.candidates[0].content.parts[0].text;
         }
 
