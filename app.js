@@ -31,6 +31,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById('chat-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendChat(); });
     document.getElementById('export-btn').addEventListener('click', exportLocalStorage);
     document.getElementById('logout-btn').addEventListener('click', logout);
+    document.getElementById('save-tokens-btn').addEventListener('click', updateTokens);
 
     try {
         if (localStorage.getItem("APP_PASS") === MASTER_PASS) {
@@ -74,6 +75,36 @@ function executeLogin() {
         renderVault();
     } catch(e) {
         alert("Login script error: " + e.message);
+    }
+}
+
+function updateTokens() {
+    const newGemini = document.getElementById('update-gemini').value.trim();
+    const newGroq = document.getElementById('update-groq').value.trim();
+    const msgEl = document.getElementById('token-update-msg');
+
+    if (!newGemini && !newGroq) {
+        alert("Please enter at least one token to update.");
+        return;
+    }
+
+    try {
+        if (newGemini) {
+            localStorage.setItem("GEMINI_KEY", newGemini);
+            gKey = newGemini;
+        }
+        if (newGroq) {
+            localStorage.setItem("GROQ_KEY", newGroq);
+            grKey = newGroq;
+        }
+
+        document.getElementById('update-gemini').value = "";
+        document.getElementById('update-groq').value = "";
+        
+        msgEl.style.display = 'block';
+        setTimeout(() => { msgEl.style.display = 'none'; }, 4000);
+    } catch(e) {
+        alert("Failed to save tokens: " + e.message);
     }
 }
 
