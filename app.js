@@ -1,11 +1,7 @@
-// Global Session State
 let currentUser = "";
 let isAdmin = false;
-
-// List of authorized admin handles
 const ADMIN_USERS = ["thegodsk", "saikiran"];
 
-// System Boot Sequence & Auth Handler
 window.addEventListener('load', () => {
     setTimeout(() => {
         const splash = document.getElementById('boot-splash');
@@ -66,11 +62,11 @@ document.addEventListener("DOMContentLoaded", function() {
     const modelSelect = document.getElementById('model-select');
     if (modelSelect) modelSelect.addEventListener('change', updateQuotaDisplay);
 
-    // Explicit direct binding for Save Configuration button
     const saveTokensBtn = document.getElementById('save-tokens-btn');
-    if (saveTokensBtn) {
-        saveTokensBtn.addEventListener('click', updateTokens);
-    }
+    if (saveTokensBtn) saveTokensBtn.addEventListener('click', updateTokens);
+
+    const sendChatBtn = document.getElementById('send-chat-btn');
+    if (sendChatBtn) sendChatBtn.addEventListener('click', sendChat);
 
     safeBind('login-btn', 'click', handleLogin);
     safeBind('logout-btn', 'click', logout);
@@ -87,7 +83,6 @@ document.addEventListener("DOMContentLoaded", function() {
     safeBind('retry-btn', 'click', restartSameQuiz);
     safeBind('new-quiz-btn', 'click', resetExamUI);
     safeBind('clear-vault-btn', 'click', clearVault);
-    safeBind('send-chat-btn', 'click', sendChat);
     safeBind('export-btn', 'click', exportLocalStorage);
 
     const langSelect = document.getElementById('lang');
