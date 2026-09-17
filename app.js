@@ -1,5 +1,6 @@
 let gKey = "";
 let grKey = "";
+let orKey = ""; // OpenRouter Key
 let currentQuizData = [];
 let userAnswers = {};
 let userBookmarks = {};
@@ -9,21 +10,26 @@ let secondsLeft = 0;
 let totalSecondsTaken = 0;
 let mistakeVault = [];
 
-// Model Library mapped by Provider Organization including Qwen3 and Nemotron
+// Provider library including Gemini, Groq, and OpenRouter free models
 const PROVIDER_MODELS = {
     gemini: [
         { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash (High Speed / Latest)", maxLimit: 50 },
         { id: "gemini-3.5-flash", name: "Gemini 3.5 Flash", maxLimit: 50 },
         { id: "gemini-3.5-flash-lite", name: "Gemini 3.5 Flash Lite", maxLimit: 40 },
-        { id: "gemini-3.1-flash-lite", name: "Gemini 3.1 Flash Lite", maxLimit: 40 },
-        { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro (Deep Logic)", maxLimit: 30 }
+        { id: "gemini-3.1-flash-lite", name: "Gemini 3.1 Flash Lite", maxLimit: 40 }
     ],
     groq: [
-        { id: "qwen/qwen3-next-80b-a3b-instruct:free", name: "Qwen3 Next 80B A3B Instruct (Best for English + Odia)", maxLimit: 60 },
-        { id: "nvidia/nemotron-3-ultra-550b-a55b:free", name: "Nemotron 3 Ultra (Massive 65K Output Capacity)", maxLimit: 100 },
         { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B Versatile", maxLimit: 50 },
-        { id: "openai/gpt-oss-120b", name: "OpenAI GPT-OSS 120B", maxLimit: 40 },
         { id: "llama-3.1-8b-instant", name: "Llama 3.1 8B Instant (Ultra Fast)", maxLimit: 40 }
+    ],
+    openrouter: [
+        { id: "nvidia/nemotron-3-ultra-550b-a55b:free", name: "Nemotron 3 Ultra (Massive Capacity)", maxLimit: 100 },
+        { id: "nvidia/nemotron-3-super:free", name: "Nemotron 3 Super", maxLimit: 100 },
+        { id: "google/gemma-4-31b-it:free", name: "Gemma 4 31B", maxLimit: 80 },
+        { id: "google/gemma-4-26b-a4b-it:free", name: "Gemma 4 26B A4B", maxLimit: 80 },
+        { id: "nvidia/nemotron-3.5-lightning:free", name: "Nemotron 3.5 Lightning", maxLimit: 80 },
+        { id: "nvidia/nemotron-nano-9b-v2:free", name: "Nemotron Nano 9B V2", maxLimit: 50 },
+        { id: "dots-studio/dots3-note-preview:free", name: "Dots3 Note Preview", maxLimit: 80 }
     ]
 };
 
@@ -32,17 +38,17 @@ try { mistakeVault = JSON.parse(localStorage.getItem("NEXUS_VAULT")) || []; } ca
 document.addEventListener("DOMContentLoaded", function() {
     gKey = localStorage.getItem("GEMINI_KEY") || "";
     grKey = localStorage.getItem("GROQ_KEY") || "";
+    orKey = localStorage.getItem("OPENROUTER_KEY") || "";
 
-    const geminiInput = document.getElementById('update-gemini');
-    const groqInput = document.getElementById('update-groq');
-    if (geminiInput && gKey) geminiInput.value = gKey;
-    if (groqInput && grKey) groqInput.value = grKey;
+    if (document.getElementById('update-gemini') && gKey) document.getElementById('update-gemini').value = gKey;
+    if (document.getElementById('update-groq') && grKey) document.getElementById('update-groq').value = grKey;
+    if (document.getElementById('update-openrouter') && orKey) document.getElementById('update-openrouter').value = orKey;
 
-    // Initialize Org and Model Selectors
     const orgSelect = document.getElementById('org-select');
-    orgSelect.addEventListener('change', updateModelDropdown);
+    if (orgSelect) orgSelect.addEventListener('change', updateModelDropdown);
+    
     const modelSelect = document.getElementById('model-select');
-    modelSelect.addEventListener('change', updateQuotaDisplay);
+    if (modelSelect) modelSelect.addEventListener('change', updateQuotaDisplay);
 
     updateModelDropdown();
 
@@ -82,6 +88,7 @@ function safeBind(id, event, fn) {
 function updateModelDropdown() {
     const org = document.getElementById('org-select').value;
     const modelSelect = document.getElementById('model-select');
+    if (!modelSelect) return;
     modelSelect.innerHTML = "";
     
     const list = PROVIDER_MODELS[org] || [];
@@ -95,40 +102,34 @@ function updateModelDropdown() {
 }
 
 function updateQuotaDisplay() {
-    const modelId = document.getElementById('model-select').value;
     const statusVal = document.getElementById('quota-status-val');
-    const countInput = document.getElementById('count');
-    
-    // Check local cached quota header data per model
-    const cachedQuota = localStorage.getItem(`QUOTA_${modelId}`);
+    if (!statusVal) return;
     const org = document.getElementById('org-select').value;
-
-    if (cachedQuota) {
-        statusVal.textContent = cachedQuota;
+    
+    if (org === 'openrouter') {
+        statusVal.textContent = "Free Tier: ~20 RPM / 200 RPD (OpenRouter)";
+    } else if (org === 'groq') {
+        statusVal.textContent = "Free Tier: ~30 RPM / 14.4K RPD (Groq LPU)";
     } else {
-        // Initial Free Tier baseline defaults
-        if (org === 'groq') {
-            statusVal.textContent = "Free Tier: ~30 RPM / 14.4K RPD (Cached Header Pending)";
-        } else {
-            statusVal.textContent = "Free Tier: Standard Rate Limit (Cached Header Pending)";
-        }
+        statusVal.textContent = "Free Tier: Standard Rate Limits (Gemini)";
     }
     enforceLanguageConstraints();
 }
 
 function enforceLanguageConstraints() {
-    const modelId = document.getElementById('model-select').value;
-    const lang = document.getElementById('lang').value;
+    const modelSelect = document.getElementById('model-select');
+    const langSelect = document.getElementById('lang');
     const countInput = document.getElementById('count');
-    const org = document.getElementById('org-select').value;
+    const orgSelect = document.getElementById('org-select');
+    
+    if (!modelSelect || !langSelect || !countInput || !orgSelect) return;
 
     let baseLimit = 50;
-    const list = PROVIDER_MODELS[org] || [];
-    const found = list.find(m => m.id === modelId);
+    const list = PROVIDER_MODELS[orgSelect.value] || [];
+    const found = list.find(m => m.id === modelSelect.value);
     if (found) baseLimit = found.maxLimit;
 
-    // Odia multi-byte script requires higher token weight per question payload, adjust max bounds
-    if (lang === 'Odia') {
+    if (langSelect.value === 'Odia') {
         baseLimit = Math.floor(baseLimit * 0.75);
     }
 
@@ -138,38 +139,21 @@ function enforceLanguageConstraints() {
     }
 }
 
-function parseAndCacheHeaders(res, modelId) {
-    // Look for standard rate limit remaining headers (x-ratelimit-remaining-requests, etc.)
-    const remainingReqs = res.headers.get('x-ratelimit-remaining-requests') || res.headers.get('x-goog-ratelimit-remaining');
-    const remainingTokens = res.headers.get('x-ratelimit-remaining-tokens');
-    
-    if (remainingReqs || remainingTokens) {
-        const quotaStr = `Requests Left: ${remainingReqs || 'OK'} | Tokens Left: ${remainingTokens || 'Active'}`;
-        localStorage.setItem(`QUOTA_${modelId}`, quotaStr);
-        const statusVal = document.getElementById('quota-status-val');
-        if (statusVal) statusVal.textContent = quotaStr;
-    }
-}
-
 function updateTokens() {
     const newGemini = document.getElementById('update-gemini')?.value.trim() || "";
     const newGroq = document.getElementById('update-groq')?.value.trim() || "";
+    const newOpenRouter = document.getElementById('update-openrouter')?.value.trim() || "";
     const msgEl = document.getElementById('token-update-msg');
 
-    if (!newGemini && !newGroq) {
+    if (!newGemini && !newGroq && !newOpenRouter) {
         alert("Please enter at least one token to update.");
         return;
     }
 
     try {
-        if (newGemini) {
-            localStorage.setItem("GEMINI_KEY", newGemini);
-            gKey = newGemini;
-        }
-        if (newGroq) {
-            localStorage.setItem("GROQ_KEY", newGroq);
-            grKey = newGroq;
-        }
+        if (newGemini) { localStorage.setItem("GEMINI_KEY", newGemini); gKey = newGemini; }
+        if (newGroq) { localStorage.setItem("GROQ_KEY", newGroq); grKey = newGroq; }
+        if (newOpenRouter) { localStorage.setItem("OPENROUTER_KEY", newOpenRouter); orKey = newOpenRouter; }
         
         if (msgEl) {
             msgEl.style.display = 'block';
@@ -199,12 +183,13 @@ function switchTab(tab) {
 async function startExam() {
     gKey = localStorage.getItem("GEMINI_KEY") || gKey;
     grKey = localStorage.getItem("GROQ_KEY") || grKey;
+    orKey = localStorage.getItem("OPENROUTER_KEY") || orKey;
     
     const org = document.getElementById('org-select').value;
-    const activeKey = org === 'groq' ? grKey : gKey;
+    const activeKey = org === 'groq' ? grKey : (org === 'openrouter' ? orKey : gKey);
     
     if (!activeKey) {
-        alert(`API Key missing for ${org.toUpperCase()}! Please go to the Config tab and enter your key.`);
+        alert(`API Key missing for ${org.toUpperCase()}! Please enter it in the Config tab.`);
         switchTab('settings');
         return;
     }
@@ -243,14 +228,32 @@ RULES: 1. NO EXPLANATIONS. 2. Plausible distractor traps. 3. Output ONLY a valid
 
     try {
         let fullResponse = "";
-        if (org === 'groq') {
-            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        if (org === 'groq' || org === 'openrouter') {
+            const apiUrl = org === 'openrouter' 
+                ? "https://openrouter.ai/api/v1/chat/completions" 
+                : "https://api.groq.com/openai/v1/chat/completions";
+
+            const headers = { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${activeKey}` 
+            };
+            if (org === 'openrouter') {
+                headers['HTTP-Referer'] = window.location.href;
+                headers['X-Title'] = 'NEXUS OS CBT Suite';
+            }
+
+            const res = await fetch(apiUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeKey}` },
-                body: JSON.stringify({ model: rawModel, messages: [{ role: "user", content: prompt }], temperature: 0.3, response_format: { type: "json_object" } })
+                headers: headers,
+                body: JSON.stringify({ 
+                    model: rawModel, 
+                    messages: [{ role: "user", content: prompt }], 
+                    temperature: 0.3, 
+                    response_format: { type: "json_object" } 
+                })
             });
-            parseAndCacheHeaders(res, rawModel);
-            if (!res.ok) throw new Error(`Groq HTTP error ${res.status}`);
+            
+            if (!res.ok) throw new Error(`${org.toUpperCase()} HTTP error ${res.status}`);
             const data = await res.json();
             fullResponse = data.choices[0].message.content;
         } else {
@@ -259,7 +262,7 @@ RULES: 1. NO EXPLANATIONS. 2. Plausible distractor traps. 3. Output ONLY a valid
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
             });
-            parseAndCacheHeaders(res, rawModel);
+            
             if (!res.ok) {
                 const errJson = await res.json();
                 throw new Error(errJson.error?.message || `HTTP error ${res.status}`);
@@ -305,6 +308,7 @@ function initCBTExam() {
 
 function buildPalette() {
     const palette = document.getElementById('q-palette');
+    if (!palette) return;
     palette.innerHTML = "";
     currentQuizData.forEach((q, i) => {
         palette.innerHTML += `<button class="pal-btn" id="pal-${i}" onclick="jumpToQuestion(${i})">${i + 1}</button>`;
@@ -439,11 +443,14 @@ function clearVault() { if(confirm("Purge vault?")) { mistakeVault = []; localSt
 
 async function sendChat() {
     gKey = localStorage.getItem("GEMINI_KEY") || gKey;
+    grKey = localStorage.getItem("GROQ_KEY") || grKey;
+    orKey = localStorage.getItem("OPENROUTER_KEY") || orKey;
+
     const org = document.getElementById('org-select').value;
-    const activeKey = org === 'groq' ? grKey : gKey;
+    const activeKey = org === 'groq' ? grKey : (org === 'openrouter' ? orKey : gKey);
     
     if (!activeKey) {
-        alert(`API Key missing for ${org.toUpperCase()}! Please go to the Config tab.`);
+        alert(`API Key missing for ${org.toUpperCase()}! Please enter it in the Config tab.`);
         switchTab('settings');
         return;
     }
@@ -463,10 +470,4 @@ async function sendChat() {
     
     try {
         let resText = "";
-        if (org === 'groq') {
-            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeKey}` },
-                body: JSON.stringify({ model: "qwen/qwen3-next-80b-a3b-instruct:free", messages: [{ role: "user", content: "Tutor: " + msg }] })
-            });
-            const data = await res.js
+        if (org === 'groq' || org === 'openrouter')
