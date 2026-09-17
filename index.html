@@ -64,14 +64,19 @@
         .option-card.correct { background: rgba(16, 185, 129, 0.25) !important; border-color: var(--neon-green) !important; color: #a7f3d0; }
         .option-card.wrong { background: rgba(239, 68, 68, 0.25) !important; border-color: var(--neon-red) !important; color: #fecaca; }
         .cbt-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; flex-wrap: wrap; gap: 10px; }
-        #terminal { background: #000; color: var(--neon-cyan); padding: 16px; border-radius: 14px; font-family: 'JetBrains Mono', monospace; height: 260px; overflow-y: auto; font-size: 12px; border: 1px solid var(--border-glow); display: none; box-shadow: inset 0 0 15px rgba(0,242,254,0.1); }
-        .pulse-text { animation: pulse 2s infinite; color: var(--neon-cyan); font-weight: 700; font-size: 14px; text-align: center; text-shadow: 0 0 10px rgba(0,242,254,0.5); }
+        
+        /* Quantum Futuristic Loader */
+        .quantum-loader-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 20px; text-align: center; }
+        .quantum-ring { width: 70px; height: 70px; border: 3px solid rgba(0, 242, 254, 0.1); border-top: 3px solid var(--neon-cyan); border-radius: 50%; animation: quantumSpin 1s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite; box-shadow: 0 0 20px rgba(0, 242, 254, 0.3), inset 0 0 15px rgba(0, 242, 254, 0.2); margin-bottom: 20px; }
+        @keyframes quantumSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .quantum-status-text { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--neon-cyan); letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 0 10px rgba(0,242,254,0.5); margin-bottom: 12px; }
+        .quantum-stream-box { background: rgba(0, 0, 0, 0.85); border: 1px solid var(--border-glow); border-radius: 14px; padding: 16px; width: 100%; max-height: 220px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); text-align: left; box-shadow: inset 0 0 15px rgba(0, 242, 254, 0.08); }
+
         .chat-box { height: calc(100vh - 360px); overflow-y: auto; display: flex; flex-direction: column; gap: 14px; margin-bottom: 16px; padding-right: 4px; }
         .msg { padding: 12px 16px; border-radius: 16px; max-width: 85%; font-size: 14px; word-break: break-word; }
         .msg.user { background: linear-gradient(135deg, var(--neon-blue), var(--neon-cyan)); color: #020617; font-weight: 700; align-self: flex-end; box-shadow: 0 0 15px rgba(79,172,254,0.3); }
         .msg.ai { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); align-self: flex-start; }
         .score-banner { font-size: 24px; font-weight: 800; text-align: center; color: var(--neon-green); margin: 16px 0; padding: 20px; background: rgba(16, 185, 129, 0.12); border-radius: 18px; border: 1px solid var(--neon-green); text-shadow: 0 0 15px rgba(16,185,129,0.4); }
-        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
     </style>
 </head>
 <body>
@@ -124,8 +129,8 @@
                             </select>
                         </div>
                         <div style="flex: 1;">
-                            <label id="count-label">Questions (Max 50)</label>
-                            <input type="number" id="count" value="10" min="1" max="50">
+                            <label id="count-label">Questions (Max 75)</label>
+                            <input type="number" id="count" value="10" min="1" max="75">
                         </div>
                     </div>
 
@@ -147,8 +152,11 @@
                 </div>
 
                 <div id="terminal-screen" class="glass-card" style="display: none;">
-                    <p class="pulse-text">Generating CBT Assessment...</p>
-                    <div id="terminal"></div>
+                    <div class="quantum-loader-wrapper">
+                        <div class="quantum-ring"></div>
+                        <div class="quantum-status-text">⚡ SYNTHESIZING NEURAL ASSESSMENT...</div>
+                        <div id="terminal" class="quantum-stream-box"></div>
+                    </div>
                 </div>
 
                 <div id="exam-active" style="display: none;">
@@ -270,4 +278,3 @@
     <script src="creative.js"></script>
 </body>
 </html>
-                        
