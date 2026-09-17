@@ -11,9 +11,13 @@ try { mistakeVault = JSON.parse(localStorage.getItem("NEXUS_VAULT")) || []; } ca
 
 document.addEventListener("DOMContentLoaded", function() {
     const clearChatBtn = document.getElementById('clear-chat-btn');
-    if (clearChatBtn) {
-        clearChatBtn.addEventListener('click', clearChatHistory);
-    }
+    if (clearChatBtn) clearChatBtn.addEventListener('click', clearChatHistory);
+
+    const downloadBtn = document.getElementById('download-report-btn');
+    if (downloadBtn) downloadBtn.addEventListener('click', downloadAssessmentReport);
+
+    const mailBtn = document.getElementById('mail-report-btn');
+    if (mailBtn) mailBtn.addEventListener('click', emailAssessmentReport);
 });
 
 function clearChatHistory() {
@@ -87,19 +91,15 @@ RULES:
 
     try {
         let fullResponse = "";
+        let finalResponseData = null;
+
         if (org === 'groq' || org === 'openrouter') {
             const apiUrl = org === 'openrouter' 
                 ? "https://openrouter.ai/api/v1/chat/completions" 
                 : "https://api.groq.com/openai/v1/chat/completions";
 
-            const headers = { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${activeKey}` 
-            };
-            if (org === 'openrouter') {
-                headers['HTTP-Referer'] = window.location.href;
-                headers['X-Title'] = 'NEXUS OS CBT Suite';
-            }
+            const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeKey}` };
+            if (org === 'openrouter') { headers['HTTP-Referer'] = window.location.href; headers['X-Title'] = 'NEXUS OS CBT Suite'; }
 
             const res = await fetch(apiUrl, {
                 method: 'POST',
@@ -113,21 +113,34 @@ RULES:
                 })
             });
             
-            const data = await res.json();
-            if (!res.ok) {
-                throw new Error(data.error?.message || `${org.toUpperCase()} HTTP error ${res.status}`);
+            // Dynamic Rate Limit Header Checks
+            const remainingTokens = res.headers.get('x-ratelimit-remaining-tokens') || res.headers.get('x-ratelimit-tokens-remaining');
+            const remainingRequests = res.headers.get('x-ratelimit-remaining-requests') || res.headers.get('x-ratelimit-requests-remaining');
+            
+            if (remainingTokens || remainingRequests) {
+                let statusMsg = `Remaining Tokens: ${remainingTokens || 'N/A'}`;
+                document.getElementById('quota-status-val').textContent = statusMsg;
+                localStorage.setItem(`QUOTA_${rawModel}`, statusMsg);
+                
+                // Throttle max input UI dynamically if token capacity gets dangerous
+                if (remainingTokens && parseInt(remainingTokens) < 2500) {
+                    const countInput = document.getElementById('count');
+                    if (parseInt(countInput.value) > 10) countInput.value = 10;
+                }
             }
+            
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error?.message || `${org.toUpperCase()} HTTP error ${res.status}`);
             fullResponse = data.choices[0].message.content;
+
         } else {
+            // Gemini API
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${rawModel}:streamGenerateContent?key=${activeKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: {
-                        maxOutputTokens: 8192,
-                        temperature: 0.4
-                    }
+                    generationConfig: { maxOutputTokens: 8192, temperature: 0.4 }
                 })
             });
             
@@ -281,6 +294,66 @@ function renderReviewList(mode) {
         });
         container.innerHTML += html + `</div>`;
     });
+}
+
+function generateReportHTML() {
+    const filter = document.getElementById('export-filter').value;
+    let htmlContent = `<html><head><style>body{font-family:sans-serif;padding:20px;background:#f8fafc;color:#0f172a;} .card{background:#fff;border:1px solid #cbd5e1;padding:16px;border-radius:12px;margin-bottom:12px;} .correct{color:#10b981;font-weight:bold;} .wrong{color:#ef4444;font-weight:bold;}</style></head><body>`;
+    htmlContent += `<h2>NEXUS OS - Assessment Report</h2><hr>`;
+    
+    currentQuizData.forEach((q, i) => {
+        const sel = userAnswers[i];
+        const corr = sel === q.correct_option_index;
+        if (filter === 'correct' && !corr) return;
+        if (filter === 'wrong' && corr) return;
+
+        htmlContent += `<div class="card">
+            <p><strong>Q${i+1}.</strong> ${q.question}</p>
+            <ul>`;
+        q.options.forEach((opt, oIdx) => {
+            let tag = "";
+            if (oIdx === q.correct_option_index) tag = " ✔ [Correct Answer]";
+            else if (oIdx === sel) tag = " ❌ [Your Answer]";
+            htmlContent += `<li>${opt}${tag}</li>`;
+        });
+        htmlContent += `</ul></div>`;
+    });
+    htmlContent += `</body></html>`;
+    return htmlContent;
+}
+
+function downloadAssessmentReport() {
+    const format = document.getElementById('export-format').value;
+    const html = generateReportHTML();
+
+    if (format === 'pdf') {
+        const win = window.open('', '_blank');
+        win.document.write(html);
+        win.document.close();
+        win.print();
+    } else {
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `nexus_exam_report_${Date.now()}.html`;
+        a.click();
+    }
+}
+
+function emailAssessmentReport() {
+    const mailId = localStorage.getItem("DEST_MAIL") || "";
+    if (!mailId) {
+        alert("Destination Mail ID is not set! Please configure it in the Config tab.");
+        switchTab('settings');
+        return;
+    }
+
+    const format = document.getElementById('export-format').value;
+    const subject = encodeURIComponent("NEXUS OS CBT Assessment Report");
+    const body = encodeURIComponent(`Hello,\n\nPlease find attached or generated below your requested CBT test report.\n\nExam Target: ${document.getElementById('exam').value}\nSubject: ${document.getElementById('subject').value}\nTopic: ${document.getElementById('topic').value}\n\n[Export Format Selected: ${format.toUpperCase()}]`);
+
+    window.location.href = `mailto:${mailId}?subject=${subject}&body=${body}`;
 }
 
 function restartSameQuiz() { userAnswers = {}; initCBTExam(); }
