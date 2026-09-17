@@ -42,6 +42,10 @@ const PROVIDER_MODELS = {
         { id: "thinkingmachines/inkling:free", name: "Inkling (Free)", maxLimit: 75 },
         { id: "nvidia/nemotron-3-ultra-550b-a55b:free", name: "Nemotron 3 Ultra", maxLimit: 100 },
         { id: "google/gemma-4-31b-it:free", name: "Gemma 4 31B", maxLimit: 75 }
+    ],
+    deepseek: [
+    { id: "deepseek-chat", name: "DeepSeek V3 Chat", maxLimit: 100 },
+    { id: "deepseek-reasoner", name: "DeepSeek R1 Reasoner", maxLimit: 75 }
     ]
 };
 
