@@ -3,6 +3,14 @@ let isAdmin = false;
 const ADMIN_USERS = ["thegodsk", "saikiran"];
 
 window.addEventListener('load', () => {
+    // If it's a standalone exam tab, skip the boot splash
+    if (window.location.search.includes('mode=exam')) {
+        const splash = document.getElementById('boot-splash');
+        if (splash) splash.style.display = 'none';
+        checkAuth();
+        return;
+    }
+
     setTimeout(() => {
         const splash = document.getElementById('boot-splash');
         if (splash) {
@@ -20,7 +28,7 @@ let gKey = "";
 let grKey = "";
 let orKey = "";
 let dsKey = "";
-let grvKey = ""; // Phase 2 Verification Key
+let grvKey = ""; 
 
 const PROVIDER_MODELS = {
     gemini: [
@@ -93,9 +101,16 @@ document.addEventListener("DOMContentLoaded", function() {
     safeBind('rev-all-btn', 'click', () => filterReview('all'));
     safeBind('rev-wrong-btn', 'click', () => filterReview('wrong'));
     safeBind('retry-btn', 'click', restartSameQuiz);
-    safeBind('new-quiz-btn', 'click', resetExamUI);
     safeBind('clear-vault-btn', 'click', clearVault);
     safeBind('export-btn', 'click', exportLocalStorage);
+
+    safeBind('new-quiz-btn', 'click', () => {
+        if (window.location.search.includes('mode=exam')) {
+            window.close(); // Close the standalone tab safely
+        } else {
+            resetExamUI();
+        }
+    });
 
     safeBind('save-vault-json-btn', 'click', () => {
         try {
@@ -166,6 +181,13 @@ function processLogin(user) {
     if (operatorSpan) operatorSpan.textContent = currentUser;
 
     applySessionEnvironment();
+
+    // Trigger Standalone Exam Mode if URL has query parameter
+    if (window.location.search.includes('mode=exam')) {
+        if (typeof initStandaloneExam === 'function') {
+            initStandaloneExam();
+        }
+    }
 }
 
 function applySessionEnvironment() {
@@ -207,9 +229,10 @@ function logout() {
 
 function confirmExitExam() {
     if (confirm("Are you sure you want to exit the examination? Current progress will be lost.")) {
-        if (typeof cancelActiveRequest === 'function') {
-            cancelActiveRequest();
+        if (window.location.search.includes('mode=exam')) {
+            window.close(); // Close the standalone tab
         } else {
+            if (typeof cancelActiveRequest === 'function') cancelActiveRequest();
             resetExamUI();
         }
     }
