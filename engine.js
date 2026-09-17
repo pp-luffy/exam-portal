@@ -65,15 +65,13 @@ async function startExam() {
     secondsLeft = mins * 60;
     totalSecondsTaken = 0;
 
-    // Advanced Behavioral Prompt Engineering based on Exam & Difficulty Matrix
     const prompt = `You are a ruthless, expert Chief Question Paper Setter for competitive examinations like ${exam}. 
 Generate EXACTLY ${count} high-standard questions for the Subject: "${subject}", focusing on the Topic: "${topic}". 
 Output language must be strictly in ${lang}.
 
 DIFFICULTY LEVEL: Level ${difficulty} out of 5.
-- If exam is UPSC CSE or OPSC CSE/ASO: NEVER ask direct factual questions. Use deep analytical statements, multi-statement evaluation traps (e.g., "Consider the following statements... Which of the above are correct?"), pairing mismatches, and subtle conceptual nuances.
-- If exam is JEE Main: Construct deep conceptual or multi-step computational problems requiring solid application of formulas without standard direct lookups.
-- If exam is JEE Advanced: Construct ruthless, multi-concept integration traps with highly tricky options where superficial working leads directly to distractor options.
+- Formulate deep analytical questions, multi-statement evaluation traps, pairing mismatches, and subtle conceptual nuances matching top-tier competitive exams.
+- Construct ruthless, multi-concept integration traps with highly tricky options where superficial working leads directly to distractor options.
 
 RULES: 
 1. NO EXPLANATIONS inside the question text or options array.
@@ -110,6 +108,7 @@ RULES:
                     model: rawModel, 
                     messages: [{ role: "user", content: prompt }], 
                     temperature: 0.4, 
+                    max_tokens: 8192, // Set token output limit to max
                     response_format: { type: "json_object" } 
                 })
             });
@@ -123,7 +122,13 @@ RULES:
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${rawModel}:streamGenerateContent?key=${activeKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                body: JSON.stringify({ 
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        maxOutputTokens: 8192, // Set Gemini token limit to max
+                        temperature: 0.4
+                    }
+                })
             });
             
             if (!res.ok) {
@@ -369,7 +374,8 @@ async function sendChat() {
                 headers: headers,
                 body: JSON.stringify({ 
                     model: rawModel, 
-                    messages: [{ role: "user", content: "Tutor: " + msg }] 
+                    messages: [{ role: "user", content: "Tutor: " + msg }],
+                    max_tokens: 4096
                 })
             });
             
@@ -382,7 +388,10 @@ async function sendChat() {
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${rawModel}:generateContent?key=${activeKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: [{ parts: [{ text: "Tutor: " + msg }] }] })
+                body: JSON.stringify({ 
+                    contents: [{ parts: [{ text: "Tutor: " + msg }] }],
+                    generationConfig: { maxOutputTokens: 4096 }
+                })
             });
             const data = await res.json();
             if (!res.ok) {
