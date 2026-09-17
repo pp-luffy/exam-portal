@@ -1,473 +1,250 @@
-let gKey = "";
-let grKey = "";
-let orKey = "";
-let currentQuizData = [];
-let userAnswers = {};
-let userBookmarks = {};
-let currentQIndex = 0;
-let timerInterval = null;
-let secondsLeft = 0;
-let totalSecondsTaken = 0;
-let mistakeVault = [];
-
-// Clean provider models map
-const PROVIDER_MODELS = {
-    gemini: [
-        { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash (High Speed / Latest)", maxLimit: 50 },
-        { id: "gemini-3.5-flash", name: "Gemini 3.5 Flash", maxLimit: 50 },
-        { id: "gemini-3.5-flash-lite", name: "Gemini 3.5 Flash Lite", maxLimit: 40 },
-        { id: "gemini-3.1-flash-lite", name: "Gemini 3.1 Flash Lite", maxLimit: 40 }
-    ],
-    groq: [
-        { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B Versatile", maxLimit: 50 },
-        { id: "llama-3.1-8b-instant", name: "Llama 3.1 8B Instant (Ultra Fast)", maxLimit: 40 }
-    ],
-    openrouter: [
-        { id: "nvidia/nemotron-3-ultra-550b-a55b:free", name: "Nemotron 3 Ultra (Massive Capacity)", maxLimit: 100 },
-        { id: "nvidia/nemotron-3-super:free", name: "Nemotron 3 Super", maxLimit: 100 },
-        { id: "google/gemma-4-31b-it:free", name: "Gemma 4 31B", maxLimit: 80 },
-        { id: "google/gemma-4-26b-a4b-it:free", name: "Gemma 4 26B A4B", maxLimit: 80 },
-        { id: "nvidia/nemotron-3.5-lightning:free", name: "Nemotron 3.5 Lightning", maxLimit: 80 },
-        { id: "nvidia/nemotron-nano-9b-v2:free", name: "Nemotron Nano 9B V2", maxLimit: 50 },
-        { id: "dots-studio/dots3-note-preview:free", name: "Dots3 Note Preview", maxLimit: 80 }
-    ]
-};
-
-try { mistakeVault = JSON.parse(localStorage.getItem("NEXUS_VAULT")) || []; } catch(e) { mistakeVault = []; }
-
-document.addEventListener("DOMContentLoaded", function() {
-    gKey = localStorage.getItem("GEMINI_KEY") || "";
-    grKey = localStorage.getItem("GROQ_KEY") || "";
-    orKey = localStorage.getItem("OPENROUTER_KEY") || "";
-
-    if (document.getElementById('update-gemini') && gKey) document.getElementById('update-gemini').value = gKey;
-    if (document.getElementById('update-groq') && grKey) document.getElementById('update-groq').value = grKey;
-    if (document.getElementById('update-openrouter') && orKey) document.getElementById('update-openrouter').value = orKey;
-
-    const orgSelect = document.getElementById('org-select');
-    if (orgSelect) orgSelect.addEventListener('change', updateModelDropdown);
-    
-    const modelSelect = document.getElementById('model-select');
-    if (modelSelect) modelSelect.addEventListener('change', updateQuotaDisplay);
-
-    // Force populate dropdown immediately on boot
-    updateModelDropdown();
-
-    safeBind('launch-btn', 'click', startExam);
-    safeBind('fullscreen-btn', 'click', toggleFullscreen);
-    safeBind('bookmark-btn', 'click', toggleBookmark);
-    safeBind('prev-btn', 'click', () => navigateQ(-1));
-    safeBind('skip-btn', 'click', skipQ);
-    safeBind('clear-btn', 'click', clearAnswer);
-    safeBind('next-btn', 'click', () => navigateQ(1));
-    safeBind('submit-btn', 'click', confirmSubmit);
-    safeBind('rev-all-btn', 'click', () => filterReview('all'));
-    safeBind('rev-wrong-btn', 'click', () => filterReview('wrong'));
-    safeBind('retry-btn', 'click', restartSameQuiz);
-    safeBind('new-quiz-btn', 'click', resetExamUI);
-    safeBind('clear-vault-btn', 'click', clearVault);
-    safeBind('send-chat-btn', 'click', sendChat);
-    safeBind('save-tokens-btn', 'click', updateTokens);
-    safeBind('export-btn', 'click', exportLocalStorage);
-
-    const langSelect = document.getElementById('lang');
-    if (langSelect) langSelect.addEventListener('change', enforceLanguageConstraints);
-
-    const chatInput = document.getElementById('chat-input');
-    if (chatInput) {
-        chatInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendChat(); });
-    }
-
-    renderVault();
-});
-
-function safeBind(id, event, fn) {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener(event, fn);
-}
-
-function updateModelDropdown() {
-    const orgSelect = document.getElementById('org-select');
-    const modelSelect = document.getElementById('model-select');
-    if (!orgSelect || !modelSelect) return;
-
-    const org = orgSelect.value;
-    modelSelect.innerHTML = "";
-    
-    const list = PROVIDER_MODELS[org] || [];
-    list.forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m.id;
-        opt.textContent = m.name;
-        modelSelect.appendChild(opt);
-    });
-    updateQuotaDisplay();
-}
-
-function updateQuotaDisplay() {
-    const statusVal = document.getElementById('quota-status-val');
-    const orgSelect = document.getElementById('org-select');
-    const modelSelect = document.getElementById('model-select');
-    if (!statusVal || !orgSelect || !modelSelect) return;
-
-    const modelId = modelSelect.value;
-    const org = orgSelect.value;
-    const cachedQuota = localStorage.getItem(`QUOTA_${modelId}`);
-
-    if (cachedQuota) {
-        statusVal.textContent = cachedQuota;
-    } else {
-        if (org === 'openrouter') {
-            statusVal.textContent = "Free Tier: ~20 RPM / 200 RPD (OpenRouter)";
-        } else if (org === 'groq') {
-            statusVal.textContent = "Free Tier: ~30 RPM / 14.4K RPD (Groq LPU)";
-        } else {
-            statusVal.textContent = "Free Tier: Standard Rate Limits (Gemini)";
-        }
-    }
-    enforceLanguageConstraints();
-}
-
-function enforceLanguageConstraints() {
-    const modelSelect = document.getElementById('model-select');
-    const langSelect = document.getElementById('lang');
-    const countInput = document.getElementById('count');
-    const orgSelect = document.getElementById('org-select');
-    
-    if (!modelSelect || !langSelect || !countInput || !orgSelect) return;
-
-    let baseLimit = 50;
-    const list = PROVIDER_MODELS[orgSelect.value] || [];
-    const found = list.find(m => m.id === modelSelect.value);
-    if (found) baseLimit = found.maxLimit;
-
-    if (langSelect.value === 'Odia') {
-        baseLimit = Math.floor(baseLimit * 0.75);
-    }
-
-    countInput.max = baseLimit;
-    if (parseInt(countInput.value) > baseLimit) {
-        countInput.value = baseLimit;
-    }
-}
-
-function updateTokens() {
-    const newGemini = document.getElementById('update-gemini')?.value.trim() || "";
-    const newGroq = document.getElementById('update-groq')?.value.trim() || "";
-    const newOpenRouter = document.getElementById('update-openrouter')?.value.trim() || "";
-    const msgEl = document.getElementById('token-update-msg');
-
-    if (!newGemini && !newGroq && !newOpenRouter) {
-        alert("Please enter at least one token to update.");
-        return;
-    }
-
-    try {
-        if (newGemini) { localStorage.setItem("GEMINI_KEY", newGemini); gKey = newGemini; }
-        if (newGroq) { localStorage.setItem("GROQ_KEY", newGroq); grKey = newGroq; }
-        if (newOpenRouter) { localStorage.setItem("OPENROUTER_KEY", newOpenRouter); orKey = newOpenRouter; }
-        
-        if (msgEl) {
-            msgEl.style.display = 'block';
-            setTimeout(() => { msgEl.style.display = 'none'; }, 4000);
-        } else {
-            alert("Tokens updated successfully!");
-        }
-    } catch(e) {
-        alert("Failed to save tokens: " + e.message);
-    }
-}
-
-function switchTab(tab) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.querySelectorAll('.sidebar-nav-item').forEach(n => n.classList.remove('active'));
-    
-    const p = document.getElementById('page-' + tab);
-    if(p) p.classList.add('active');
-    const n = document.getElementById('nav-' + tab);
-    if(n) n.classList.add('active');
-    const s = document.getElementById('side-' + tab);
-    if(s) s.classList.add('active');
-    if(tab === 'vault') renderVault();
-}
-
-async function startExam() {
-    gKey = localStorage.getItem("GEMINI_KEY") || gKey;
-    grKey = localStorage.getItem("GROQ_KEY") || grKey;
-    orKey = localStorage.getItem("OPENROUTER_KEY") || orKey;
-    
-    const org = document.getElementById('org-select').value;
-    const activeKey = org === 'groq' ? grKey : (org === 'openrouter' ? orKey : gKey);
-    
-    if (!activeKey) {
-        alert(`API Key missing for ${org.toUpperCase()}! Please enter it in the Config tab.`);
-        switchTab('settings');
-        return;
-    }
-
-    const exam = document.getElementById('exam').value.trim();
-    const topic = document.getElementById('topic').value.trim();
-
-    if (!exam || !topic) {
-        alert("Please fill in both the Target Standard and Syllabus Topic.");
-        return;
-    }
-
-    document.getElementById('exam-setup').style.display = 'none';
-    document.getElementById('terminal-screen').style.display = 'block';
-    const terminal = document.getElementById('terminal');
-    terminal.style.display = 'block';
-    terminal.innerHTML = "";
-
-    const rawModel = document.getElementById('model-select').value;
-    const count = document.getElementById('count').value;
-    const lang = document.getElementById('lang').value;
-    const mins = parseInt(document.getElementById('timer-mins').value) || 15;
-
-    secondsLeft = mins * 60;
-    totalSecondsTaken = 0;
-
-    const prompt = `You are an expert examiner for ${exam}. Generate EXACTLY ${count} TRICKY practice questions about "${topic}". Output language must be strictly in ${lang}. 
-RULES: 1. NO EXPLANATIONS. 2. Plausible distractor traps. 3. Output ONLY a valid JSON array matching this exact format:
-[
-  {
-    "question": "Question text...",
-    "options": ["Opt1", "Opt2", "Opt3", "Opt4"],
-    "correct_option_index": 2
-  }
-]`;
-
-    try {
-        let fullResponse = "";
-        if (org === 'groq' || org === 'openrouter') {
-            const apiUrl = org === 'openrouter' 
-                ? "https://openrouter.ai/api/v1/chat/completions" 
-                : "https://api.groq.com/openai/v1/chat/completions";
-
-            const headers = { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${activeKey}` 
-            };
-            if (org === 'openrouter') {
-                headers['HTTP-Referer'] = window.location.href;
-                headers['X-Title'] = 'NEXUS OS CBT Suite';
-            }
-
-            const res = await fetch(apiUrl, {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify({ 
-                    model: rawModel, 
-                    messages: [{ role: "user", content: prompt }], 
-                    temperature: 0.3, 
-                    response_format: { type: "json_object" } 
-                })
-            });
-            
-            if (!res.ok) throw new Error(`${org.toUpperCase()} HTTP error ${res.status}`);
-            const data = await res.json();
-            fullResponse = data.choices[0].message.content;
-        } else {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${rawModel}:streamGenerateContent?key=${activeKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-            });
-            
-            if (!res.ok) {
-                const errJson = await res.json();
-                throw new Error(errJson.error?.message || `HTTP error ${res.status}`);
-            }
-            const reader = res.body.getReader();
-            const decoder = new TextDecoder();
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-                const chunk = decoder.decode(value, { stream: true });
-                const matches = [...chunk.matchAll(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/g)];
-                for (const m of matches) {
-                    const snippet = m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
-                    terminal.textContent += snippet;
-                    terminal.scrollTop = terminal.scrollHeight;
-                    fullResponse += snippet;
-                }
-            }
-        }
-
-        const match = fullResponse.match(/\[[\s\S]*\]/);
-        currentQuizData = match ? JSON.parse(match[0]) : JSON.parse(fullResponse);
-        userAnswers = {};
-        userBookmarks = {};
-        currentQIndex = 0;
-        initCBTExam();
-
-    } catch (err) {
-        terminal.style.color = "var(--neon-red)";
-        terminal.textContent += `\n\n[FAILURE]: ${err.message}`;
-        setTimeout(resetExamUI, 6000);
-    }
-}
-
-function initCBTExam() {
-    document.getElementById('terminal-screen').style.display = 'none';
-    document.getElementById('exam-active').style.display = 'block';
-    document.getElementById('exam-results').style.display = 'none';
-    buildPalette();
-    renderQuestion(currentQIndex);
-    startTimer();
-}
-
-function buildPalette() {
-    const palette = document.getElementById('q-palette');
-    if (!palette) return;
-    palette.innerHTML = "";
-    currentQuizData.forEach((q, i) => {
-        palette.innerHTML += `<button class="pal-btn" id="pal-${i}" onclick="jumpToQuestion(${i})">${i + 1}</button>`;
-    });
-    updatePaletteStates();
-}
-
-function updatePaletteStates() {
-    currentQuizData.forEach((q, i) => {
-        const btn = document.getElementById(`pal-${i}`);
-        if (!btn) return;
-        btn.className = "pal-btn";
-        if (i === currentQIndex) btn.classList.add('current');
-        if (userBookmarks[i]) btn.classList.add('bookmarked');
-        else if (userAnswers[i] !== undefined) btn.classList.add('answered');
-    });
-}
-
-function renderQuestion(index) {
-    currentQIndex = index;
-    const q = currentQuizData[index];
-    document.getElementById('q-counter').innerText = `Question ${index + 1} of ${currentQuizData.length}`;
-    document.getElementById('progress-fill').style.width = `${((index + 1) / currentQuizData.length) * 100}%`;
-    document.getElementById('bookmark-badge').innerText = userBookmarks[index] ? "★ Bookmarked" : "";
-    document.getElementById('active-q-text').innerText = `${index + 1}. ${q.question}`;
-    
-    const optContainer = document.getElementById('active-options-container');
-    optContainer.innerHTML = "";
-    q.options.forEach((opt, oIdx) => {
-        const isSelected = userAnswers[index] === oIdx ? "selected" : "";
-        optContainer.innerHTML += `
-            <div class="option-card ${isSelected}" onclick="selectOption(${index}, ${oIdx})">
-                <input type="radio" style="margin-right:12px;" ${isSelected ? "checked" : ""}> 
-                <span>${opt}</span>
-            </div>`;
-    });
-    updatePaletteStates();
-}
-
-function selectOption(qIdx, oIdx) { userAnswers[qIdx] = oIdx; renderQuestion(qIdx); }
-function clearAnswer() { delete userAnswers[currentQIndex]; renderQuestion(currentQIndex); }
-function skipQ() { navigateQ(1); }
-function toggleBookmark() { userBookmarks[currentQIndex] = !userBookmarks[currentQIndex]; renderQuestion(currentQIndex); }
-function navigateQ(dir) { if (currentQIndex + dir >= 0 && currentQIndex + dir < currentQuizData.length) renderQuestion(currentQIndex + dir); }
-function jumpToQuestion(idx) { renderQuestion(idx); }
-
-function startTimer() {
-    if (timerInterval) clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
-        if (secondsLeft <= 0) { clearInterval(timerInterval); submitExam(); return; }
-        secondsLeft--; totalSecondsTaken++;
-        document.getElementById('timer-display').innerText = `${Math.floor(secondsLeft/60).toString().padStart(2,'0')}:${(secondsLeft%60).toString().padStart(2,'0')}`;
-    }, 1000);
-}
-
-function toggleFullscreen() {
-    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
-    else if (document.exitFullscreen) document.exitFullscreen();
-}
-
-function confirmSubmit() { if (confirm("Submit examination?")) submitExam(); }
-
-function submitExam() {
-    if (timerInterval) clearInterval(timerInterval);
-    let score = 0, wrong = 0, skipped = 0;
-    currentQuizData.forEach((q, i) => {
-        const sel = userAnswers[i];
-        if (sel === undefined) { skipped++; addToVault(q); }
-        else if (sel === q.correct_option_index) { score++; }
-        else { wrong++; addToVault(q); }
-    });
-
-    document.getElementById('exam-active').style.display = 'none';
-    document.getElementById('exam-results').style.display = 'block';
-    const acc = Math.round((score / currentQuizData.length) * 100);
-    document.getElementById('score-summary-banner').innerHTML = `
-        <div class="score-banner">SCORE: ${score} / ${currentQuizData.length} (${acc}%)</div>
-        <div style="display:flex; justify-content:space-around; color:var(--text-muted); font-size:14px;">
-            <div>✅ Correct: <strong>${score}</strong></div>
-            <div>❌ Wrong: <strong>${wrong}</strong></div>
-            <div>⏭ Skipped: <strong>${skipped}</strong></div>
-        </div>`;
-    renderReviewList('all');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function filterReview(mode) { renderReviewList(mode); }
-
-function renderReviewList(mode) {
-    const container = document.getElementById('review-container');
-    container.innerHTML = "";
-    currentQuizData.forEach((q, i) => {
-        const sel = userAnswers[i];
-        const corr = sel === q.correct_option_index;
-        if (mode === 'wrong' && corr) return;
-        let html = `<div class="glass-card" style="border-left: 4px solid ${corr ? 'var(--neon-green)' : 'var(--neon-red)'}; padding: 18px;">
-            <p style="font-weight:700; color:${corr ? 'var(--neon-green)' : 'var(--neon-red)'}; margin-top:0;">Q${i+1}. ${corr ? 'CORRECT' : 'INCORRECT'}</p>
-            <p class="q-text" style="font-size:15px;">${q.question}</p>`;
-        q.options.forEach((opt, oIdx) => {
-            let cls = oIdx === q.correct_option_index ? "correct" : (oIdx === sel ? "wrong" : "");
-            html += `<div class="option-card ${cls}" style="padding:10px 14px; margin:4px 0; font-size:14px;"><span>${opt}</span></div>`;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEXUS OS | Pro CBT Suite</title>
+    <link rel="manifest" href="manifest.json">
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js').catch(() => {});
         });
-        container.innerHTML += html + `</div>`;
-    });
-}
+      }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+        :root {
+            --bg-deep: #030712; --bg-card: #0f172a; --border-glow: rgba(56, 189, 248, 0.2);
+            --neon-cyan: #00f2fe; --neon-blue: #4facfe; --neon-green: #10b981;
+            --neon-yellow: #f59e0b; --neon-red: #ef4444; --text-main: #f8fafc; --text-muted: #94a3b8;
+        }
+        * { box-sizing: border-box; }
+        html, body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--bg-deep); 
+            color: var(--text-main); 
+            margin: 0; padding: 0; height: 100vh;
+            overflow: hidden; overscroll-behavior: none; 
+        }
+        .app-shell { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
+        .sidebar { display: none; width: 260px; background: #030712; border-right: 1px solid var(--border-glow); padding: 24px; position: fixed; height: 100vh; z-index: 100; }
+        .sidebar-brand { font-size: 20px; font-weight: 800; color: var(--neon-cyan); letter-spacing: 2px; margin-bottom: 40px; text-transform: uppercase; }
+        .sidebar-nav-item { padding: 14px 18px; border-radius: 12px; cursor: pointer; color: var(--text-muted); font-weight: 600; font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+        .sidebar-nav-item:hover, .sidebar-nav-item.active { background: rgba(0, 242, 254, 0.1); color: var(--neon-cyan); }
+        .main-content { 
+            flex: 1; padding: 24px; max-width: 900px; margin: 0 auto; 
+            height: 100vh; overflow-y: auto; overscroll-behavior-y: contain; padding-bottom: 120px; 
+        }
+        @media (min-width: 768px) { .sidebar { display: block; } .main-content { margin-left: 260px; padding: 40px; max-width: 1000px; } .bottom-nav { display: none !important; } }
+        .page { display: none; } .page.active { display: block; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #030712; border-top: 1px solid var(--border-glow); display: flex; justify-content: space-around; padding: 12px 0; z-index: 1000; }
+        .nav-item { color: var(--text-muted); text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase; cursor: pointer; }
+        .nav-item.active { color: var(--neon-cyan); } .nav-icon { font-size: 20px; display: block; margin-bottom: 3px; }
+        .glass-card { background: var(--bg-card); border: 1px solid var(--border-glow); border-radius: 20px; padding: 28px; margin-bottom: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .header-title { font-weight: 800; font-size: 28px; margin-bottom: 24px; background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        label { display: block; margin-top: 18px; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
+        input, select { width: 100%; padding: 14px 18px; margin-top: 8px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); background: #000; color: white; font-size: 15px; box-sizing: border-box; }
+        input:focus, select:focus { outline: none; border-color: var(--neon-cyan); }
+        select option { background: #0f172a; color: white; }
+        .cyber-btn { padding: 14px 20px; border-radius: 12px; border: none; background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue)); color: #020617; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 24px; }
+        .cyber-btn.secondary { background: rgba(255,255,255,0.08); color: var(--text-main); border: 1px solid rgba(255,255,255,0.15); }
+        .cyber-btn.danger { background: #ef4444; color: white; }
+        .quota-badge { background: rgba(0, 242, 254, 0.1); border: 1px solid var(--border-glow); padding: 10px 14px; border-radius: 10px; font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--neon-cyan); margin-top: 8px; display: flex; justify-content: space-between; }
+        .cbt-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; background: #020617; padding: 16px 24px; border-radius: 16px; border: 1px solid var(--border-glow); margin-bottom: 20px; }
+        .progress-bar-container { width: 100%; background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; overflow: hidden; margin-top: 12px; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue)); width: 0%; transition: width 0.3s ease; }
+        .timer-badge { font-family: 'JetBrains Mono', monospace; background: rgba(245, 158, 11, 0.15); border: 1px solid var(--neon-yellow); color: var(--neon-yellow); padding: 6px 14px; border-radius: 8px; font-weight: 700; }
+        .q-palette-grid { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; padding: 14px; background: #020617; border-radius: 14px; border: 1px solid var(--border-glow); max-height: 120px; overflow-y: auto; }
+        .pal-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); color: var(--text-muted); font-weight: 700; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .pal-btn.answered { background: rgba(16, 185, 129, 0.2); border-color: var(--neon-green); color: var(--neon-green); }
+        .pal-btn.bookmarked { background: rgba(245, 158, 11, 0.2); border-color: var(--neon-yellow); color: var(--neon-yellow); }
+        .pal-btn.current { border: 2px solid var(--neon-cyan); box-shadow: 0 0 10px rgba(0,242,254,0.4); }
+        .q-text { font-size: 18px; line-height: 1.6; color: #fff; margin-bottom: 20px; font-weight: 600; }
+        .option-card { display: flex; align-items: center; padding: 16px 20px; background: rgba(0,0,0,0.4); margin: 12px 0; border-radius: 14px; border: 1px solid rgba(255,255,255,0.06); cursor: pointer; font-size: 15px; }
+        .option-card:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.2); }
+        .option-card.selected { border-color: var(--neon-cyan); background: rgba(0, 242, 254, 0.1); }
+        .option-card.correct { background: rgba(16, 185, 129, 0.2) !important; border-color: var(--neon-green) !important; color: #a7f3d0; }
+        .option-card.wrong { background: rgba(239, 68, 68, 0.2) !important; border-color: var(--neon-red) !important; color: #fecaca; }
+        .cbt-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; flex-wrap: wrap; gap: 12px; }
+        #terminal { background: #000; color: var(--neon-cyan); padding: 20px; border-radius: 14px; font-family: 'JetBrains Mono', monospace; height: 300px; overflow-y: auto; font-size: 12px; border: 1px solid var(--border-glow); display: none; }
+        .pulse-text { animation: pulse 2s infinite; color: var(--neon-cyan); font-weight: 700; font-size: 14px; text-align: center; }
+        .chat-box { height: calc(100vh - 320px); overflow-y: auto; display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px; padding-right: 8px; }
+        .msg { padding: 14px 18px; border-radius: 16px; max-width: 85%; font-size: 15px; }
+        .msg.user { background: var(--neon-blue); color: #020617; font-weight: 600; align-self: flex-end; }
+        .msg.ai { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); align-self: flex-start; }
+        .score-banner { font-size: 28px; font-weight: 800; text-align: center; color: var(--neon-green); margin: 20px 0; padding: 24px; background: rgba(16, 185, 129, 0.1); border-radius: 20px; border: 1px solid var(--neon-green); }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+    </style>
+</head>
+<body>
+    <div id="main-app" class="app-shell" style="display: flex;">
+        <div class="sidebar">
+            <div class="sidebar-brand">NEXUS OS</div>
+            <div class="sidebar-nav-item active" id="side-exam" onclick="switchTab('exam')">📝 Exam Engine</div>
+            <div class="sidebar-nav-item" id="side-vault" onclick="switchTab('vault')">🧠 Mistake Vault</div>
+            <div class="sidebar-nav-item" id="side-chat" onclick="switchTab('chat')">🤖 NEXUS AI</div>
+            <div class="sidebar-nav-item" id="side-settings" onclick="switchTab('settings')">⚙️ Config</div>
+        </div>
+        <div class="main-content">
+            <div id="page-exam" class="page active">
+                <h1 class="header-title">Exam Engine</h1>
+                <div id="exam-setup" class="glass-card">
+                    <label>Provider Organization</label>
+                    <select id="org-select">
+                        <option value="gemini">Google Gemini AI</option>
+                        <option value="groq">Groq Cloud (LPU Hardware)</option>
+                        <option value="openrouter">OpenRouter Free Tier</option>
+                    </select>
 
-function restartSameQuiz() { userAnswers = {}; initCBTExam(); }
+                    <label>Neural Engine Model</label>
+                    <select id="model-select"></select>
 
-function addToVault(q) {
-    if (!mistakeVault.some(v => v.question === q.question)) {
-        q.user_failed_at = new Date().toLocaleDateString();
-        mistakeVault.push(q);
-        try { localStorage.setItem("NEXUS_VAULT", JSON.stringify(mistakeVault)); } catch(e){}
-    }
-}
+                    <div class="quota-badge" id="quota-display">
+                        <span>⚡ Free Tier Quota Status</span>
+                        <span id="quota-status-val" style="font-weight:700;">Loading...</span>
+                    </div>
 
-function renderVault() {
-    const c = document.getElementById('vault-container');
-    if (!c) return;
-    c.innerHTML = "";
-    if (mistakeVault.length === 0) { c.innerHTML = `<p style="color:var(--neon-green); text-align:center;">Vault is empty.</p>`; return; }
-    mistakeVault.forEach(q => {
-        c.innerHTML += `<div class="glass-card" style="border-left:4px solid var(--neon-red); padding:16px;">
-            <p style="font-size:11px; color:var(--neon-red); margin:0 0 6px 0; font-weight:bold;">Failed: ${q.user_failed_at}</p>
-            <p class="q-text" style="font-size:15px; margin-bottom:8px;">${q.question}</p>
-            <p style="color:var(--neon-green); font-size:14px; margin:0;">✔ ${q.options[q.correct_option_index]}</p>
-        </div>`;
-    });
-}
+                    <label>Target Standard</label>
+                    <input type="text" id="exam" placeholder="e.g. JEE Main, UPSC, OPSC ASO...">
+                    
+                    <label>Syllabus Topic</label>
+                    <input type="text" id="topic" placeholder="e.g. Electrostatics, Modern Indian History...">
+                    
+                    <div style="display:flex; gap: 16px;">
+                        <div style="flex: 1;">
+                            <label>Questions (Maxes adapted)</label>
+                            <input type="number" id="count" value="10" min="1" max="100">
+                        </div>
+                        <div style="flex: 1;">
+                            <label>Language</label>
+                            <select id="lang">
+                                <option value="English">English</option>
+                                <option value="Odia">Odia (Multi-Byte Weight)</option>
+                            </select>
+                        </div>
+                    </div>
 
-function clearVault() { if(confirm("Purge vault?")) { mistakeVault = []; localStorage.removeItem("NEXUS_VAULT"); renderVault(); } }
+                    <label>Timer (Minutes)</label>
+                    <input type="number" id="timer-mins" value="15" min="1" max="180">
+                    
+                    <button id="launch-btn" class="cyber-btn">Launch Examination</button>
+                </div>
 
-async function sendChat() {
-    gKey = localStorage.getItem("GEMINI_KEY") || gKey;
-    grKey = localStorage.getItem("GROQ_KEY") || grKey;
-    orKey = localStorage.getItem("OPENROUTER_KEY") || orKey;
+                <div id="terminal-screen" class="glass-card" style="display: none;">
+                    <p class="pulse-text">Generating CBT Assessment...</p>
+                    <div id="terminal"></div>
+                </div>
 
-    const org = document.getElementById('org-select').value;
-    const activeKey = org === 'groq' ? grKey : (org === 'openrouter' ? orKey : gKey);
-    
-    if (!activeKey) {
-        alert(`API Key missing for ${org.toUpperCase()}! Please enter it in the Config tab.`);
-        switchTab('settings');
-        return;
-    }
+                <div id="exam-active" style="display: none;">
+                    <div class="cbt-header">
+                        <div>
+                            <span id="q-counter" style="font-weight: 700; font-size: 15px; color: var(--neon-cyan);">Question 1 of 5</span>
+                            <div class="progress-bar-container"><div id="progress-fill" class="progress-bar-fill"></div></div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <div id="timer-display" class="timer-badge">10:00</div>
+                            <button id="fullscreen-btn" class="cyber-btn secondary" style="padding: 6px 12px; font-size: 12px; margin:0; width:auto;">⛶ Fullscreen</button>
+                        </div>
+                    </div>
 
-    const inp = document.getElementById('chat-input');
-    const msg = inp.value.trim();
-    if (!msg) return;
-    const box 
+                    <div id="q-palette" class="q-palette-grid"></div>
+
+                    <div class="glass-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                            <span id="bookmark-badge" style="font-size: 12px; font-weight: 700; color: var(--neon-yellow);"></span>
+                            <button id="bookmark-btn" class="cyber-btn secondary" style="padding: 4px 10px; font-size: 11px; margin:0; width:auto;">🔖 Bookmark</button>
+                        </div>
+                        <h4 class="q-text" id="active-q-text">Loading...</h4>
+                        <div id="active-options-container"></div>
+                    </div>
+
+                    <div class="cbt-footer">
+                        <div style="display:flex; gap: 8px; flex-wrap: wrap;">
+                            <button id="prev-btn" class="cyber-btn secondary" style="margin:0; width:auto;">← Prev</button>
+                            <button id="skip-btn" class="cyber-btn secondary" style="margin:0; width:auto;">Skip</button>
+                            <button id="clear-btn" class="cyber-btn secondary" style="margin:0; width:auto;">Clear</button>
+                        </div>
+                        <div style="display:flex; gap: 8px; flex-wrap: wrap;">
+                            <button id="next-btn" class="cyber-btn" style="margin:0; width:auto;">Next →</button>
+                            <button id="submit-btn" class="cyber-btn danger" style="margin:0; width:auto;">Submit</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="exam-results" class="glass-card" style="display: none;">
+                    <h2 class="header-title" style="text-align: center; margin-bottom: 10px;">Assessment Report</h2>
+                    <div id="score-summary-banner"></div>
+                    <div style="display: flex; gap: 12px; justify-content: center; margin: 24px 0; flex-wrap: wrap;">
+                        <button id="rev-all-btn" class="cyber-btn" style="margin:0; width:auto;">Review All</button>
+                        <button id="rev-wrong-btn" class="cyber-btn secondary" style="margin:0; width:auto;">Review Mistakes</button>
+                        <button id="retry-btn" class="cyber-btn secondary" style="margin:0; width:auto;">Try Again</button>
+                        <button id="new-quiz-btn" class="cyber-btn secondary" style="margin:0; width:auto;">New Quiz</button>
+                    </div>
+                    <div id="review-container"></div>
+                </div>
+            </div>
+
+            <!-- MISTAKE VAULT -->
+            <div id="page-vault" class="page">
+                <h1 class="header-title">Mistake Vault</h1>
+                <div class="glass-card">
+                    <p style="font-size: 13px; color: var(--text-muted); margin-top:0;">Failed questions saved for review.</p>
+                    <div id="vault-container"></div>
+                    <button id="clear-vault-btn" class="cyber-btn danger">Purge Vault</button>
+                </div>
+            </div>
+
+            <!-- NEXUS AI -->
+            <div id="page-chat" class="page">
+                <h1 class="header-title">NEXUS AI</h1>
+                <div class="glass-card" style="padding: 20px;">
+                    <div class="chat-box" id="chat-box">
+                        <div class="msg ai">Neural tutor online. Ready for queries.</div>
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <input type="text" id="chat-input" placeholder="Ask syllabus doubt...">
+                        <button id="send-chat-btn" class="cyber-btn" style="width: 65px; margin:0;">➤</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SETTINGS -->
+            <div id="page-settings" class="page">
+                <h1 class="header-title">System Config</h1>
+                <div class="glass-card">
+                    <h3 style="color: var(--neon-cyan); margin-top:0;">API Token Manager</h3>
+                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Update your active Gemini, Groq, or OpenRouter tokens on the fly.</p>
+                    
+                    <label>Update Gemini API Key</label>
+                    <input type="password" id="update-gemini" placeholder="New AIzaSy...">
+                    
+                    <label>Update Groq API Key</label>
+                    <input type="password" id="update-groq" placeholder="New gsk_...">
+                    
+                    <label>Update OpenRouter API Key</label>
+                    <input type="password" id="update-openrouter" placeholder="New sk-or-v1-...">
+                    
+                    <button id="save-tokens-btn" class="cyber-btn" style="width: auto; margin-top: 16px;">Save New Tokens</button>
+                    <p id="token-update-msg" style="color: var(--neon-green); font-size: 13px; display: none; margin-top: 10px; font-weight: 600;">Tokens updated successfully!</p>
+                    
+                    <hr style="border: none; border-top: 1px solid var(--border-glow); margin: 28px 0;">
+                    
+                    <h3 style="color: var(--neon-cyan); margin-top:0;">Telemetry & Storage</h3>
+                    <p style="color: var(--neon-green); font-size: 14px; font-weight: 600;">● Secure Local Storage Active</p>
+                    <button id="export-btn" class="cyber-btn secondary" style="color: var(--text-main); width: auto;">Export Backup (JSON)</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom-nav">
+            <div class="nav-item active" id="nav-exam" onclick="switchTab('exam')"><span class="nav-icon">📝</span>Engine</div>
+            <div class="nav-item" id="nav-vault" onclick="switchTab('vault')"><span class="nav-icon">🧠</span>Vault</div>
+            <div class="nav-item" id="nav-chat" onclick="switchTab('chat')"><span class="nav-icon">🤖</span>NEXUS</div>
+            <div class="nav-item" id="nav-settings" onclick="switchTab('settings')"><span class="nav-icon">⚙️</span>Config</div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+    <script src="creative.js"></script>
+</body>
+</html>
