@@ -20,7 +20,15 @@
             --neon-yellow: #f59e0b; --neon-red: #ef4444; --text-main: #f8fafc; --text-muted: #94a3b8;
         }
         * { box-sizing: border-box; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-deep); color: var(--text-main); margin: 0; padding: 0; min-height: 100vh; }
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--bg-deep); 
+            color: var(--text-main); 
+            margin: 0; 
+            padding: 0; 
+            min-height: 100vh; 
+            overscroll-behavior-y: none; /* Prevents mobile pull-to-refresh refresh bug */
+        }
         .app-shell { display: flex; min-height: 100vh; }
         .sidebar { display: none; width: 260px; background: #030712; border-right: 1px solid var(--border-glow); padding: 24px; position: fixed; height: 100vh; z-index: 100; }
         .sidebar-brand { font-size: 20px; font-weight: 800; color: var(--neon-cyan); letter-spacing: 2px; margin-bottom: 40px; text-transform: uppercase; }
@@ -209,5 +217,6 @@
         </div>
     </div>
     <script src="app.js"></script>
+    <script src="creative.js"></script>
 </body>
 </html>
