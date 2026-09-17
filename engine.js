@@ -7,6 +7,7 @@ let secondsLeft = 0;
 let totalSecondsTaken = 0;
 let mistakeVault = [];
 let activeController = null;
+let isTimerPaused = false;
 
 try { mistakeVault = JSON.parse(localStorage.getItem("NEXUS_VAULT")) || []; } catch(e) { mistakeVault = []; }
 
@@ -41,6 +42,23 @@ function cancelActiveRequest() {
     resetExamUI();
 }
 
+function toggleTimerPause() {
+    if (!isAdmin) return;
+    isTimerPaused = !isTimerPaused;
+    const btn = document.getElementById('pause-timer-btn');
+    if (btn) {
+        if (isTimerPaused) {
+            btn.innerHTML = '▶ Resume';
+            btn.style.color = 'var(--neon-yellow)';
+            btn.style.borderColor = 'var(--neon-yellow)';
+        } else {
+            btn.innerHTML = '⏸ Pause';
+            btn.style.color = ''; 
+            btn.style.borderColor = '';
+        }
+    }
+}
+
 // ==========================================
 // PHASE 2: QA VERIFICATION (OPTIMIZED BURST LOGIC)
 // ==========================================
@@ -54,7 +72,6 @@ async function verifyAndCorrectQuizData(quizData, signal) {
         return quizData; 
     }
 
-    // Dynamic Batch Sizing Based on Language Token Density
     const lang = document.getElementById('lang') ? document.getElementById('lang').value : "English";
     const BATCH_SIZE = (lang === 'Odia') ? 10 : 25;
 
@@ -145,7 +162,7 @@ ${JSON.stringify(chunk)}`;
                 terminal.innerHTML += `<span style='color: var(--neon-yellow);'>[QA WARNING]: Rate limit hit during burst. Pausing for 60 seconds...</span><br>`;
                 terminal.scrollTop = terminal.scrollHeight;
                 await new Promise(resolve => setTimeout(resolve, 60000));
-                continue; // Loop restarts without advancing index, retrying these two batches
+                continue; 
             }
             
             if (res1.data) applyCorrections(res1.data);
@@ -165,7 +182,7 @@ ${JSON.stringify(chunk)}`;
                 
                 terminal.innerHTML += `<span style='color: var(--neon-cyan);'>[QA SYSTEM]: 60s elapsed. Dual-token burst active.</span><br>`;
                 terminal.scrollTop = terminal.scrollHeight;
-                dualBurstMode = true; // Permanently switch to dual-burst mode for remaining batches
+                dualBurstMode = true; 
                 
             } else {
                 if (res.data) applyCorrections(res.data);
@@ -282,6 +299,10 @@ function initStandaloneExam() {
     
     const headerTitle = document.querySelector('#page-exam .header-title');
     if (headerTitle) headerTitle.style.display = 'none';
+
+    isTimerPaused = false;
+    const pBtn = document.getElementById('pause-timer-btn');
+    if(pBtn) { pBtn.innerHTML = '⏸ Pause'; pBtn.style.color = ''; pBtn.style.borderColor = ''; }
 
     buildPalette();
     renderQuestion(currentQIndex);
@@ -466,6 +487,20 @@ ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
     }
 }
 
+function initCBTExam() {
+    document.getElementById('terminal-screen').style.display = 'none';
+    document.getElementById('exam-active').style.display = 'block';
+    document.getElementById('exam-results').style.display = 'none';
+    
+    isTimerPaused = false;
+    const pBtn = document.getElementById('pause-timer-btn');
+    if(pBtn) { pBtn.innerHTML = '⏸ Pause'; pBtn.style.color = ''; pBtn.style.borderColor = ''; }
+
+    buildPalette();
+    renderQuestion(currentQIndex);
+    startTimer();
+}
+
 function buildPalette() {
     const palette = document.getElementById('q-palette');
     if (!palette) return;
@@ -530,6 +565,7 @@ function jumpToQuestion(idx) { renderQuestion(idx); }
 function startTimer() {
     if (timerInterval) clearInterval(timerInterval);
     timerInterval = setInterval(() => {
+        if (isTimerPaused) return; 
         if (secondsLeft <= 0) { clearInterval(timerInterval); submitExam(); return; }
         secondsLeft--; totalSecondsTaken++;
         document.getElementById('timer-display').innerText = `${Math.floor(secondsLeft/60).toString().padStart(2,'0')}:${(secondsLeft%60).toString().padStart(2,'0')}`;
