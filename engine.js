@@ -13,13 +13,13 @@ try { mistakeVault = JSON.parse(localStorage.getItem("NEXUS_VAULT")) || []; } ca
 
 document.addEventListener("DOMContentLoaded", function() {
     const clearChatBtn = document.getElementById('clear-chat-btn');
-    if (clearChatBtn) clearChatBtn.addEventListener('click', clearChatHistory);
+    if (clearChatBtn) clearChatBtn.addEventListener('click', () => clearChatHistory());
 
     const downloadBtn = document.getElementById('download-report-btn');
-    if (downloadBtn) downloadBtn.addEventListener('click', downloadAssessmentReport);
+    if (downloadBtn) downloadBtn.addEventListener('click', () => downloadAssessmentReport());
 
     const mailBtn = document.getElementById('mail-report-btn');
-    if (mailBtn) mailBtn.addEventListener('click', emailAssessmentReport);
+    if (mailBtn) mailBtn.addEventListener('click', () => emailAssessmentReport());
 });
 
 function clearChatHistory() {
@@ -277,7 +277,6 @@ function initStandaloneExam() {
     const mainContent = document.querySelector('.main-content');
     if (mainContent) {
         mainContent.style.marginLeft = '0';
-        // EXPAND TO FULL WIDTH SO THE PALETTE SITS PERFECTLY ON THE RIGHT
         mainContent.style.maxWidth = '1400px'; 
         mainContent.style.paddingBottom = '20px';
     }
@@ -353,7 +352,7 @@ async function startExam() {
         cancelWrapper.className = 'cyber-btn danger';
         cancelWrapper.style.cssText = 'margin-top: 16px; padding: 10px; font-size: 12px;';
         cancelWrapper.textContent = '❌ Cancel Generation';
-        cancelWrapper.onclick = cancelActiveRequest;
+        cancelWrapper.onclick = () => cancelActiveRequest();
         terminalScreen.querySelector('.quantum-loader-wrapper').appendChild(cancelWrapper);
     }
 
@@ -483,7 +482,7 @@ ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
         } catch (fallbackErr) {
             terminal.style.color = "var(--neon-red)";
             terminal.innerHTML += `<br><br>[CRITICAL FAILURE]: Primary and Fallback models both failed. ${err.message}`;
-            setTimeout(resetExamUI, 6000);
+            setTimeout(() => resetExamUI(), 6000);
         }
     }
 }
