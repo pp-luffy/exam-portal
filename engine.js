@@ -6,6 +6,7 @@ let timerInterval = null;
 let secondsLeft = 0;
 let totalSecondsTaken = 0;
 let mistakeVault = [];
+let activeController = null; // AbortController handle for request cancellation
 
 try { mistakeVault = JSON.parse(localStorage.getItem("NEXUS_VAULT")) || []; } catch(e) { mistakeVault = []; }
 
@@ -29,6 +30,16 @@ function clearChatHistory() {
                 <span class="timestamp" style="font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-left: 4px;">Just now</span>
             </div>`;
     }
+}
+
+// Global function to cancel pending AI requests
+function cancelActiveRequest() {
+    if (activeController) {
+        activeController.abort();
+        activeController = null;
+        console.log('[SYSTEM]: Request aborted by operator.');
+    }
+    resetExamUI();
 }
 
 async function startExam() {
@@ -56,10 +67,24 @@ async function startExam() {
     }
 
     document.getElementById('exam-setup').style.display = 'none';
-    document.getElementById('terminal-screen').style.display = 'block';
+    const terminalScreen = document.getElementById('terminal-screen');
+    terminalScreen.style.display = 'block';
+    
     const terminal = document.getElementById('terminal');
     terminal.style.display = 'block';
     terminal.innerHTML = "<span style='color: var(--neon-cyan);'>[CORE INITIALIZED]: Connecting to neural parameters...</span><br>";
+
+    // Inject a Cancel button dynamically into the terminal box if not already present
+    let cancelWrapper = document.getElementById('terminal-cancel-btn');
+    if (!cancelWrapper) {
+        cancelWrapper = document.createElement('button');
+        cancelWrapper.id = 'terminal-cancel-btn';
+        cancelWrapper.className = 'cyber-btn danger';
+        cancelWrapper.style.cssText = 'margin-top: 16px; padding: 10px; font-size: 12px;';
+        cancelWrapper.textContent = '❌ Cancel Generation';
+        cancelWrapper.onclick = cancelActiveRequest;
+        terminalScreen.querySelector('.quantum-loader-wrapper').appendChild(cancelWrapper);
+    }
 
     const rawModel = document.getElementById('model-select').value;
     const count = document.getElementById('count').value;
@@ -89,6 +114,11 @@ RULES:
   }
 ]`;
 
+    // Initialize AbortController for this request
+    if (activeController) activeController.abort();
+    activeController = new AbortController();
+    const signal = activeController.signal;
+
     try {
         let fullResponse = "";
 
@@ -114,7 +144,8 @@ RULES:
             const res = await fetch(apiUrl, {
                 method: 'POST',
                 headers: headers,
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload),
+                signal: signal
             });
             
             const remainingTokens = res.headers.get('x-ratelimit-remaining-tokens') || res.headers.get('x-ratelimit-tokens-remaining');
@@ -135,7 +166,8 @@ RULES:
                 body: JSON.stringify({ 
                     contents: [{ parts: [{ text: prompt }] }],
                     generationConfig: { maxOutputTokens: 65536, temperature: 0.4 }
-                })
+                }),
+                signal: signal
             });
             
             if (!res.ok) {
@@ -167,6 +199,10 @@ RULES:
         initCBTExam();
 
     } catch (err) {
+        if (err.name === 'AbortError') {
+            console.log('[SYSTEM]: Request aborted.');
+            return;
+        }
         terminal.style.color = "var(--neon-red)";
         terminal.innerHTML += `<br><br>[FAILURE]: ${err.message}`;
         setTimeout(resetExamUI, 6000);
@@ -491,6 +527,7 @@ async function sendChat() {
 
 function resetExamUI() {
     if(timerInterval) clearInterval(timerInterval);
+    document.getElementById('terminal-screen').style.display = 'none';
     document.getElementById('exam-results').style.display = 'none';
     document.getElementById('exam-active').style.display = 'none';
     document.getElementById('exam-setup').style.display = 'block';
