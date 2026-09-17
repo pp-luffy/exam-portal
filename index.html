@@ -110,7 +110,7 @@
         .progress-bar-container { width: 100%; background: rgba(255,255,255,0.06); height: 5px; border-radius: 3px; overflow: hidden; margin-top: 10px; }
         .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue)); width: 0%; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 12px var(--neon-cyan); }
         .timer-badge { font-family: 'JetBrains Mono', monospace; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); color: var(--neon-yellow); padding: 8px 14px; border-radius: 10px; font-weight: 700; font-size: 13px; text-shadow: 0 0 10px rgba(245,158,11,0.4); box-shadow: inset 0 0 8px rgba(245,158,11,0.1); }
-        .q-palette-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; padding: 16px; background: rgba(2, 6, 23, 0.85); border-radius: 16px; border: 1px solid var(--border-glow); max-height: 130px; overflow-y: auto; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); }
+        
         .pal-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); color: var(--text-muted); font-weight: 700; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
         .pal-btn.answered { background: rgba(16, 185, 129, 0.2); border-color: rgba(16,185,129,0.6); color: var(--neon-green); box-shadow: 0 0 10px rgba(16,185,129,0.25); }
         .pal-btn.bookmarked { background: rgba(245, 158, 11, 0.2); border-color: rgba(245,158,11,0.6); color: var(--neon-yellow); box-shadow: 0 0 10px rgba(245,158,11,0.25); }
@@ -137,6 +137,18 @@
         .msg.user { background: linear-gradient(135deg, var(--neon-blue), var(--neon-cyan)); color: #020617; font-weight: 700; align-self: flex-end; box-shadow: 0 0 20px rgba(79,172,254,0.4); }
         .msg.ai { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); align-self: flex-start; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); }
         .score-banner { font-size: 26px; font-weight: 800; text-align: center; color: var(--neon-green); margin: 20px 0; padding: 24px; background: rgba(16, 185, 129, 0.1); border-radius: 18px; border: 1px solid rgba(16,185,129,0.4); text-shadow: 0 0 20px rgba(16,185,129,0.5); box-shadow: inset 0 0 15px rgba(16,185,129,0.1); }
+
+        /* NEW SPLIT LAYOUT FOR CBT EXAM PORTAL */
+        .cbt-layout { display: flex; flex-direction: column; gap: 24px; }
+        .cbt-main { flex: 1; min-width: 0; }
+        .cbt-sidebar { width: 100%; }
+        .q-palette-grid { display: flex; gap: 8px; flex-wrap: wrap; overflow-y: auto; }
+        
+        @media (min-width: 992px) {
+            .cbt-layout { flex-direction: row; align-items: flex-start; }
+            .cbt-sidebar { width: 340px; flex-shrink: 0; position: sticky; top: 20px; }
+            .q-palette-grid { max-height: calc(100vh - 200px); align-content: flex-start; }
+        }
     </style>
 </head>
 <body>
@@ -248,43 +260,56 @@
                     </div>
                 </div>
 
+                <!-- SPLIT COLUMN LAYOUT START -->
                 <div id="exam-active" style="display: none;">
-                    <div class="cbt-header">
-                        <div>
-                            <span id="q-counter" style="font-weight: 700; font-size: 14px; color: var(--neon-cyan);">Question 1 of 5</span>
-                            <div class="progress-bar-container"><div id="progress-fill" class="progress-bar-fill"></div></div>
-                        </div>
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <div id="timer-display" class="timer-badge">10:00</div>
-                            <button id="pause-timer-btn" class="cyber-btn secondary" style="display:none; padding: 6px 10px; font-size: 11px; margin:0; width:auto;">⏸ Pause</button>
-                            <button id="exit-exam-btn" class="cyber-btn danger" style="padding: 6px 10px; font-size: 11px; margin:0; width:auto;">✖ Exit</button>
-                            <button id="fullscreen-btn" class="cyber-btn secondary" style="padding: 6px 10px; font-size: 11px; margin:0; width:auto;">⛶ Fullscreen</button>
-                        </div>
-                    </div>
+                    <div class="cbt-layout">
+                        <!-- LEFT SIDE: QUESTION CARD -->
+                        <div class="cbt-main">
+                            <div class="cbt-header" style="margin-bottom: 20px;">
+                                <div>
+                                    <span id="q-counter" style="font-weight: 700; font-size: 14px; color: var(--neon-cyan);">Question 1 of 5</span>
+                                    <div class="progress-bar-container"><div id="progress-fill" class="progress-bar-fill"></div></div>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <div id="timer-display" class="timer-badge">10:00</div>
+                                    <button id="pause-timer-btn" class="cyber-btn secondary" style="display:none; padding: 6px 10px; font-size: 11px; margin:0; width:auto;">⏸ Pause</button>
+                                    <button id="exit-exam-btn" class="cyber-btn danger" style="padding: 6px 10px; font-size: 11px; margin:0; width:auto;">✖ Exit</button>
+                                    <button id="fullscreen-btn" class="cyber-btn secondary" style="padding: 6px 10px; font-size: 11px; margin:0; width:auto;">⛶ Fullscreen</button>
+                                </div>
+                            </div>
 
-                    <div id="q-palette" class="q-palette-grid"></div>
+                            <div class="glass-card" style="margin-bottom: 20px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                                    <span id="bookmark-badge" style="font-size: 12px; font-weight: 700; color: var(--neon-yellow);"></span>
+                                    <button id="bookmark-btn" class="cyber-btn secondary" style="padding: 4px 12px; font-size: 11px; margin:0; width:auto;">🔖 Bookmark</button>
+                                </div>
+                                <h4 class="q-text" id="active-q-text">Loading...</h4>
+                                <div id="active-options-container"></div>
+                            </div>
 
-                    <div class="glass-card">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-                            <span id="bookmark-badge" style="font-size: 12px; font-weight: 700; color: var(--neon-yellow);"></span>
-                            <button id="bookmark-btn" class="cyber-btn secondary" style="padding: 4px 12px; font-size: 11px; margin:0; width:auto;">🔖 Bookmark</button>
+                            <div class="cbt-footer">
+                                <div style="display:flex; gap: 8px; flex-wrap: wrap;">
+                                    <button id="prev-btn" class="cyber-btn secondary" style="margin:0; width:auto;">← Prev</button>
+                                    <button id="skip-btn" class="cyber-btn secondary" style="margin:0; width:auto;">Skip</button>
+                                    <button id="clear-btn" class="cyber-btn secondary" style="margin:0; width:auto;">Clear</button>
+                                </div>
+                                <div style="display:flex; gap: 8px; flex-wrap: wrap;">
+                                    <button id="next-btn" class="cyber-btn" style="margin:0; width:auto;">Next →</button>
+                                    <button id="submit-btn" class="cyber-btn danger" style="margin:0; width:auto;">Submit</button>
+                                </div>
+                            </div>
                         </div>
-                        <h4 class="q-text" id="active-q-text">Loading...</h4>
-                        <div id="active-options-container"></div>
-                    </div>
 
-                    <div class="cbt-footer">
-                        <div style="display:flex; gap: 8px; flex-wrap: wrap;">
-                            <button id="prev-btn" class="cyber-btn secondary" style="margin:0; width:auto;">← Prev</button>
-                            <button id="skip-btn" class="cyber-btn secondary" style="margin:0; width:auto;">Skip</button>
-                            <button id="clear-btn" class="cyber-btn secondary" style="margin:0; width:auto;">Clear</button>
-                        </div>
-                        <div style="display:flex; gap: 8px; flex-wrap: wrap;">
-                            <button id="next-btn" class="cyber-btn" style="margin:0; width:auto;">Next →</button>
-                            <button id="submit-btn" class="cyber-btn danger" style="margin:0; width:auto;">Submit</button>
+                        <!-- RIGHT SIDE: PALETTE SIDEBAR -->
+                        <div class="cbt-sidebar">
+                            <div class="glass-card" style="padding: 20px; margin-bottom: 0; height: 100%;">
+                                <div style="font-size: 12px; font-weight: 800; color: var(--neon-cyan); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 16px; text-align: center; border-bottom: 1px solid var(--border-glow); padding-bottom: 12px;">Question Palette</div>
+                                <div id="q-palette" class="q-palette-grid" style="border: none; padding: 0; background: transparent; box-shadow: none; margin-bottom: 0;"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
+                <!-- SPLIT COLUMN LAYOUT END -->
 
                 <div id="exam-results" class="glass-card" style="display: none;">
                     <h2 class="header-title" style="text-align: center; margin-bottom: 12px;">Assessment Report</h2>
