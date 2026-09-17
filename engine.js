@@ -42,20 +42,28 @@ function cancelActiveRequest() {
 }
 
 // ==========================================
-// PHASE 2: QA VERIFICATION VIA GROQ 20B
+// PHASE 2: QA VERIFICATION (WITH 60s RETRY)
 // ==========================================
 async function verifyAndCorrectQuizData(quizData, signal) {
     const terminal = document.getElementById('terminal');
-    const groqKey = localStorage.getItem("GROQ_KEY");
+    const groqVerifyKey = localStorage.getItem("GROQ_VERIFY_KEY");
     
-    if (!groqKey) {
-        terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[WARNING]: Groq API key missing. Skipping Phase 2 verification.</span><br>`;
+    if (!groqVerifyKey) {
+        terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[WARNING]: Verification Groq Key missing. Skipping Phase 2 verification.</span><br>`;
         return quizData; 
     }
 
-    terminal.innerHTML += `<br><span style='color: var(--neon-cyan);'>[PHASE 2]: Initiating Quality Assurance via GPT-OSS-20B...</span><br>`;
+    terminal.innerHTML += `<br><span style='color: var(--neon-cyan);'>[PHASE 2]: Initiating Parallel Quality Assurance via Dedicated GPT-OSS-20B...</span><br>`;
 
-    const verifyPrompt = `You are a strict QA Audit System for a competitive exam engine. 
+    const BATCH_SIZE = 15;
+    let totalCorrections = 0;
+    const fetchPromises = [];
+
+    for (let i = 0; i < quizData.length; i += BATCH_SIZE) {
+        const chunk = quizData.slice(i, i + BATCH_SIZE);
+        const chunkWithIndices = chunk.map((q, idx) => ({ index: i + idx, ...q }));
+
+        const verifyPrompt = `You are a strict QA Audit System for a competitive exam engine. 
 Review the following JSON array of multiple-choice questions. Check for factual errors, illogical distractors, or an incorrect 'correct_option_index'.
 
 If ALL questions are 100% accurate, return EXACTLY: {"corrections": []}
@@ -64,7 +72,7 @@ If ANY questions are flawed, return a JSON object with a "corrections" array con
 {
   "corrections": [
     {
-      "index": 0, // The 0-based index of the flawed question in the original array
+      "index": 0, // MUST be the exact 'index' integer provided in the original array
       "question": "The corrected question text...",
       "options": ["Opt1", "Opt2", "Opt3", "Opt4"],
       "correct_option_index": 2
@@ -72,10 +80,9 @@ If ANY questions are flawed, return a JSON object with a "corrections" array con
   ]
 }
 
-Original Array to Audit:
-${JSON.stringify(quizData)}`;
+Original Array Chunk to Audit:
+${JSON.stringify(chunkWithIndices)}`;
 
-    try {
         const payload = { 
             model: "openai/gpt-oss-20b", 
             messages: [{ role: "user", content: verifyPrompt }], 
@@ -84,35 +91,61 @@ ${JSON.stringify(quizData)}`;
             response_format: { type: "json_object" }
         };
 
-        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
-            body: JSON.stringify(payload),
-            signal: signal
-        });
+        const reqPromise = (async () => {
+            let attempts = 0;
+            while (attempts < 2) {
+                try {
+                    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqVerifyKey}` },
+                        body: JSON.stringify(payload),
+                        signal: signal
+                    });
+                    
+                    if (res.status === 429) {
+                        if (attempts === 0) {
+                            terminal.innerHTML += `<span style='color: var(--neon-yellow);'>[QA WARNING]: Verification Rate limit hit. Pausing this batch for 60 seconds...</span><br>`;
+                            await new Promise(resolve => setTimeout(resolve, 60000));
+                            attempts++;
+                            continue; // Retry
+                        } else {
+                            terminal.innerHTML += `<span style='color: var(--neon-red);'>[QA ERROR]: Rate limit persists after wait. Bypassing QA for this batch.</span><br>`;
+                            return null;
+                        }
+                    }
+                    
+                    if (!res.ok) throw new Error(`QA HTTP ${res.status}`);
+                    const data = await res.json();
+                    return JSON.parse(data.choices[0].message.content);
+                } catch (err) {
+                    if (err.name !== 'AbortError') console.warn("QA Batch Error:", err);
+                    return null;
+                }
+            }
+        })();
 
-        if (!res.ok) throw new Error(`QA HTTP ${res.status}`);
-        
-        const data = await res.json();
-        const parsed = JSON.parse(data.choices[0].message.content);
+        fetchPromises.push(reqPromise);
+    }
 
-        if (parsed.corrections && Array.isArray(parsed.corrections) && parsed.corrections.length > 0) {
-            terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[QA ALERT]: Intercepted and patched ${parsed.corrections.length} flawed question(s).</span><br>`;
-            // Apply the corrections over the original data
+    const results = await Promise.all(fetchPromises);
+
+    results.forEach(parsed => {
+        if (parsed && parsed.corrections && Array.isArray(parsed.corrections) && parsed.corrections.length > 0) {
+            totalCorrections += parsed.corrections.length;
             parsed.corrections.forEach(c => {
-                if (c.index >= 0 && c.index < quizData.length) {
+                if (c.index !== undefined && c.index >= 0 && c.index < quizData.length) {
                     quizData[c.index].question = c.question;
                     quizData[c.index].options = c.options;
                     quizData[c.index].correct_option_index = c.correct_option_index;
                 }
             });
-        } else {
-            terminal.innerHTML += `<br><span style='color: var(--neon-green);'>[QA CLEAR]: 0 anomalies detected. Assessment locked.</span><br>`;
         }
-        
-    } catch (err) {
-        if (err.name === 'AbortError') throw err;
-        terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[WARNING]: QA Verification timeout/error. Proceeding with standard generation.</span><br>`;
+    });
+
+    if (totalCorrections > 0) {
+        terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[QA ALERT]: Intercepted and dynamically patched ${totalCorrections} flawed question(s).</span><br>`;
+    } else {
+        terminal.innerHTML += `<br><span style='color: var(--neon-green);'>[QA CLEAR]: 0 anomalies detected. Assessment locked.</span><br>`;
     }
 
     return quizData;
@@ -311,7 +344,7 @@ ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
         const match = fullResponse.match(/\[[\s\S]*\]/);
         currentQuizData = match ? JSON.parse(match[0]) : JSON.parse(fullResponse);
 
-        // --- PHASE 2: LAUNCH QA VERIFICATION ---
+        // --- PHASE 2: VERIFICATION ---
         currentQuizData = await verifyAndCorrectQuizData(currentQuizData, signal);
 
         userAnswers = {};
@@ -330,7 +363,7 @@ ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
             const match = fallbackResponse.match(/\[[\s\S]*\]/);
             currentQuizData = match ? JSON.parse(match[0]) : JSON.parse(fallbackResponse);
             
-            // --- PHASE 2: LAUNCH QA VERIFICATION ON FALLBACK ---
+            // --- PHASE 2 VERIFICATION ON FALLBACK ---
             currentQuizData = await verifyAndCorrectQuizData(currentQuizData, signal);
             
             userAnswers = {}; userBookmarks = {}; currentQIndex = 0;
