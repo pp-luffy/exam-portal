@@ -41,25 +41,32 @@ function cancelActiveRequest() {
     resetExamUI();
 }
 
+// ==========================================
+// PHASE 2: QA VERIFICATION (OPTIMIZED BURST LOGIC)
+// ==========================================
 async function verifyAndCorrectQuizData(quizData, signal) {
     const terminal = document.getElementById('terminal');
     const groqVerifyKey = localStorage.getItem("GROQ_VERIFY_KEY");
+    const groqPrimaryKey = localStorage.getItem("GROQ_KEY"); 
     
     if (!groqVerifyKey) {
         terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[WARNING]: Verification Groq Key missing. Skipping Phase 2 QA verification.</span><br>`;
         return quizData; 
     }
 
-    terminal.innerHTML += `<br><span style='color: var(--neon-cyan);'>[PHASE 2]: Initiating Parallel Quality Assurance via Dedicated GPT-OSS-20B...</span><br>`;
+    // Dynamic Batch Sizing Based on Language Token Density
+    const lang = document.getElementById('lang') ? document.getElementById('lang').value : "English";
+    const BATCH_SIZE = (lang === 'Odia') ? 10 : 25;
 
-    const BATCH_SIZE = 15;
+    terminal.innerHTML += `<br><span style='color: var(--neon-cyan);'>[PHASE 2]: Initiating Quality Assurance via GPT-OSS-20B (Batch Size: ${BATCH_SIZE})...</span><br>`;
+
     let totalCorrections = 0;
-    const fetchPromises = [];
-
+    const batches = [];
     for (let i = 0; i < quizData.length; i += BATCH_SIZE) {
-        const chunk = quizData.slice(i, i + BATCH_SIZE);
-        const chunkWithIndices = chunk.map((q, idx) => ({ index: i + idx, ...q }));
+        batches.push(quizData.slice(i, i + BATCH_SIZE).map((q, idx) => ({ index: i + idx, ...q })));
+    }
 
+    async function sendVerifyBatch(chunk, apiKey) {
         const verifyPrompt = `You are a strict QA Audit System for a competitive exam engine. 
 Review the following JSON array of multiple-choice questions. Check for factual errors, illogical distractors, or an incorrect 'correct_option_index'.
 
@@ -78,7 +85,7 @@ If ANY questions are flawed, return a JSON object with a "corrections" array con
 }
 
 Original Array Chunk to Audit:
-${JSON.stringify(chunkWithIndices)}`;
+${JSON.stringify(chunk)}`;
 
         const payload = { 
             model: "openai/gpt-oss-20b", 
@@ -88,45 +95,24 @@ ${JSON.stringify(chunkWithIndices)}`;
             response_format: { type: "json_object" }
         };
 
-        const reqPromise = (async () => {
-            let attempts = 0;
-            while (attempts < 2) {
-                try {
-                    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqVerifyKey}` },
-                        body: JSON.stringify(payload),
-                        signal: signal
-                    });
-                    
-                    if (res.status === 429) {
-                        if (attempts === 0) {
-                            terminal.innerHTML += `<span style='color: var(--neon-yellow);'>[QA WARNING]: Verification Rate limit hit. Pausing this batch for 60 seconds...</span><br>`;
-                            await new Promise(resolve => setTimeout(resolve, 60000));
-                            attempts++;
-                            continue;
-                        } else {
-                            terminal.innerHTML += `<span style='color: var(--neon-red);'>[QA ERROR]: Rate limit persists after wait. Bypassing QA for this batch.</span><br>`;
-                            return null;
-                        }
-                    }
-                    
-                    if (!res.ok) throw new Error(`QA HTTP ${res.status}`);
-                    const data = await res.json();
-                    return JSON.parse(data.choices[0].message.content);
-                } catch (err) {
-                    if (err.name !== 'AbortError') console.warn("QA Batch Error:", err);
-                    return null;
-                }
-            }
-        })();
-
-        fetchPromises.push(reqPromise);
+        try {
+            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                body: JSON.stringify(payload),
+                signal: signal
+            });
+            if (res.status === 429) return { status: 429 };
+            if (!res.ok) throw new Error(`QA HTTP ${res.status}`);
+            const data = await res.json();
+            return { status: 200, data: JSON.parse(data.choices[0].message.content) };
+        } catch (err) {
+            if (err.name !== 'AbortError') console.warn("QA Batch Error:", err);
+            return { status: 500, error: err };
+        }
     }
 
-    const results = await Promise.all(fetchPromises);
-
-    results.forEach(parsed => {
+    function applyCorrections(parsed) {
         if (parsed && parsed.corrections && Array.isArray(parsed.corrections) && parsed.corrections.length > 0) {
             totalCorrections += parsed.corrections.length;
             parsed.corrections.forEach(c => {
@@ -137,7 +123,59 @@ ${JSON.stringify(chunkWithIndices)}`;
                 }
             });
         }
-    });
+    }
+
+    let i = 0;
+    let dualBurstMode = false;
+
+    while (i < batches.length) {
+        terminal.innerHTML += `<span style='color: var(--text-muted);'>[QA]: Processing Batch ${i+1}/${batches.length}...</span><br>`;
+        terminal.scrollTop = terminal.scrollHeight;
+        
+        if (dualBurstMode && groqPrimaryKey && i + 1 < batches.length) {
+            terminal.innerHTML += `<span style='color: var(--text-muted);'>[QA]: Bursting Batch ${i+2}/${batches.length} concurrently...</span><br>`;
+            terminal.scrollTop = terminal.scrollHeight;
+            
+            let p1 = sendVerifyBatch(batches[i], groqVerifyKey);
+            let p2 = sendVerifyBatch(batches[i+1], groqPrimaryKey);
+            
+            let [res1, res2] = await Promise.all([p1, p2]);
+            
+            if (res1.status === 429 || res2.status === 429) {
+                terminal.innerHTML += `<span style='color: var(--neon-yellow);'>[QA WARNING]: Rate limit hit during burst. Pausing for 60 seconds...</span><br>`;
+                terminal.scrollTop = terminal.scrollHeight;
+                await new Promise(resolve => setTimeout(resolve, 60000));
+                continue; // Loop restarts without advancing index, retrying these two batches
+            }
+            
+            if (res1.data) applyCorrections(res1.data);
+            if (res2.data) applyCorrections(res2.data);
+            
+            i += 2;
+            if (i < batches.length) await new Promise(r => setTimeout(r, 2000));
+            
+        } else {
+            let res = await sendVerifyBatch(batches[i], groqVerifyKey);
+            
+            if (res.status === 429) {
+                terminal.innerHTML += `<span style='color: var(--neon-yellow);'>[QA WARNING]: Rate limit hit. Pausing for 60 seconds to reset token buckets...</span><br>`;
+                terminal.scrollTop = terminal.scrollHeight;
+                
+                await new Promise(resolve => setTimeout(resolve, 60000));
+                
+                terminal.innerHTML += `<span style='color: var(--neon-cyan);'>[QA SYSTEM]: 60s elapsed. Dual-token burst active.</span><br>`;
+                terminal.scrollTop = terminal.scrollHeight;
+                dualBurstMode = true; // Permanently switch to dual-burst mode for remaining batches
+                
+            } else {
+                if (res.data) applyCorrections(res.data);
+                i++;
+                if (i < batches.length) {
+                    await new Promise(r => setTimeout(r, 2000));
+                }
+            }
+        }
+    }
 
     if (totalCorrections > 0) {
         terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[QA ALERT]: Intercepted and dynamically patched ${totalCorrections} flawed question(s).</span><br>`;
@@ -185,7 +223,6 @@ async function executeFallback(prompt, signal) {
     return fullResponse;
 }
 
-// Function to handle moving the verified data into the standalone player tab
 function prepareExamPortalLaunch(mins) {
     localStorage.setItem("NEXUS_PENDING_EXAM", JSON.stringify({
         quizData: currentQuizData,
@@ -203,11 +240,10 @@ function prepareExamPortalLaunch(mins) {
 
     document.getElementById(launchBtnId).addEventListener('click', () => {
         window.open(window.location.pathname + "?mode=exam", "_blank");
-        resetExamUI(); // Resets the dashboard behind the popup
+        resetExamUI();
     });
 }
 
-// Function triggered when the new tab opens with ?mode=exam
 function initStandaloneExam() {
     const data = JSON.parse(localStorage.getItem("NEXUS_PENDING_EXAM"));
     if (!data) {
@@ -216,7 +252,6 @@ function initStandaloneExam() {
         return;
     }
 
-    // Hide SPA Shell for distraction-free exam mode
     const sidebar = document.querySelector('.sidebar');
     if (sidebar) sidebar.style.display = 'none';
     const bottomNav = document.querySelector('.bottom-nav');
@@ -406,7 +441,6 @@ ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
         const match = fullResponse.match(/\[[\s\S]*\]/);
         currentQuizData = match ? JSON.parse(match[0]) : JSON.parse(fullResponse);
 
-        // --- Phase 2 & Launch ---
         currentQuizData = await verifyAndCorrectQuizData(currentQuizData, signal);
         prepareExamPortalLaunch(mins);
 
