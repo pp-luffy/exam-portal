@@ -82,8 +82,10 @@ RULES: 1. NO EXPLANATIONS. 2. Plausible distractor traps. 3. Output ONLY a valid
                 })
             });
             
-            if (!res.ok) throw new Error(`${org.toUpperCase()} HTTP error ${res.status}`);
             const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error?.message || `${org.toUpperCase()} HTTP error ${res.status}`);
+            }
             fullResponse = data.choices[0].message.content;
         } else {
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${rawModel}:streamGenerateContent?key=${activeKey}`, {
@@ -275,8 +277,13 @@ async function sendChat() {
     grKey = localStorage.getItem("GROQ_KEY") || grKey;
     orKey = localStorage.getItem("OPENROUTER_KEY") || orKey;
 
-    const org = document.getElementById('org-select').value;
-    const rawModel = document.getElementById('model-select').value;
+    const chatModelSelect = document.getElementById('chat-model-select');
+    const rawModel = chatModelSelect ? chatModelSelect.value : "gemini-3.8-flash";
+    
+    let org = "gemini";
+    if (rawModel.includes("llama") || rawModel.includes("instant")) org = "groq";
+    else if (rawModel.includes("nvidia") || rawModel.includes("google/gemma") || rawModel.includes("dots-studio")) org = "openrouter";
+
     const activeKey = org === 'groq' ? grKey : (org === 'openrouter' ? orKey : gKey);
     
     if (!activeKey) {
@@ -322,7 +329,11 @@ async function sendChat() {
                     messages: [{ role: "user", content: "Tutor: " + msg }] 
                 })
             });
+            
             const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error?.message || `${org.toUpperCase()} HTTP ${res.status} error`);
+            }
             resText = data.choices[0].message.content;
         } else {
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${rawModel}:generateContent?key=${activeKey}`, {
@@ -331,11 +342,14 @@ async function sendChat() {
                 body: JSON.stringify({ contents: [{ parts: [{ text: "Tutor: " + msg }] }] })
             });
             const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error?.message || `HTTP ${res.status} error`);
+            }
             resText = data.candidates[0].content.parts[0].text;
         }
         ai.innerText = resText;
     } catch(e) { 
-        ai.innerText = "Connection error: " + e.message; 
+        ai.innerText = `[Error]: ${e.message}`; 
     }
     box.scrollTop = box.scrollHeight;
 }
