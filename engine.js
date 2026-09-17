@@ -42,10 +42,12 @@ async function startExam() {
     }
 
     const exam = document.getElementById('exam').value.trim();
+    const subject = document.getElementById('subject').value.trim();
     const topic = document.getElementById('topic').value.trim();
+    const difficulty = document.getElementById('difficulty').value;
 
-    if (!exam || !topic) {
-        alert("Please fill in both the Target Standard and Syllabus Topic.");
+    if (!exam || !subject || !topic) {
+        alert("Please fill in the Target Exam Name, Subject Name, and Syllabus Topic.");
         return;
     }
 
@@ -63,8 +65,20 @@ async function startExam() {
     secondsLeft = mins * 60;
     totalSecondsTaken = 0;
 
-    const prompt = `You are an expert examiner for ${exam}. Generate EXACTLY ${count} TRICKY practice questions about "${topic}". Output language must be strictly in ${lang}. 
-RULES: 1. NO EXPLANATIONS. 2. Plausible distractor traps. 3. Output ONLY a valid JSON array matching this exact format:
+    // Advanced Behavioral Prompt Engineering based on Exam & Difficulty Matrix
+    const prompt = `You are a ruthless, expert Chief Question Paper Setter for competitive examinations like ${exam}. 
+Generate EXACTLY ${count} high-standard questions for the Subject: "${subject}", focusing on the Topic: "${topic}". 
+Output language must be strictly in ${lang}.
+
+DIFFICULTY LEVEL: Level ${difficulty} out of 5.
+- If exam is UPSC CSE or OPSC CSE/ASO: NEVER ask direct factual questions. Use deep analytical statements, multi-statement evaluation traps (e.g., "Consider the following statements... Which of the above are correct?"), pairing mismatches, and subtle conceptual nuances.
+- If exam is JEE Main: Construct deep conceptual or multi-step computational problems requiring solid application of formulas without standard direct lookups.
+- If exam is JEE Advanced: Construct ruthless, multi-concept integration traps with highly tricky options where superficial working leads directly to distractor options.
+
+RULES: 
+1. NO EXPLANATIONS inside the question text or options array.
+2. Formulate highly plausible distractor traps.
+3. Output ONLY a valid JSON array matching this exact format with no extra markdown text:
 [
   {
     "question": "Question text...",
@@ -95,7 +109,7 @@ RULES: 1. NO EXPLANATIONS. 2. Plausible distractor traps. 3. Output ONLY a valid
                 body: JSON.stringify({ 
                     model: rawModel, 
                     messages: [{ role: "user", content: prompt }], 
-                    temperature: 0.3, 
+                    temperature: 0.4, 
                     response_format: { type: "json_object" } 
                 })
             });
