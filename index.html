@@ -25,45 +25,46 @@
         .sidebar-brand { font-size: 20px; font-weight: 800; color: var(--neon-cyan); letter-spacing: 2px; margin-bottom: 40px; text-transform: uppercase; }
         .sidebar-nav-item { padding: 14px 18px; border-radius: 12px; cursor: pointer; color: var(--text-muted); font-weight: 600; font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
         .sidebar-nav-item:hover, .sidebar-nav-item.active { background: rgba(0, 242, 254, 0.1); color: var(--neon-cyan); }
-        .main-content { flex: 1; padding: 24px; max-width: 900px; margin: 0 auto; height: 100vh; overflow-y: auto; overscroll-behavior-y: contain; padding-bottom: 120px; }
+        .main-content { flex: 1; padding: 16px; max-width: 900px; margin: 0 auto; height: 100vh; overflow-y: auto; overscroll-behavior-y: contain; padding-bottom: 110px; }
         @media (min-width: 768px) { .sidebar { display: block; } .main-content { margin-left: 260px; padding: 40px; max-width: 1000px; } .bottom-nav { display: none !important; } }
         .page { display: none; } .page.active { display: block; }
         .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #030712; border-top: 1px solid var(--border-glow); display: flex; justify-content: space-around; padding: 12px 0; z-index: 1000; }
         .nav-item { color: var(--text-muted); text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase; cursor: pointer; }
         .nav-item.active { color: var(--neon-cyan); } .nav-icon { font-size: 20px; display: block; margin-bottom: 3px; }
-        .glass-card { background: var(--bg-card); border: 1px solid var(--border-glow); border-radius: 20px; padding: 28px; margin-bottom: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .header-title { font-weight: 800; font-size: 28px; margin-bottom: 24px; background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        label { display: block; margin-top: 18px; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
-        input, select { width: 100%; padding: 14px 18px; margin-top: 8px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); background: #000; color: white; font-size: 15px; box-sizing: border-box; }
+        .glass-card { background: var(--bg-card); border: 1px solid var(--border-glow); border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; word-break: break-word; overflow-wrap: break-word; }
+        .header-title { font-weight: 800; font-size: 28px; margin-bottom: 20px; background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        label { display: block; margin-top: 16px; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
+        input, select { width: 100%; padding: 12px 16px; margin-top: 6px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: #000; color: white; font-size: 15px; box-sizing: border-box; }
         input:focus, select:focus { outline: none; border-color: var(--neon-cyan); }
         select option { background: #0f172a; color: white; }
-        .cyber-btn { padding: 14px 20px; border-radius: 12px; border: none; background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue)); color: #020617; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 24px; }
+        .cyber-btn { padding: 14px 20px; border-radius: 12px; border: none; background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue)); color: #020617; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 20px; }
         .cyber-btn.secondary { background: rgba(255,255,255,0.08); color: var(--text-main); border: 1px solid rgba(255,255,255,0.15); }
         .cyber-btn.danger { background: #ef4444; color: white; }
         .quota-badge { background: rgba(0, 242, 254, 0.1); border: 1px solid var(--border-glow); padding: 10px 14px; border-radius: 10px; font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--neon-cyan); margin-top: 8px; display: flex; justify-content: space-between; }
-        .cbt-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; background: #020617; padding: 16px 24px; border-radius: 16px; border: 1px solid var(--border-glow); margin-bottom: 20px; }
-        .progress-bar-container { width: 100%; background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; overflow: hidden; margin-top: 12px; }
+        .cbt-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; background: #020617; padding: 14px 20px; border-radius: 16px; border: 1px solid var(--border-glow); margin-bottom: 16px; }
+        .progress-bar-container { width: 100%; background: rgba(255,255,255,0.1); height: 6px; border-radius: 3px; overflow: hidden; margin-top: 8px; }
         .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue)); width: 0%; transition: width 0.3s ease; }
-        .timer-badge { font-family: 'JetBrains Mono', monospace; background: rgba(245, 158, 11, 0.15); border: 1px solid var(--neon-yellow); color: var(--neon-yellow); padding: 6px 14px; border-radius: 8px; font-weight: 700; }
-        .q-palette-grid { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; padding: 14px; background: #020617; border-radius: 14px; border: 1px solid var(--border-glow); max-height: 120px; overflow-y: auto; }
-        .pal-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); color: var(--text-muted); font-weight: 700; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .timer-badge { font-family: 'JetBrains Mono', monospace; background: rgba(245, 158, 11, 0.15); border: 1px solid var(--neon-yellow); color: var(--neon-yellow); padding: 6px 12px; border-radius: 8px; font-weight: 700; font-size: 13px; }
+        .q-palette-grid { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; padding: 12px; background: #020617; border-radius: 14px; border: 1px solid var(--border-glow); max-height: 110px; overflow-y: auto; }
+        .pal-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); color: var(--text-muted); font-weight: 700; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .pal-btn.answered { background: rgba(16, 185, 129, 0.2); border-color: var(--neon-green); color: var(--neon-green); }
         .pal-btn.bookmarked { background: rgba(245, 158, 11, 0.2); border-color: var(--neon-yellow); color: var(--neon-yellow); }
         .pal-btn.current { border: 2px solid var(--neon-cyan); box-shadow: 0 0 10px rgba(0,242,254,0.4); }
-        .q-text { font-size: 18px; line-height: 1.6; color: #fff; margin-bottom: 20px; font-weight: 600; }
-        .option-card { display: flex; align-items: center; padding: 16px 20px; background: rgba(0,0,0,0.4); margin: 12px 0; border-radius: 14px; border: 1px solid rgba(255,255,255,0.06); cursor: pointer; font-size: 15px; }
+        .q-text { font-size: 16px; line-height: 1.6; color: #fff; margin-bottom: 16px; font-weight: 600; word-break: break-word; }
+        .option-card { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; background: rgba(0,0,0,0.5); margin: 10px 0; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); cursor: pointer; font-size: 14px; line-height: 1.4; word-break: break-word; }
+        .option-card input[type="radio"] { margin-top: 2px; accent-color: var(--neon-cyan); flex-shrink: 0; width: 18px; height: 18px; }
         .option-card:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.2); }
         .option-card.selected { border-color: var(--neon-cyan); background: rgba(0, 242, 254, 0.1); }
         .option-card.correct { background: rgba(16, 185, 129, 0.2) !important; border-color: var(--neon-green) !important; color: #a7f3d0; }
         .option-card.wrong { background: rgba(239, 68, 68, 0.2) !important; border-color: var(--neon-red) !important; color: #fecaca; }
-        .cbt-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; flex-wrap: wrap; gap: 12px; }
-        #terminal { background: #000; color: var(--neon-cyan); padding: 20px; border-radius: 14px; font-family: 'JetBrains Mono', monospace; height: 300px; overflow-y: auto; font-size: 12px; border: 1px solid var(--border-glow); display: none; }
+        .cbt-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; flex-wrap: wrap; gap: 10px; }
+        #terminal { background: #000; color: var(--neon-cyan); padding: 16px; border-radius: 12px; font-family: 'JetBrains Mono', monospace; height: 260px; overflow-y: auto; font-size: 12px; border: 1px solid var(--border-glow); display: none; }
         .pulse-text { animation: pulse 2s infinite; color: var(--neon-cyan); font-weight: 700; font-size: 14px; text-align: center; }
-        .chat-box { height: calc(100vh - 380px); overflow-y: auto; display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px; padding-right: 8px; }
-        .msg { padding: 14px 18px; border-radius: 16px; max-width: 85%; font-size: 15px; }
+        .chat-box { height: calc(100vh - 360px); overflow-y: auto; display: flex; flex-direction: column; gap: 14px; margin-bottom: 16px; padding-right: 4px; }
+        .msg { padding: 12px 16px; border-radius: 14px; max-width: 85%; font-size: 14px; word-break: break-word; }
         .msg.user { background: var(--neon-blue); color: #020617; font-weight: 600; align-self: flex-end; }
         .msg.ai { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); align-self: flex-start; }
-        .score-banner { font-size: 28px; font-weight: 800; text-align: center; color: var(--neon-green); margin: 20px 0; padding: 24px; background: rgba(16, 185, 129, 0.1); border-radius: 20px; border: 1px solid var(--neon-green); }
+        .score-banner { font-size: 24px; font-weight: 800; text-align: center; color: var(--neon-green); margin: 16px 0; padding: 20px; background: rgba(16, 185, 129, 0.1); border-radius: 16px; border: 1px solid var(--neon-green); }
         @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
     </style>
 </head>
@@ -97,23 +98,23 @@
                     </div>
 
                     <label>Target Standard / Exam Name</label>
-                    <input type="text" id="exam" placeholder="e.g. UPSC CSE, OPSC ASO, JEE Advanced...">
+                    <input type="text" id="exam" placeholder="e.g. JEE Main, JEE Advanced, NEET UG, GATE...">
                     
                     <label>Subject Name</label>
-                    <input type="text" id="subject" placeholder="e.g. Indian Polity, Organic Chemistry, Physics...">
+                    <input type="text" id="subject" placeholder="e.g. Physics, Organic Chemistry, Mathematics...">
 
                     <label>Syllabus Topic</label>
-                    <input type="text" id="topic" placeholder="e.g. Fundamental Rights, Coordination Compounds...">
+                    <input type="text" id="topic" placeholder="e.g. Electrostatics, Coordination Compounds, Calculus...">
                     
-                    <div style="display:flex; gap: 16px;">
+                    <div style="display:flex; gap: 12px;">
                         <div style="flex: 1;">
-                            <label>Difficulty (1 to 5 - Ruthless)</label>
+                            <label>Difficulty Level (1 to 5)</label>
                             <select id="difficulty">
                                 <option value="1">Level 1 - Standard / Foundation</option>
-                                <option value="2">Level 2 - Moderate / Main Stream</option>
-                                <option value="3">Level 3 - Tough / Deep Analytical</option>
-                                <option value="4">Level 4 - Ruthless / Multi-Statement Trap</option>
-                                <option value="5" selected>Level 5 - Maximum Hardcore (Zero Direct Qs)</option>
+                                <option value="2">Level 2 - Moderate</option>
+                                <option value="3">Level 3 - Tough / Advanced</option>
+                                <option value="4">Level 4 - Ruthless Trap</option>
+                                <option value="5" selected>Level 5 - Hardcore / Zero Direct Qs</option>
                             </select>
                         </div>
                         <div style="flex: 1;">
@@ -122,7 +123,7 @@
                         </div>
                     </div>
 
-                    <div style="display:flex; gap: 16px;">
+                    <div style="display:flex; gap: 12px;">
                         <div style="flex: 1;">
                             <label>Language</label>
                             <select id="lang">
@@ -147,19 +148,19 @@
                 <div id="exam-active" style="display: none;">
                     <div class="cbt-header">
                         <div>
-                            <span id="q-counter" style="font-weight: 700; font-size: 15px; color: var(--neon-cyan);">Question 1 of 5</span>
+                            <span id="q-counter" style="font-weight: 700; font-size: 14px; color: var(--neon-cyan);">Question 1 of 5</span>
                             <div class="progress-bar-container"><div id="progress-fill" class="progress-bar-fill"></div></div>
                         </div>
-                        <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
                             <div id="timer-display" class="timer-badge">10:00</div>
-                            <button id="fullscreen-btn" class="cyber-btn secondary" style="padding: 6px 12px; font-size: 12px; margin:0; width:auto;">⛶ Fullscreen</button>
+                            <button id="fullscreen-btn" class="cyber-btn secondary" style="padding: 6px 10px; font-size: 11px; margin:0; width:auto;">⛶ Fullscreen</button>
                         </div>
                     </div>
 
                     <div id="q-palette" class="q-palette-grid"></div>
 
                     <div class="glass-card">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                             <span id="bookmark-badge" style="font-size: 12px; font-weight: 700; color: var(--neon-yellow);"></span>
                             <button id="bookmark-btn" class="cyber-btn secondary" style="padding: 4px 10px; font-size: 11px; margin:0; width:auto;">🔖 Bookmark</button>
                         </div>
@@ -168,12 +169,12 @@
                     </div>
 
                     <div class="cbt-footer">
-                        <div style="display:flex; gap: 8px; flex-wrap: wrap;">
+                        <div style="display:flex; gap: 6px; flex-wrap: wrap;">
                             <button id="prev-btn" class="cyber-btn secondary" style="margin:0; width:auto;">← Prev</button>
                             <button id="skip-btn" class="cyber-btn secondary" style="margin:0; width:auto;">Skip</button>
                             <button id="clear-btn" class="cyber-btn secondary" style="margin:0; width:auto;">Clear</button>
                         </div>
-                        <div style="display:flex; gap: 8px; flex-wrap: wrap;">
+                        <div style="display:flex; gap: 6px; flex-wrap: wrap;">
                             <button id="next-btn" class="cyber-btn" style="margin:0; width:auto;">Next →</button>
                             <button id="submit-btn" class="cyber-btn danger" style="margin:0; width:auto;">Submit</button>
                         </div>
@@ -183,7 +184,7 @@
                 <div id="exam-results" class="glass-card" style="display: none;">
                     <h2 class="header-title" style="text-align: center; margin-bottom: 10px;">Assessment Report</h2>
                     <div id="score-summary-banner"></div>
-                    <div style="display: flex; gap: 12px; justify-content: center; margin: 24px 0; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 10px; justify-content: center; margin: 20px 0; flex-wrap: wrap;">
                         <button id="rev-all-btn" class="cyber-btn" style="margin:0; width:auto;">Review All</button>
                         <button id="rev-wrong-btn" class="cyber-btn secondary" style="margin:0; width:auto;">Review Mistakes</button>
                         <button id="retry-btn" class="cyber-btn secondary" style="margin:0; width:auto;">Try Again</button>
