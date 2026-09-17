@@ -19,6 +19,7 @@ window.addEventListener('load', () => {
 let gKey = "";
 let grKey = "";
 let orKey = "";
+let dsKey = "";
 
 const PROVIDER_MODELS = {
     gemini: [
@@ -36,16 +37,13 @@ const PROVIDER_MODELS = {
         { id: "groq/compound-mini", name: "Groq Compound Mini", maxLimit: 50 }
     ],
     openrouter: [
-        { id: "deepseek/deepseek-chat:free", name: "DeepSeek V3 Chat (Free)", maxLimit: 100 },
-        { id: "deepseek/deepseek-r1:free", name: "DeepSeek R1 (Free)", maxLimit: 75 },
-        { id: "deepseek/deepseek-v4-flash:free", name: "DeepSeek V4 Flash", maxLimit: 100 },
         { id: "thinkingmachines/inkling:free", name: "Inkling (Free)", maxLimit: 75 },
         { id: "nvidia/nemotron-3-ultra-550b-a55b:free", name: "Nemotron 3 Ultra", maxLimit: 100 },
         { id: "google/gemma-4-31b-it:free", name: "Gemma 4 31B", maxLimit: 75 }
     ],
     deepseek: [
-    { id: "deepseek-chat", name: "DeepSeek V3 Chat", maxLimit: 100 },
-    { id: "deepseek-reasoner", name: "DeepSeek R1 Reasoner", maxLimit: 75 }
+        { id: "deepseek-v4-flash", name: "DeepSeek V4 Flash", maxLimit: 100 },
+        { id: "deepseek-v4-pro", name: "DeepSeek V4 Pro", maxLimit: 75 }
     ]
 };
 
@@ -53,12 +51,14 @@ document.addEventListener("DOMContentLoaded", function() {
     gKey = localStorage.getItem("GEMINI_KEY") || "";
     grKey = localStorage.getItem("GROQ_KEY") || "";
     orKey = localStorage.getItem("OPENROUTER_KEY") || "";
+    dsKey = localStorage.getItem("DEEPSEEK_KEY") || "";
     const mailId = localStorage.getItem("DEST_MAIL") || "";
 
     if (document.getElementById('update-mail') && mailId) document.getElementById('update-mail').value = mailId;
     if (document.getElementById('update-gemini') && gKey) document.getElementById('update-gemini').value = gKey;
     if (document.getElementById('update-groq') && grKey) document.getElementById('update-groq').value = grKey;
     if (document.getElementById('update-openrouter') && orKey) document.getElementById('update-openrouter').value = orKey;
+    if (document.getElementById('update-deepseek') && dsKey) document.getElementById('update-deepseek').value = dsKey;
 
     const orgSelect = document.getElementById('org-select');
     if (orgSelect) orgSelect.addEventListener('change', updateModelDropdown);
@@ -217,6 +217,7 @@ function updateQuotaDisplay() {
     } else {
         if (org === 'openrouter') statusVal.textContent = "Free Tier: ~20 RPM";
         else if (org === 'groq') statusVal.textContent = "Free Tier: ~30 RPM";
+        else if (org === 'deepseek') statusVal.textContent = "Native API Limits";
         else statusVal.textContent = "Standard Limits";
     }
     enforceLanguageConstraints();
@@ -248,6 +249,7 @@ function updateTokens() {
     const newGemini = document.getElementById('update-gemini')?.value.trim() || "";
     const newGroq = document.getElementById('update-groq')?.value.trim() || "";
     const newOpenRouter = document.getElementById('update-openrouter')?.value.trim() || "";
+    const newDeepSeek = document.getElementById('update-deepseek')?.value.trim() || "";
     const msgEl = document.getElementById('token-update-msg');
 
     try {
@@ -255,6 +257,7 @@ function updateTokens() {
         if (newGemini !== "") { localStorage.setItem("GEMINI_KEY", newGemini); gKey = newGemini; }
         if (newGroq !== "") { localStorage.setItem("GROQ_KEY", newGroq); grKey = newGroq; }
         if (newOpenRouter !== "") { localStorage.setItem("OPENROUTER_KEY", newOpenRouter); orKey = newOpenRouter; }
+        if (newDeepSeek !== "") { localStorage.setItem("DEEPSEEK_KEY", newDeepSeek); dsKey = newDeepSeek; }
         
         if (msgEl) {
             msgEl.style.display = 'block';
@@ -283,7 +286,7 @@ function exportLocalStorage() {
     const obj = {};
     for(let i=0; i<localStorage.length; i++) {
         const k = localStorage.key(i);
-        if(k !== "GEMINI_KEY" && k !== "GROQ_KEY" && k !== "OPENROUTER_KEY") obj[k] = localStorage.getItem(k);
+        if(k !== "GEMINI_KEY" && k !== "GROQ_KEY" && k !== "OPENROUTER_KEY" && k !== "DEEPSEEK_KEY") obj[k] = localStorage.getItem(k);
     }
     const a = document.createElement('a');
     a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2));
