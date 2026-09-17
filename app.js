@@ -1,11 +1,18 @@
-// System Boot Sequence Handler
+// Global Session State
+let currentUser = "";
+let isAdmin = false;
+
+// System Boot Sequence & Auth Handler
 window.addEventListener('load', () => {
     setTimeout(() => {
         const splash = document.getElementById('boot-splash');
         if (splash) {
             splash.style.opacity = '0';
             splash.style.transform = 'scale(1.05)';
-            setTimeout(() => { splash.style.display = 'none'; }, 600);
+            setTimeout(() => { 
+                splash.style.display = 'none'; 
+                checkAuth(); // Route user based on login state
+            }, 600);
         }
     }, 1600);
 });
@@ -62,6 +69,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
     updateModelDropdown();
 
+    // Bind all buttons safely
+    safeBind('login-btn', 'click', handleLogin);
+    safeBind('logout-btn', 'click', logout);
     safeBind('launch-btn', 'click', startExam);
     safeBind('fullscreen-btn', 'click', toggleFullscreen);
     safeBind('bookmark-btn', 'click', toggleBookmark);
@@ -93,6 +103,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
     const chatInput = document.getElementById('chat-input');
     if (chatInput) chatInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendChat(); });
+    
+    const loginInput = document.getElementById('login-username');
+    if (loginInput) loginInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') handleLogin(); });
 
     renderVault();
 });
@@ -100,6 +113,42 @@ document.addEventListener("DOMContentLoaded", function() {
 function safeBind(id, event, fn) {
     const el = document.getElementById(id);
     if (el) el.addEventListener(event, fn);
+}
+
+/* Authentication Handlers */
+function checkAuth() {
+    const savedUser = localStorage.getItem("NEXUS_USER");
+    if (savedUser) {
+        processLogin(savedUser);
+    } else {
+        document.getElementById('login-screen').style.display = 'flex';
+    }
+}
+
+function handleLogin() {
+    const user = document.getElementById('login-username').value.trim();
+    if (!user) {
+        alert("Operator ID required.");
+        return;
+    }
+    processLogin(user);
+}
+
+function processLogin(user) {
+    currentUser = user;
+    isAdmin = (user === "thegodsk"); // Hidden gatekeeping check
+    localStorage.setItem("NEXUS_USER", user);
+    
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = 'flex';
+    
+    const operatorSpan = document.getElementById('active-operator-name');
+    if (operatorSpan) operatorSpan.textContent = user;
+}
+
+function logout() {
+    localStorage.removeItem("NEXUS_USER");
+    location.reload();
 }
 
 function updateModelDropdown() {
