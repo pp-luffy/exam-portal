@@ -348,6 +348,7 @@
                             <select id="chat-model-select" style="padding: 12px 16px; font-size: 13px; margin-top: 6px;">
                                 <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
                                 <option value="openai/gpt-oss-120b">Groq: GPT-OSS 120B</option>
+                                <option value="openai/gpt-oss-20b">Groq: GPT-OSS 20B (Fast Tutor)</option>
                                 <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
                             </select>
                         </div>
@@ -374,7 +375,8 @@
                     <h3 style="color: var(--neon-cyan); margin-top:0; font-size: 16px; letter-spacing: 1px;">API Token & Dispatch Manager</h3>
                     <label>Destination Mail ID for Reports</label><input type="email" id="update-mail" placeholder="e.g. student@gmail.com">
                     <label>Update Gemini API Key</label><input type="password" id="update-gemini" placeholder="New AIzaSy...">
-                    <label>Update Groq API Key</label><input type="password" id="update-groq" placeholder="New gsk_...">
+                    <label>Update Primary Groq API Key</label><input type="password" id="update-groq" placeholder="New gsk_...">
+                    <label>Update Verification Groq Key (Phase 2)</label><input type="password" id="update-groq-verify" placeholder="New gsk_ (For QA)">
                     <label>Update OpenRouter API Key</label><input type="password" id="update-openrouter" placeholder="New sk-or-v1-...">
                     <label>Update DeepSeek API Key</label><input type="password" id="update-deepseek" placeholder="New sk-...">
                     <button id="save-tokens-btn" class="cyber-btn" style="width: auto; margin-top: 20px;">Save Configuration</button>
