@@ -148,15 +148,21 @@ function applySessionEnvironment() {
     const diffSelect = document.getElementById('difficulty');
 
     if (!isAdmin) {
-        if (diffSelect) diffSelect.value = "2";
+        if (diffSelect) {
+            diffSelect.value = "2";
+            diffSelect.disabled = true; // Hard-locks difficulty selector for non-admins
+        }
         if (orgSelect) {
             Array.from(orgSelect.options).forEach(opt => {
                 opt.style.display = (opt.value === 'gemini') ? 'block' : 'none';
             });
             orgSelect.value = 'gemini';
+            orgSelect.disabled = true; // Locks organization selector to Gemini
         }
     } else {
+        if (diffSelect) diffSelect.disabled = false;
         if (orgSelect) {
+            orgSelect.disabled = false;
             Array.from(orgSelect.options).forEach(opt => {
                 opt.style.display = 'block';
             });
