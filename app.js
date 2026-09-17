@@ -31,19 +31,16 @@ const PROVIDER_MODELS = {
         { id: "gemini-3.1-flash-lite", name: "Gemini 3.1 Flash Lite", maxLimit: 60 }
     ],
     groq: [
-        { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B (OpenAI)", maxLimit: 80 },
-        { id: "qwen/qwen3.8-27b", name: "Qwen 3.8 27B", maxLimit: 60 },
-        { id: "groq/compound", name: "Groq Compound", maxLimit: 75 },
-        { id: "groq/compound-mini", name: "Groq Compound Mini", maxLimit: 50 }
-    ],
+    { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B (High Reasoning)", maxLimit: 75 },
+    { id: "openai/gpt-oss-20b", name: "GPT-OSS 20B (Ultra Fast)", maxLimit: 60 },
+    { id: "qwen/qwen3.8-27b", name: "Qwen 3.8 27B (STEM / Multilingual)", maxLimit: 60 },
+    { id: "groq/compound", name: "Groq Compound", maxLimit: 70 },
+    { id: "groq/compound-mini", name: "Groq Compound Mini", maxLimit: 50 }
+],
     openrouter: [
         { id: "thinkingmachines/inkling:free", name: "Inkling (Free)", maxLimit: 75 },
         { id: "nvidia/nemotron-3-ultra-550b-a55b:free", name: "Nemotron 3 Ultra", maxLimit: 100 },
         { id: "google/gemma-4-31b-it:free", name: "Gemma 4 31B", maxLimit: 75 }
-    ],
-    deepseek: [
-        { id: "deepseek-v4-flash", name: "DeepSeek V4 Flash", maxLimit: 100 },
-        { id: "deepseek-v4-pro", name: "DeepSeek V4 Pro", maxLimit: 75 }
     ]
 };
 
