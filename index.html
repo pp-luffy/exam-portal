@@ -6,121 +6,48 @@
     <title>NEXUS OS | Pro CBT Suite</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
-
         :root {
-            --bg-deep: #030712;
-            --bg-card: #0f172a;
-            --border-glow: rgba(56, 189, 248, 0.2);
-            --neon-cyan: #00f2fe;
-            --neon-blue: #4facfe;
-            --neon-green: #10b981;
-            --neon-yellow: #f59e0b;
-            --neon-red: #ef4444;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
+            --bg-deep: #030712; --bg-card: #0f172a; --border-glow: rgba(56, 189, 248, 0.2);
+            --neon-cyan: #00f2fe; --neon-blue: #4facfe; --neon-green: #10b981;
+            --neon-yellow: #f59e0b; --neon-red: #ef4444; --text-main: #f8fafc; --text-muted: #94a3b8;
         }
-
         * { box-sizing: border-box; }
-
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: var(--bg-deep);
-            color: var(--text-main);
-            margin: 0; padding: 0; min-height: 100vh;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
-        ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.4); border-radius: 10px; }
-
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-deep); color: var(--text-main); margin: 0; padding: 0; min-height: 100vh; }
         .app-shell { display: flex; min-height: 100vh; }
-        
-        .sidebar {
-            display: none; width: 260px; background: #030712;
-            border-right: 1px solid var(--border-glow); padding: 24px;
-            position: fixed; height: 100vh; z-index: 100;
-        }
+        .sidebar { display: none; width: 260px; background: #030712; border-right: 1px solid var(--border-glow); padding: 24px; position: fixed; height: 100vh; z-index: 100; }
         .sidebar-brand { font-size: 20px; font-weight: 800; color: var(--neon-cyan); letter-spacing: 2px; margin-bottom: 40px; text-transform: uppercase; }
-        .sidebar-nav-item {
-            padding: 14px 18px; border-radius: 12px; cursor: pointer; color: var(--text-muted);
-            font-weight: 600; font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px;
-            transition: all 0.2s;
-        }
+        .sidebar-nav-item { padding: 14px 18px; border-radius: 12px; cursor: pointer; color: var(--text-muted); font-weight: 600; font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
         .sidebar-nav-item:hover, .sidebar-nav-item.active { background: rgba(0, 242, 254, 0.1); color: var(--neon-cyan); }
-
         .main-content { flex: 1; padding: 24px; max-width: 900px; margin: 0 auto; padding-bottom: 120px; }
-
-        @media (min-width: 768px) {
-            .sidebar { display: block; }
-            .main-content { margin-left: 260px; padding: 40px; max-width: 1000px; }
-            .bottom-nav { display: none !important; }
-        }
-
-        .page { display: none; }
-        .page.active { display: block; }
-
-        .bottom-nav {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            background: #030712; border-top: 1px solid var(--border-glow); 
-            display: flex; justify-content: space-around; padding: 12px 0; z-index: 1000;
-        }
+        @media (min-width: 768px) { .sidebar { display: block; } .main-content { margin-left: 260px; padding: 40px; max-width: 1000px; } .bottom-nav { display: none !important; } }
+        .page { display: none; } .page.active { display: block; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #030712; border-top: 1px solid var(--border-glow); display: flex; justify-content: space-around; padding: 12px 0; z-index: 1000; }
         .nav-item { color: var(--text-muted); text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase; cursor: pointer; }
-        .nav-item.active { color: var(--neon-cyan); }
-        .nav-icon { font-size: 20px; display: block; margin-bottom: 3px; }
-
-        .glass-card {
-            background: var(--bg-card); border: 1px solid var(--border-glow); border-radius: 20px;
-            padding: 28px; margin-bottom: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-
-        .header-title {
-            font-weight: 800; font-size: 28px; margin-bottom: 24px;
-            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
-
+        .nav-item.active { color: var(--neon-cyan); } .nav-icon { font-size: 20px; display: block; margin-bottom: 3px; }
+        .glass-card { background: var(--bg-card); border: 1px solid var(--border-glow); border-radius: 20px; padding: 28px; margin-bottom: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .header-title { font-weight: 800; font-size: 28px; margin-bottom: 24px; background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         label { display: block; margin-top: 18px; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
-        input, select {
-            width: 100%; padding: 14px 18px; margin-top: 8px; border-radius: 14px;
-            border: 1px solid rgba(255,255,255,0.1); background: #000; color: white; font-size: 15px; box-sizing: border-box;
-        }
+        input, select { width: 100%; padding: 14px 18px; margin-top: 8px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); background: #000; color: white; font-size: 15px; box-sizing: border-box; }
         input:focus, select:focus { outline: none; border-color: var(--neon-cyan); }
         select option { background: #0f172a; color: white; }
-
-        .cyber-btn {
-            padding: 14px 20px; border-radius: 12px; border: none;
-            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue));
-            color: #020617; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
-            cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 24px;
-        }
+        .cyber-btn { padding: 14px 20px; border-radius: 12px; border: none; background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue)); color: #020617; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 24px; }
         .cyber-btn.secondary { background: rgba(255,255,255,0.08); color: var(--text-main); border: 1px solid rgba(255,255,255,0.15); }
         .cyber-btn.danger { background: #ef4444; color: white; }
-
-        .cbt-header {
-            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;
-            background: #020617; padding: 16px 24px; border-radius: 16px; border: 1px solid var(--border-glow); margin-bottom: 20px;
-        }
+        .cbt-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; background: #020617; padding: 16px 24px; border-radius: 16px; border: 1px solid var(--border-glow); margin-bottom: 20px; }
         .progress-bar-container { width: 100%; background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; overflow: hidden; margin-top: 12px; }
         .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue)); width: 0%; transition: width 0.3s ease; }
         .timer-badge { font-family: 'JetBrains Mono', monospace; background: rgba(245, 158, 11, 0.15); border: 1px solid var(--neon-yellow); color: var(--neon-yellow); padding: 6px 14px; border-radius: 8px; font-weight: 700; }
-
         .q-palette-grid { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; padding: 14px; background: #020617; border-radius: 14px; border: 1px solid var(--border-glow); max-height: 120px; overflow-y: auto; }
         .pal-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); color: var(--text-muted); font-weight: 700; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .pal-btn.answered { background: rgba(16, 185, 129, 0.2); border-color: var(--neon-green); color: var(--neon-green); }
         .pal-btn.bookmarked { background: rgba(245, 158, 11, 0.2); border-color: var(--neon-yellow); color: var(--neon-yellow); }
         .pal-btn.current { border: 2px solid var(--neon-cyan); box-shadow: 0 0 10px rgba(0,242,254,0.4); }
-
         .q-text { font-size: 18px; line-height: 1.6; color: #fff; margin-bottom: 20px; font-weight: 600; }
-        .option-card {
-            display: flex; align-items: center; padding: 16px 20px; background: rgba(0,0,0,0.4);
-            margin: 12px 0; border-radius: 14px; border: 1px solid rgba(255,255,255,0.06); cursor: pointer; font-size: 15px; transition: 0.2s;
-        }
+        .option-card { display: flex; align-items: center; padding: 16px 20px; background: rgba(0,0,0,0.4); margin: 12px 0; border-radius: 14px; border: 1px solid rgba(255,255,255,0.06); cursor: pointer; font-size: 15px; }
         .option-card:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.2); }
         .option-card.selected { border-color: var(--neon-cyan); background: rgba(0, 242, 254, 0.1); }
         .option-card.correct { background: rgba(16, 185, 129, 0.2) !important; border-color: var(--neon-green) !important; color: #a7f3d0; }
         .option-card.wrong { background: rgba(239, 68, 68, 0.2) !important; border-color: var(--neon-red) !important; color: #fecaca; }
-
         .cbt-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; flex-wrap: wrap; gap: 12px; }
         #terminal { background: #000; color: var(--neon-cyan); padding: 20px; border-radius: 14px; font-family: 'JetBrains Mono', monospace; height: 300px; overflow-y: auto; font-size: 12px; border: 1px solid var(--border-glow); display: none; }
         .pulse-text { animation: pulse 2s infinite; color: var(--neon-cyan); font-weight: 700; font-size: 14px; text-align: center; }
@@ -133,28 +60,20 @@
     </style>
 </head>
 <body>
-
-    <!-- LOGIN SCREEN -->
     <div id="page-login" class="app-shell" style="align-items: center; justify-content: center; min-height: 100vh;">
         <div class="glass-card" style="width: 100%; max-width: 440px; margin: 20px;">
             <h1 class="header-title" style="font-size: 26px; text-align: center; margin-bottom: 10px;">NEXUS OS</h1>
             <p style="font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 24px;">Enter PIN and at least one API Key.</p>
-            
             <label>Master Passcode</label>
             <input type="password" id="app-pass" value="admin2026">
-            
             <label>Gemini API Key (Optional)</label>
             <input type="password" id="gemini-key" placeholder="AIzaSy...">
-            
             <label>Groq API Key (Optional)</label>
             <input type="password" id="groq-key" placeholder="gsk_...">
-            
-            <button class="cyber-btn" onclick="executeLogin()">Initialize Access</button>
+            <button id="login-btn" class="cyber-btn">Initialize Access</button>
             <p id="login-err" style="color: var(--neon-red); font-size: 13px; text-align: center; display: none; margin-top: 16px; font-weight: 600;"></p>
         </div>
     </div>
-
-    <!-- MAIN APP SHELL -->
     <div id="main-app" class="app-shell" style="display: none;">
         <div class="sidebar">
             <div class="sidebar-brand">NEXUS OS</div>
@@ -163,9 +82,7 @@
             <div class="sidebar-nav-item" id="side-chat" onclick="switchTab('chat')">🤖 NEXUS AI</div>
             <div class="sidebar-nav-item" id="side-settings" onclick="switchTab('settings')">⚙️ Config</div>
         </div>
-
         <div class="main-content">
-            <!-- EXAM ENGINE -->
             <div id="page-exam" class="page active">
                 <h1 class="header-title">Exam Engine</h1>
                 <div id="exam-setup" class="glass-card">
@@ -176,32 +93,22 @@
                         <option value="groq:llama-3.3-70b-versatile">Groq Backup: Llama 3.3 70B</option>
                         <option value="groq:llama-3.1-8b-instant">Groq Backup: Llama 3.1 8B</option>
                     </select>
-
                     <label>Target Standard</label>
                     <input type="text" id="exam" value="OPSC ASO / UPSC">
-                    
                     <label>Syllabus Topic</label>
                     <input type="text" id="topic" value="Tatsama sabda">
-                    
                     <div style="display:flex; gap: 16px;">
                         <div style="flex: 1;"><label>Questions</label><input type="number" id="count" value="5" min="1" max="100"></div>
-                        <div style="flex: 1;">
-                            <label>Language</label>
-                            <select id="lang"><option value="Odia">Odia</option><option value="English">English</option></select>
-                        </div>
+                        <div style="flex: 1;"><label>Language</label><select id="lang"><option value="Odia">Odia</option><option value="English">English</option></select></div>
                     </div>
-
                     <label>Timer (Minutes)</label>
                     <input type="number" id="timer-mins" value="10" min="1" max="180">
-                    
-                    <button class="cyber-btn" onclick="startExam()">Launch Examination</button>
+                    <button id="launch-btn" class="cyber-btn">Launch Examination</button>
                 </div>
-
                 <div id="terminal-screen" class="glass-card" style="display: none;">
                     <p class="pulse-text">Generating CBT Assessment...</p>
                     <div id="terminal"></div>
                 </div>
-
                 <div id="exam-active" style="display: none;">
                     <div class="cbt-header">
                         <div>
@@ -210,58 +117,50 @@
                         </div>
                         <div style="display:flex; align-items:center; gap:12px;">
                             <div id="timer-display" class="timer-badge">10:00</div>
-                            <button class="cyber-btn secondary" style="padding: 6px 12px; font-size: 12px; margin:0; width:auto;" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+                            <button id="fullscreen-btn" class="cyber-btn secondary" style="padding: 6px 12px; font-size: 12px; margin:0; width:auto;">⛶ Fullscreen</button>
                         </div>
                     </div>
-
                     <div id="q-palette" class="q-palette-grid"></div>
-
                     <div class="glass-card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
                             <span id="bookmark-badge" style="font-size: 12px; font-weight: 700; color: var(--neon-yellow);"></span>
-                            <button class="cyber-btn secondary" style="padding: 4px 10px; font-size: 11px; margin:0; width:auto;" onclick="toggleBookmark()">🔖 Bookmark</button>
+                            <button id="bookmark-btn" class="cyber-btn secondary" style="padding: 4px 10px; font-size: 11px; margin:0; width:auto;">🔖 Bookmark</button>
                         </div>
                         <h4 class="q-text" id="active-q-text">Loading...</h4>
                         <div id="active-options-container"></div>
                     </div>
-
                     <div class="cbt-footer">
                         <div style="display:flex; gap: 8px; flex-wrap: wrap;">
-                            <button class="cyber-btn secondary" style="margin:0; width:auto;" onclick="navigateQ(-1)">← Prev</button>
-                            <button class="cyber-btn secondary" style="margin:0; width:auto;" onclick="skipQ()">Skip</button>
-                            <button class="cyber-btn secondary" style="margin:0; width:auto;" onclick="clearAnswer()">Clear</button>
+                            <button id="prev-btn" class="cyber-btn secondary" style="margin:0; width:auto;">← Prev</button>
+                            <button id="skip-btn" class="cyber-btn secondary" style="margin:0; width:auto;">Skip</button>
+                            <button id="clear-btn" class="cyber-btn secondary" style="margin:0; width:auto;">Clear</button>
                         </div>
                         <div style="display:flex; gap: 8px; flex-wrap: wrap;">
-                            <button class="cyber-btn" style="margin:0; width:auto;" onclick="navigateQ(1)">Next →</button>
-                            <button class="cyber-btn danger" style="margin:0; width:auto;" onclick="confirmSubmit()">Submit</button>
+                            <button id="next-btn" class="cyber-btn" style="margin:0; width:auto;">Next →</button>
+                            <button id="submit-btn" class="cyber-btn danger" style="margin:0; width:auto;">Submit</button>
                         </div>
                     </div>
                 </div>
-
                 <div id="exam-results" class="glass-card" style="display: none;">
                     <h2 class="header-title" style="text-align: center; margin-bottom: 10px;">Assessment Report</h2>
                     <div id="score-summary-banner"></div>
                     <div style="display: flex; gap: 12px; justify-content: center; margin: 24px 0; flex-wrap: wrap;">
-                        <button class="cyber-btn" style="margin:0; width:auto;" onclick="filterReview('all')">Review All</button>
-                        <button class="cyber-btn secondary" style="margin:0; width:auto;" onclick="filterReview('wrong')">Review Mistakes</button>
-                        <button class="cyber-btn secondary" style="margin:0; width:auto;" onclick="restartSameQuiz()">Try Again</button>
-                        <button class="cyber-btn secondary" style="margin:0; width:auto;" onclick="resetExamUI()">New Quiz</button>
+                        <button id="rev-all-btn" class="cyber-btn" style="margin:0; width:auto;">Review All</button>
+                        <button id="rev-wrong-btn" class="cyber-btn secondary" style="margin:0; width:auto;">Review Mistakes</button>
+                        <button id="retry-btn" class="cyber-btn secondary" style="margin:0; width:auto;">Try Again</button>
+                        <button id="new-quiz-btn" class="cyber-btn secondary" style="margin:0; width:auto;">New Quiz</button>
                     </div>
                     <div id="review-container"></div>
                 </div>
             </div>
-
-            <!-- MISTAKE VAULT -->
             <div id="page-vault" class="page">
                 <h1 class="header-title">Mistake Vault</h1>
                 <div class="glass-card">
                     <p style="font-size: 13px; color: var(--text-muted); margin-top:0;">Failed questions saved for review.</p>
                     <div id="vault-container"></div>
-                    <button class="cyber-btn danger" onclick="clearVault()" id="clear-vault-btn">Purge Vault</button>
+                    <button id="clear-vault-btn" class="cyber-btn danger">Purge Vault</button>
                 </div>
             </div>
-
-            <!-- NEXUS AI -->
             <div id="page-chat" class="page">
                 <h1 class="header-title">NEXUS AI</h1>
                 <div class="glass-card" style="padding: 20px;">
@@ -269,25 +168,22 @@
                         <div class="msg ai">Neural tutor online. Ready for queries.</div>
                     </div>
                     <div style="display: flex; gap: 12px;">
-                        <input type="text" id="chat-input" placeholder="Ask syllabus doubt..." onkeypress="if(event.key === 'Enter') sendChat()">
-                        <button class="cyber-btn" style="width: 65px; margin:0;" onclick="sendChat()">➤</button>
+                        <input type="text" id="chat-input" placeholder="Ask syllabus doubt...">
+                        <button id="send-chat-btn" class="cyber-btn" style="width: 65px; margin:0;">➤</button>
                     </div>
                 </div>
             </div>
-
-            <!-- SETTINGS -->
             <div id="page-settings" class="page">
                 <h1 class="header-title">System Config</h1>
                 <div class="glass-card">
                     <h3 style="color: var(--neon-cyan); margin-top:0;">Telemetry & Storage</h3>
                     <p style="color: var(--neon-green); font-size: 14px; font-weight: 600;">● Secure Local Storage Active</p>
-                    <button class="cyber-btn secondary" style="color: var(--text-main); width: auto;" onclick="exportLocalStorage()">Export Backup (JSON)</button>
+                    <button id="export-btn" class="cyber-btn secondary" style="color: var(--text-main); width: auto;">Export Backup (JSON)</button>
                     <hr style="border: none; border-top: 1px solid var(--border-glow); margin: 28px 0;">
-                    <button class="cyber-btn danger" style="width: auto;" onclick="logout()">Terminate Session</button>
+                    <button id="logout-btn" class="cyber-btn danger" style="width: auto;">Terminate Session</button>
                 </div>
             </div>
         </div>
-
         <div class="bottom-nav">
             <div class="nav-item active" id="nav-exam" onclick="switchTab('exam')"><span class="nav-icon">📝</span>Engine</div>
             <div class="nav-item" id="nav-vault" onclick="switchTab('vault')"><span class="nav-icon">🧠</span>Vault</div>
@@ -295,36 +191,6 @@
             <div class="nav-item" id="nav-settings" onclick="switchTab('settings')"><span class="nav-icon">⚙️</span>Config</div>
         </div>
     </div>
-
-    <script>
-        const MASTER_PASS = "admin2026";
-        let gKey = "";
-        let grKey = "";
-        let currentQuizData = [];
-        let userAnswers = {};
-        let userBookmarks = {};
-        let currentQIndex = 0;
-        let timerInterval = null;
-        let secondsLeft = 0;
-        let totalSecondsTaken = 0;
-        let mistakeVault = [];
-
-        try { mistakeVault = JSON.parse(localStorage.getItem("NEXUS_VAULT")) || []; } catch(e) { mistakeVault = []; }
-
-        window.onload = function() {
-            try {
-                if (localStorage.getItem("APP_PASS") === MASTER_PASS) {
-                    gKey = localStorage.getItem("GEMINI_KEY") || "";
-                    grKey = localStorage.getItem("GROQ_KEY") || "";
-                    if (gKey || grKey) {
-                        document.getElementById('page-login').style.display = 'none';
-                        document.getElementById('main-app').style.display = 'flex';
-                        renderVault();
-                    }
-                }
-            } catch(e) {}
-        };
-
-        function executeLogin() {
-            try {
-                const pass = document.getElemen
+    <script src="app.js"></script>
+</body>
+</html>
