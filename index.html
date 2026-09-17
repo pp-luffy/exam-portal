@@ -27,7 +27,7 @@
             margin: 0; 
             padding: 0; 
             height: 100vh;
-            overflow: hidden; /* Locks page-level rubber banding & pull-to-refresh */
+            overflow: hidden; 
             overscroll-behavior: none; 
         }
         .app-shell { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
@@ -42,7 +42,7 @@
             margin: 0 auto; 
             height: 100vh;
             overflow-y: auto; 
-            overscroll-behavior-y: contain; /* Keeps scrolling contained inside content box */
+            overscroll-behavior-y: contain; 
             padding-bottom: 120px; 
         }
         @media (min-width: 768px) { .sidebar { display: block; } .main-content { margin-left: 260px; padding: 40px; max-width: 1000px; } .bottom-nav { display: none !important; } }
@@ -86,21 +86,8 @@
     </style>
 </head>
 <body>
-    <div id="page-login" class="app-shell" style="align-items: center; justify-content: center; height: 100vh;">
-        <div class="glass-card" style="width: 100%; max-width: 440px; margin: 20px;">
-            <h1 class="header-title" style="font-size: 26px; text-align: center; margin-bottom: 10px;">NEXUS OS</h1>
-            <p style="font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 24px;">Enter PIN and at least one API Key.</p>
-            <label>Master Passcode</label>
-            <input type="password" id="app-pass" value="admin2026">
-            <label>Gemini API Key (Optional)</label>
-            <input type="password" id="gemini-key" placeholder="AIzaSy...">
-            <label>Groq API Key (Optional)</label>
-            <input type="password" id="groq-key" placeholder="gsk_...">
-            <button id="login-btn" class="cyber-btn">Initialize Access</button>
-            <p id="login-err" style="color: var(--neon-red); font-size: 13px; text-align: center; display: none; margin-top: 16px; font-weight: 600;"></p>
-        </div>
-    </div>
-    <div id="main-app" class="app-shell" style="display: none;">
+    <!-- MAIN APP SHELL (Directly Visible) -->
+    <div id="main-app" class="app-shell" style="display: flex;">
         <div class="sidebar">
             <div class="sidebar-brand">NEXUS OS</div>
             <div class="sidebar-nav-item active" id="side-exam" onclick="switchTab('exam')">📝 Exam Engine</div>
@@ -215,8 +202,6 @@
                     <h3 style="color: var(--neon-cyan); margin-top:0;">Telemetry & Storage</h3>
                     <p style="color: var(--neon-green); font-size: 14px; font-weight: 600;">● Secure Local Storage Active</p>
                     <button id="export-btn" class="cyber-btn secondary" style="color: var(--text-main); width: auto;">Export Backup (JSON)</button>
-                    <hr style="border: none; border-top: 1px solid var(--border-glow); margin: 28px 0;">
-                    <button id="logout-btn" class="cyber-btn danger" style="width: auto;">Terminate Session</button>
                 </div>
             </div>
         </div>
