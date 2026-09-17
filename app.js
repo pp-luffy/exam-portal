@@ -72,37 +72,38 @@ document.addEventListener("DOMContentLoaded", function() {
     if (document.getElementById('update-deepseek') && dsKey) document.getElementById('update-deepseek').value = dsKey;
 
     const orgSelect = document.getElementById('org-select');
-    if (orgSelect) orgSelect.addEventListener('change', updateModelDropdown);
+    if (orgSelect) orgSelect.addEventListener('change', () => updateModelDropdown());
     
     const modelSelect = document.getElementById('model-select');
-    if (modelSelect) modelSelect.addEventListener('change', updateQuotaDisplay);
+    if (modelSelect) modelSelect.addEventListener('change', () => updateQuotaDisplay());
 
     const diffSelect = document.getElementById('difficulty');
-    if (diffSelect) diffSelect.addEventListener('change', enforceLanguageConstraints);
+    if (diffSelect) diffSelect.addEventListener('change', () => enforceLanguageConstraints());
 
     const saveTokensBtn = document.getElementById('save-tokens-btn');
-    if (saveTokensBtn) saveTokensBtn.addEventListener('click', updateTokens);
+    if (saveTokensBtn) saveTokensBtn.addEventListener('click', () => updateTokens());
 
     const sendChatBtn = document.getElementById('send-chat-btn');
-    if (sendChatBtn) sendChatBtn.addEventListener('click', sendChat);
+    if (sendChatBtn) sendChatBtn.addEventListener('click', () => sendChat());
 
-    safeBind('login-btn', 'click', handleLogin);
-    safeBind('logout-btn', 'click', logout);
-    safeBind('launch-btn', 'click', startExam);
-    safeBind('exit-exam-btn', 'click', confirmExitExam);
-    safeBind('pause-timer-btn', 'click', toggleTimerPause);
-    safeBind('fullscreen-btn', 'click', toggleFullscreen);
-    safeBind('bookmark-btn', 'click', toggleBookmark);
+    // ALL EVENT BINDINGS WRAPPED IN ARROW FUNCTIONS TO PREVENT LOAD ORDER BUGS
+    safeBind('login-btn', 'click', () => handleLogin());
+    safeBind('logout-btn', 'click', () => logout());
+    safeBind('launch-btn', 'click', () => startExam());
+    safeBind('exit-exam-btn', 'click', () => confirmExitExam());
+    safeBind('pause-timer-btn', 'click', () => toggleTimerPause());
+    safeBind('fullscreen-btn', 'click', () => toggleFullscreen());
+    safeBind('bookmark-btn', 'click', () => toggleBookmark());
     safeBind('prev-btn', 'click', () => navigateQ(-1));
-    safeBind('skip-btn', 'click', skipQ);
-    safeBind('clear-btn', 'click', clearAnswer);
+    safeBind('skip-btn', 'click', () => skipQ());
+    safeBind('clear-btn', 'click', () => clearAnswer());
     safeBind('next-btn', 'click', () => navigateQ(1));
-    safeBind('submit-btn', 'click', confirmSubmit);
+    safeBind('submit-btn', 'click', () => confirmSubmit());
     safeBind('rev-all-btn', 'click', () => filterReview('all'));
     safeBind('rev-wrong-btn', 'click', () => filterReview('wrong'));
-    safeBind('retry-btn', 'click', restartSameQuiz);
-    safeBind('clear-vault-btn', 'click', clearVault);
-    safeBind('export-btn', 'click', exportLocalStorage);
+    safeBind('retry-btn', 'click', () => restartSameQuiz());
+    safeBind('clear-vault-btn', 'click', () => clearVault());
+    safeBind('export-btn', 'click', () => exportLocalStorage());
 
     safeBind('new-quiz-btn', 'click', () => {
         if (window.location.search.includes('mode=exam')) {
@@ -124,7 +125,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     const langSelect = document.getElementById('lang');
-    if (langSelect) langSelect.addEventListener('change', enforceLanguageConstraints);
+    if (langSelect) langSelect.addEventListener('change', () => enforceLanguageConstraints());
 
     const countInput = document.getElementById('count');
     if (countInput) {
