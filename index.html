@@ -70,7 +70,7 @@
         .cbt-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; flex-wrap: wrap; gap: 12px; }
         #terminal { background: #000; color: var(--neon-cyan); padding: 20px; border-radius: 14px; font-family: 'JetBrains Mono', monospace; height: 300px; overflow-y: auto; font-size: 12px; border: 1px solid var(--border-glow); display: none; }
         .pulse-text { animation: pulse 2s infinite; color: var(--neon-cyan); font-weight: 700; font-size: 14px; text-align: center; }
-        .chat-box { height: calc(100vh - 320px); overflow-y: auto; display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px; padding-right: 8px; }
+        .chat-box { height: calc(100vh - 380px); overflow-y: auto; display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px; padding-right: 8px; }
         .msg { padding: 14px 18px; border-radius: 16px; max-width: 85%; font-size: 15px; }
         .msg.user { background: var(--neon-blue); color: #020617; font-weight: 600; align-self: flex-end; }
         .msg.ai { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); align-self: flex-start; }
@@ -201,6 +201,14 @@
             <div id="page-chat" class="page">
                 <h1 class="header-title">NEXUS AI</h1>
                 <div class="glass-card" style="padding: 20px;">
+                    <div style="margin-bottom: 12px;">
+                        <label style="margin-top:0;">Active Chat Model</label>
+                        <select id="chat-model-select" style="padding: 10px 14px; font-size: 13px; margin-top: 4px;">
+                            <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
+                            <option value="llama-3.3-70b-versatile">Groq: Llama 3.3 70B</option>
+                            <option value="nvidia/nemotron-3-ultra-550b-a55b:free">OpenRouter: Nemotron 3 Ultra</option>
+                        </select>
+                    </div>
                     <div class="chat-box" id="chat-box">
                         <div class="msg ai">Neural tutor online. Ready for queries.</div>
                     </div>
