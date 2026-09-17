@@ -24,6 +24,22 @@
             background: radial-gradient(circle at 50% -20%, #0f172a 0%, var(--bg-deep) 100%); 
             color: var(--text-main); margin: 0; padding: 0; height: 100vh; overflow: hidden; overscroll-behavior: none; 
         }
+        
+        /* BOOT SPLASH SEQUENCE */
+        #boot-splash {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: radial-gradient(circle at center, #0f172a 0%, #030712 100%);
+            z-index: 99999; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            transition: opacity 0.6s cubic-bezier(0.87, 0, 0.13, 1), transform 0.6s cubic-bezier(0.87, 0, 0.13, 1);
+        }
+        .boot-logo { font-size: 36px; font-weight: 800; color: var(--neon-cyan); letter-spacing: 6px; margin-bottom: 16px; text-shadow: 0 0 25px rgba(0, 242, 254, 0.6); }
+        .boot-text { font-family: 'JetBrains Mono', monospace; color: var(--neon-blue); font-size: 11px; margin-bottom: 40px; letter-spacing: 3px; text-transform: uppercase; animation: blinkText 1s infinite; }
+        .boot-bar-container { width: 220px; height: 4px; background: rgba(0, 242, 254, 0.1); border-radius: 4px; overflow: hidden; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); }
+        .boot-bar-fill { width: 0%; height: 100%; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue)); box-shadow: 0 0 15px var(--neon-cyan); animation: systemBoot 1.5s cubic-bezier(0.7, 0, 0.3, 1) forwards; }
+        @keyframes blinkText { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @keyframes systemBoot { 0% { width: 0%; } 40% { width: 45%; } 70% { width: 80%; } 100% { width: 100%; } }
+
         .app-shell { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
         .sidebar { display: none; width: 260px; background: rgba(3, 7, 18, 0.95); backdrop-filter: blur(12px); border-right: 1px solid var(--border-glow); padding: 24px; position: fixed; height: 100vh; z-index: 100; }
         .sidebar-brand { font-size: 22px; font-weight: 800; color: var(--neon-cyan); letter-spacing: 3px; margin-bottom: 40px; text-transform: uppercase; text-shadow: 0 0 15px rgba(0,242,254,0.4); }
@@ -65,7 +81,7 @@
         .option-card.wrong { background: rgba(239, 68, 68, 0.25) !important; border-color: var(--neon-red) !important; color: #fecaca; }
         .cbt-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; flex-wrap: wrap; gap: 10px; }
         
-        /* Quantum Futuristic Loader */
+        /* Quantum Loader */
         .quantum-loader-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 20px; text-align: center; }
         .quantum-ring { width: 70px; height: 70px; border: 3px solid rgba(0, 242, 254, 0.1); border-top: 3px solid var(--neon-cyan); border-radius: 50%; animation: quantumSpin 1s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite; box-shadow: 0 0 20px rgba(0, 242, 254, 0.3), inset 0 0 15px rgba(0, 242, 254, 0.2); margin-bottom: 20px; }
         @keyframes quantumSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -80,6 +96,15 @@
     </style>
 </head>
 <body>
+    <!-- SYSTEM BOOT SEQUENCE -->
+    <div id="boot-splash">
+        <div class="boot-logo">NEXUS OS</div>
+        <div class="boot-text">Establishing Neural Link...</div>
+        <div class="boot-bar-container">
+            <div class="boot-bar-fill"></div>
+        </div>
+    </div>
+
     <div id="main-app" class="app-shell" style="display: flex;">
         <div class="sidebar">
             <div class="sidebar-brand">NEXUS OS</div>
@@ -198,6 +223,32 @@
                 <div id="exam-results" class="glass-card" style="display: none;">
                     <h2 class="header-title" style="text-align: center; margin-bottom: 10px;">Assessment Report</h2>
                     <div id="score-summary-banner"></div>
+                    
+                    <div style="background: rgba(0,0,0,0.4); border: 1px solid var(--border-glow); padding: 16px; border-radius: 16px; margin: 20px 0;">
+                        <h4 style="color: var(--neon-cyan); margin-top: 0; font-size: 13px; letter-spacing: 1px; text-transform: uppercase;">📤 Export & Mail Report</h4>
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                            <div style="flex: 1; min-width: 140px;">
+                                <label style="margin-top:0;">Export Format</label>
+                                <select id="export-format" style="margin-top: 4px; padding: 10px;">
+                                    <option value="pdf">PDF File (via Print)</option>
+                                    <option value="html">HTML Report File</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1; min-width: 140px;">
+                                <label style="margin-top:0;">Filter Filter</label>
+                                <select id="export-filter" style="margin-top: 4px; padding: 10px;">
+                                    <option value="all">All Questions</option>
+                                    <option value="correct">Correct Only</option>
+                                    <option value="wrong">Wrong / Mistakes Only</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap;">
+                            <button id="download-report-btn" class="cyber-btn secondary" style="flex: 1; margin:0; font-size: 12px; padding: 12px;">📥 Download Report</button>
+                            <button id="mail-report-btn" class="cyber-btn" style="flex: 1; margin:0; font-size: 12px; padding: 12px;">✉️ Send to Config Email</button>
+                        </div>
+                    </div>
+
                     <div style="display: flex; gap: 10px; justify-content: center; margin: 20px 0; flex-wrap: wrap;">
                         <button id="rev-all-btn" class="cyber-btn" style="margin:0; width:auto;">Review All</button>
                         <button id="rev-wrong-btn" class="cyber-btn secondary" style="margin:0; width:auto;">Review Mistakes</button>
@@ -252,12 +303,13 @@
             <div id="page-settings" class="page">
                 <h1 class="header-title">System Config</h1>
                 <div class="glass-card">
-                    <h3 style="color: var(--neon-cyan); margin-top:0;">API Token Manager</h3>
+                    <h3 style="color: var(--neon-cyan); margin-top:0;">API Token & Dispatch Manager</h3>
+                    <label>Destination Mail ID for Reports</label><input type="email" id="update-mail" placeholder="e.g. student@gmail.com">
                     <label>Update Gemini API Key</label><input type="password" id="update-gemini" placeholder="New AIzaSy...">
                     <label>Update Groq API Key</label><input type="password" id="update-groq" placeholder="New gsk_...">
                     <label>Update OpenRouter API Key</label><input type="password" id="update-openrouter" placeholder="New sk-or-v1-...">
-                    <button id="save-tokens-btn" class="cyber-btn" style="width: auto; margin-top: 16px;">Save New Tokens</button>
-                    <p id="token-update-msg" style="color: var(--neon-green); font-size: 13px; display: none; margin-top: 10px; font-weight: 600;">Tokens updated successfully!</p>
+                    <button id="save-tokens-btn" class="cyber-btn" style="width: auto; margin-top: 16px;">Save Configuration</button>
+                    <p id="token-update-msg" style="color: var(--neon-green); font-size: 13px; display: none; margin-top: 10px; font-weight: 600;">Configuration saved successfully!</p>
                     <hr style="border: none; border-top: 1px solid var(--border-glow); margin: 28px 0;">
                     <h3 style="color: var(--neon-cyan); margin-top:0;">Telemetry & Storage</h3>
                     <p style="color: var(--neon-green); font-size: 14px; font-weight: 600;">● Secure Local Storage Active</p>
@@ -275,6 +327,5 @@
     </div>
     <script src="app.js"></script>
     <script src="engine.js"></script>
-    <script src="creative.js"></script>
 </body>
 </html>
