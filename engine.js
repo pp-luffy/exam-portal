@@ -41,6 +41,43 @@ function cancelActiveRequest() {
     resetExamUI();
 }
 
+async function executeFallback(prompt, signal) {
+    const terminal = document.getElementById('terminal');
+    terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[WARNING]: Primary endpoint failed. Initiating automated failover to Gemini 3.8 Flash...</span><br>`;
+    
+    const fallbackKey = localStorage.getItem("GEMINI_KEY");
+    if (!fallbackKey) throw new Error("Fallback failed: Gemini API Key not found.");
+
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:streamGenerateContent?key=${fallbackKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { maxOutputTokens: 65536, temperature: 0.4 }
+        }),
+        signal: signal
+    });
+    
+    if (!res.ok) throw new Error(`Fallback HTTP ${res.status}`);
+    
+    let fullResponse = "";
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const matches = [...chunk.matchAll(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/g)];
+        for (const m of matches) {
+            const snippet = m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+            terminal.textContent += snippet;
+            terminal.scrollTop = terminal.scrollHeight;
+            fullResponse += snippet;
+        }
+    }
+    return fullResponse;
+}
+
 async function startExam() {
     gKey = localStorage.getItem("GEMINI_KEY") || gKey;
     grKey = localStorage.getItem("GROQ_KEY") || grKey;
@@ -96,6 +133,8 @@ async function startExam() {
     secondsLeft = mins * 60;
     totalSecondsTaken = 0;
 
+    const adminPromptTxt = isAdmin ? (document.getElementById('admin-prompt').value || "").trim() : "";
+
     const prompt = `You are a ruthless, expert Chief Question Paper Setter for competitive examinations like ${exam}. 
 Generate EXACTLY ${count} high-standard questions for the Subject: "${subject}", focusing on the Topic: "${topic}". 
 Output language must be strictly in ${lang}.
@@ -114,7 +153,8 @@ RULES:
     "options": ["Opt1", "Opt2", "Opt3", "Opt4"],
     "correct_option_index": 2
   }
-]`;
+]
+${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
 
     if (activeController) activeController.abort();
     activeController = new AbortController();
@@ -197,9 +237,18 @@ RULES:
             console.log('[SYSTEM]: Request aborted.');
             return;
         }
-        terminal.style.color = "var(--neon-red)";
-        terminal.innerHTML += `<br><br>[FAILURE]: ${err.message}`;
-        setTimeout(resetExamUI, 6000);
+        
+        try {
+            const fallbackResponse = await executeFallback(prompt, signal);
+            const match = fallbackResponse.match(/\[[\s\S]*\]/);
+            currentQuizData = match ? JSON.parse(match[0]) : JSON.parse(fallbackResponse);
+            userAnswers = {}; userBookmarks = {}; currentQIndex = 0;
+            initCBTExam();
+        } catch (fallbackErr) {
+            terminal.style.color = "var(--neon-red)";
+            terminal.innerHTML += `<br><br>[CRITICAL FAILURE]: Primary and Fallback models both failed. ${err.message}`;
+            setTimeout(resetExamUI, 6000);
+        }
     }
 }
 
@@ -387,10 +436,18 @@ function emailAssessmentReport() {
     }
 
     const format = document.getElementById('export-format').value;
-    const subject = encodeURIComponent("NEXUS OS CBT Assessment Report");
-    const body = encodeURIComponent(`Hello,\n\nPlease find attached or generated below your requested CBT test report.\n\nExam Target: ${document.getElementById('exam').value}\nSubject: ${document.getElementById('subject').value}\nTopic: ${document.getElementById('topic').value}\n\n[Export Format Selected: ${format.toUpperCase()}]`);
+    const exam = document.getElementById('exam').value || "Assessment";
+    
+    // Force Local Download first due to mailto security blocks on attachments
+    alert(`Downloading the ${format.toUpperCase()} report now. Please ATTACH this downloaded file to the email window that opens next.`);
+    downloadAssessmentReport();
 
-    window.location.href = `mailto:${mailId}?subject=${subject}&body=${body}`;
+    const subject = encodeURIComponent(`NEXUS OS CBT Assessment Report: ${exam}`);
+    const body = encodeURIComponent(`Hello,\n\nPlease find the attached ${format.toUpperCase()} CBT test report.\n\nExam Target: ${document.getElementById('exam').value}\nSubject: ${document.getElementById('subject').value}\nTopic: ${document.getElementById('topic').value}\n\n(Note to operator: Ensure you have attached the downloaded file before sending).`);
+
+    setTimeout(() => {
+        window.location.href = `mailto:${mailId}?subject=${subject}&body=${body}`;
+    }, 1500);
 }
 
 function restartSameQuiz() { userAnswers = {}; initCBTExam(); }
@@ -407,6 +464,12 @@ function renderVault() {
     const c = document.getElementById('vault-container');
     if (!c) return;
     c.innerHTML = "";
+    
+    const adminJsonBox = document.getElementById('vault-json-textarea');
+    if (adminJsonBox) {
+        adminJsonBox.value = JSON.stringify(mistakeVault, null, 2);
+    }
+
     if (mistakeVault.length === 0) { c.innerHTML = `<p style="color:var(--neon-green); text-align:center;">Vault is empty.</p>`; return; }
     mistakeVault.forEach(q => {
         c.innerHTML += `<div class="glass-card" style="border-left:4px solid var(--neon-red); padding:16px;">
