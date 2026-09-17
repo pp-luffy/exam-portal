@@ -75,6 +75,7 @@ document.addEventListener("DOMContentLoaded", function() {
     safeBind('login-btn', 'click', handleLogin);
     safeBind('logout-btn', 'click', logout);
     safeBind('launch-btn', 'click', startExam);
+    safeBind('exit-exam-btn', 'click', confirmExitExam);
     safeBind('fullscreen-btn', 'click', toggleFullscreen);
     safeBind('bookmark-btn', 'click', toggleBookmark);
     safeBind('prev-btn', 'click', () => navigateQ(-1));
@@ -176,6 +177,16 @@ function applySessionEnvironment() {
 function logout() {
     localStorage.removeItem("NEXUS_USER");
     location.reload();
+}
+
+function confirmExitExam() {
+    if (confirm("Are you sure you want to exit the examination? Current progress will be lost.")) {
+        if (typeof cancelActiveRequest === 'function') {
+            cancelActiveRequest();
+        } else {
+            resetExamUI();
+        }
+    }
 }
 
 function updateModelDropdown() {
