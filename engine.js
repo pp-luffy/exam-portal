@@ -41,6 +41,83 @@ function cancelActiveRequest() {
     resetExamUI();
 }
 
+// ==========================================
+// PHASE 2: QA VERIFICATION VIA GROQ 20B
+// ==========================================
+async function verifyAndCorrectQuizData(quizData, signal) {
+    const terminal = document.getElementById('terminal');
+    const groqKey = localStorage.getItem("GROQ_KEY");
+    
+    if (!groqKey) {
+        terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[WARNING]: Groq API key missing. Skipping Phase 2 verification.</span><br>`;
+        return quizData; 
+    }
+
+    terminal.innerHTML += `<br><span style='color: var(--neon-cyan);'>[PHASE 2]: Initiating Quality Assurance via GPT-OSS-20B...</span><br>`;
+
+    const verifyPrompt = `You are a strict QA Audit System for a competitive exam engine. 
+Review the following JSON array of multiple-choice questions. Check for factual errors, illogical distractors, or an incorrect 'correct_option_index'.
+
+If ALL questions are 100% accurate, return EXACTLY: {"corrections": []}
+
+If ANY questions are flawed, return a JSON object with a "corrections" array containing ONLY the fixed questions. Use this exact schema:
+{
+  "corrections": [
+    {
+      "index": 0, // The 0-based index of the flawed question in the original array
+      "question": "The corrected question text...",
+      "options": ["Opt1", "Opt2", "Opt3", "Opt4"],
+      "correct_option_index": 2
+    }
+  ]
+}
+
+Original Array to Audit:
+${JSON.stringify(quizData)}`;
+
+    try {
+        const payload = { 
+            model: "openai/gpt-oss-20b", 
+            messages: [{ role: "user", content: verifyPrompt }], 
+            temperature: 0.1, 
+            max_tokens: 4096,
+            response_format: { type: "json_object" }
+        };
+
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
+            body: JSON.stringify(payload),
+            signal: signal
+        });
+
+        if (!res.ok) throw new Error(`QA HTTP ${res.status}`);
+        
+        const data = await res.json();
+        const parsed = JSON.parse(data.choices[0].message.content);
+
+        if (parsed.corrections && Array.isArray(parsed.corrections) && parsed.corrections.length > 0) {
+            terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[QA ALERT]: Intercepted and patched ${parsed.corrections.length} flawed question(s).</span><br>`;
+            // Apply the corrections over the original data
+            parsed.corrections.forEach(c => {
+                if (c.index >= 0 && c.index < quizData.length) {
+                    quizData[c.index].question = c.question;
+                    quizData[c.index].options = c.options;
+                    quizData[c.index].correct_option_index = c.correct_option_index;
+                }
+            });
+        } else {
+            terminal.innerHTML += `<br><span style='color: var(--neon-green);'>[QA CLEAR]: 0 anomalies detected. Assessment locked.</span><br>`;
+        }
+        
+    } catch (err) {
+        if (err.name === 'AbortError') throw err;
+        terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[WARNING]: QA Verification timeout/error. Proceeding with standard generation.</span><br>`;
+    }
+
+    return quizData;
+}
+
 async function executeFallback(prompt, signal) {
     const terminal = document.getElementById('terminal');
     terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[WARNING]: Primary endpoint failed. Initiating automated failover to Gemini 3.8 Flash...</span><br>`;
@@ -112,7 +189,7 @@ async function startExam() {
     
     const terminal = document.getElementById('terminal');
     terminal.style.display = 'block';
-    terminal.innerHTML = "<span style='color: var(--neon-cyan);'>[CORE INITIALIZED]: Connecting to neural parameters...</span><br>";
+    terminal.innerHTML = "<span style='color: var(--neon-cyan);'>[PHASE 1]: Synthesizing base neural parameters...</span><br>";
 
     let cancelWrapper = document.getElementById('terminal-cancel-btn');
     if (!cancelWrapper) {
@@ -135,18 +212,24 @@ async function startExam() {
 
     const adminPromptTxt = isAdmin ? (document.getElementById('admin-prompt').value || "").trim() : "";
 
-    const prompt = `You are a ruthless, expert Chief Question Paper Setter for competitive examinations like ${exam}. 
+    const prompt = `You are a ruthless, expert Chief Question Paper Setter AND a rigorous Quality Reviewer for competitive examinations like ${exam}. 
 Generate EXACTLY ${count} high-standard questions for the Subject: "${subject}", focusing on the Topic: "${topic}". 
-Output language must be strictly in ${lang}.
+Output language must strictly be ${lang}.
 
 DIFFICULTY LEVEL: Level ${difficulty} out of 5.
 - Formulate deep analytical questions, multi-statement evaluation traps, pairing mismatches, and subtle conceptual nuances matching top-tier competitive exams.
 - Construct ruthless, multi-concept integration traps with highly tricky options where superficial working leads directly to distractor options.
 
+QUALITY & VERIFICATION PROTOCOL (MANDATORY):
+Before writing each question into the JSON, you MUST internally execute this strict verification checklist:
+1. FACT CHECK: Is the underlying concept and answer 100% factually accurate without ambiguity?
+2. SINGLE TRUE ANSWER: Is there EXACTLY ONE unambiguously correct option? Are all other distractors definitively incorrect?
+3. INDEX CHECK: Does the correct_option_index strictly match the 0-based array position (0 to 3) of the correct answer?
+
 RULES: 
 1. NO EXPLANATIONS inside the question text or options array.
 2. Formulate highly plausible distractor traps.
-3. Output ONLY a valid JSON array matching this exact format with no extra markdown text:
+3. Output ONLY a valid JSON array matching this exact format, with no extra markdown text outside of it:
 [
   {
     "question": "Question text...",
@@ -227,6 +310,10 @@ ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
 
         const match = fullResponse.match(/\[[\s\S]*\]/);
         currentQuizData = match ? JSON.parse(match[0]) : JSON.parse(fullResponse);
+
+        // --- PHASE 2: LAUNCH QA VERIFICATION ---
+        currentQuizData = await verifyAndCorrectQuizData(currentQuizData, signal);
+
         userAnswers = {};
         userBookmarks = {};
         currentQIndex = 0;
@@ -242,6 +329,10 @@ ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
             const fallbackResponse = await executeFallback(prompt, signal);
             const match = fallbackResponse.match(/\[[\s\S]*\]/);
             currentQuizData = match ? JSON.parse(match[0]) : JSON.parse(fallbackResponse);
+            
+            // --- PHASE 2: LAUNCH QA VERIFICATION ON FALLBACK ---
+            currentQuizData = await verifyAndCorrectQuizData(currentQuizData, signal);
+            
             userAnswers = {}; userBookmarks = {}; currentQIndex = 0;
             initCBTExam();
         } catch (fallbackErr) {
