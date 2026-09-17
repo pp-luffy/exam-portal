@@ -9,20 +9,43 @@ let secondsLeft = 0;
 let totalSecondsTaken = 0;
 let mistakeVault = [];
 
+// Model Library mapped by Provider Organization including Qwen3 and Nemotron
+const PROVIDER_MODELS = {
+    gemini: [
+        { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash (High Speed / Latest)", maxLimit: 50 },
+        { id: "gemini-3.5-flash", name: "Gemini 3.5 Flash", maxLimit: 50 },
+        { id: "gemini-3.5-flash-lite", name: "Gemini 3.5 Flash Lite", maxLimit: 40 },
+        { id: "gemini-3.1-flash-lite", name: "Gemini 3.1 Flash Lite", maxLimit: 40 },
+        { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro (Deep Logic)", maxLimit: 30 }
+    ],
+    groq: [
+        { id: "qwen/qwen3-next-80b-a3b-instruct:free", name: "Qwen3 Next 80B A3B Instruct (Best for English + Odia)", maxLimit: 60 },
+        { id: "nvidia/nemotron-3-ultra-550b-a55b:free", name: "Nemotron 3 Ultra (Massive 65K Output Capacity)", maxLimit: 100 },
+        { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B Versatile", maxLimit: 50 },
+        { id: "openai/gpt-oss-120b", name: "OpenAI GPT-OSS 120B", maxLimit: 40 },
+        { id: "llama-3.1-8b-instant", name: "Llama 3.1 8B Instant (Ultra Fast)", maxLimit: 40 }
+    ]
+};
+
 try { mistakeVault = JSON.parse(localStorage.getItem("NEXUS_VAULT")) || []; } catch(e) { mistakeVault = []; }
 
 document.addEventListener("DOMContentLoaded", function() {
-    // Load existing stored keys on boot
     gKey = localStorage.getItem("GEMINI_KEY") || "";
     grKey = localStorage.getItem("GROQ_KEY") || "";
 
-    // Safely pre-populate config fields if they exist in DOM
     const geminiInput = document.getElementById('update-gemini');
     const groqInput = document.getElementById('update-groq');
     if (geminiInput && gKey) geminiInput.value = gKey;
     if (groqInput && grKey) groqInput.value = grKey;
 
-    // Bind all interactive elements safely
+    // Initialize Org and Model Selectors
+    const orgSelect = document.getElementById('org-select');
+    orgSelect.addEventListener('change', updateModelDropdown);
+    const modelSelect = document.getElementById('model-select');
+    modelSelect.addEventListener('change', updateQuotaDisplay);
+
+    updateModelDropdown();
+
     safeBind('launch-btn', 'click', startExam);
     safeBind('fullscreen-btn', 'click', toggleFullscreen);
     safeBind('bookmark-btn', 'click', toggleBookmark);
@@ -40,6 +63,9 @@ document.addEventListener("DOMContentLoaded", function() {
     safeBind('save-tokens-btn', 'click', updateTokens);
     safeBind('export-btn', 'click', exportLocalStorage);
 
+    const langSelect = document.getElementById('lang');
+    if (langSelect) langSelect.addEventListener('change', enforceLanguageConstraints);
+
     const chatInput = document.getElementById('chat-input');
     if (chatInput) {
         chatInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendChat(); });
@@ -48,10 +74,81 @@ document.addEventListener("DOMContentLoaded", function() {
     renderVault();
 });
 
-// Helper to prevent null-element crashes
 function safeBind(id, event, fn) {
     const el = document.getElementById(id);
     if (el) el.addEventListener(event, fn);
+}
+
+function updateModelDropdown() {
+    const org = document.getElementById('org-select').value;
+    const modelSelect = document.getElementById('model-select');
+    modelSelect.innerHTML = "";
+    
+    const list = PROVIDER_MODELS[org] || [];
+    list.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.name;
+        modelSelect.appendChild(opt);
+    });
+    updateQuotaDisplay();
+}
+
+function updateQuotaDisplay() {
+    const modelId = document.getElementById('model-select').value;
+    const statusVal = document.getElementById('quota-status-val');
+    const countInput = document.getElementById('count');
+    
+    // Check local cached quota header data per model
+    const cachedQuota = localStorage.getItem(`QUOTA_${modelId}`);
+    const org = document.getElementById('org-select').value;
+
+    if (cachedQuota) {
+        statusVal.textContent = cachedQuota;
+    } else {
+        // Initial Free Tier baseline defaults
+        if (org === 'groq') {
+            statusVal.textContent = "Free Tier: ~30 RPM / 14.4K RPD (Cached Header Pending)";
+        } else {
+            statusVal.textContent = "Free Tier: Standard Rate Limit (Cached Header Pending)";
+        }
+    }
+    enforceLanguageConstraints();
+}
+
+function enforceLanguageConstraints() {
+    const modelId = document.getElementById('model-select').value;
+    const lang = document.getElementById('lang').value;
+    const countInput = document.getElementById('count');
+    const org = document.getElementById('org-select').value;
+
+    let baseLimit = 50;
+    const list = PROVIDER_MODELS[org] || [];
+    const found = list.find(m => m.id === modelId);
+    if (found) baseLimit = found.maxLimit;
+
+    // Odia multi-byte script requires higher token weight per question payload, adjust max bounds
+    if (lang === 'Odia') {
+        baseLimit = Math.floor(baseLimit * 0.75);
+    }
+
+    countInput.max = baseLimit;
+    if (parseInt(countInput.value) > baseLimit) {
+        countInput.value = baseLimit;
+    }
+}
+
+function parseAndCacheHeaders(res, modelId) {
+    // Look for standard rate limit remaining headers (x-ratelimit-remaining-requests, etc.)
+    const remainingReqs = res.headers.get('x-ratelimit-remaining-requests') || res.headers.get('x-goog-ratelimit-remaining');
+    const remainingTokens = res.headers.get('x-ratelimit-remaining-tokens');
+    
+    if (remainingReqs || remainingTokens) {
+        const quotaStr = `Requests Left: ${remainingReqs || 'OK'} | Tokens Left: ${remainingTokens || 'Active'}`;
+        localStorage.setItem(`QUOTA_${modelId}`, quotaStr);
+        const statusVal = document.getElementById('quota-status-val');
+        if (statusVal) statusVal.textContent = quotaStr;
+    }
 }
 
 function updateTokens() {
@@ -102,11 +199,21 @@ function switchTab(tab) {
 async function startExam() {
     gKey = localStorage.getItem("GEMINI_KEY") || gKey;
     grKey = localStorage.getItem("GROQ_KEY") || grKey;
-    const activeKey = gKey || grKey;
+    
+    const org = document.getElementById('org-select').value;
+    const activeKey = org === 'groq' ? grKey : gKey;
     
     if (!activeKey) {
-        alert("API Key missing! Please go to the Config tab and enter your Gemini or Groq API Key before launching.");
+        alert(`API Key missing for ${org.toUpperCase()}! Please go to the Config tab and enter your key.`);
         switchTab('settings');
+        return;
+    }
+
+    const exam = document.getElementById('exam').value.trim();
+    const topic = document.getElementById('topic').value.trim();
+
+    if (!exam || !topic) {
+        alert("Please fill in both the Target Standard and Syllabus Topic.");
         return;
     }
 
@@ -117,11 +224,9 @@ async function startExam() {
     terminal.innerHTML = "";
 
     const rawModel = document.getElementById('model-select').value;
-    const exam = document.getElementById('exam').value;
-    const topic = document.getElementById('topic').value;
     const count = document.getElementById('count').value;
     const lang = document.getElementById('lang').value;
-    const mins = parseInt(document.getElementById('timer-mins').value) || 10;
+    const mins = parseInt(document.getElementById('timer-mins').value) || 15;
 
     secondsLeft = mins * 60;
     totalSecondsTaken = 0;
@@ -138,23 +243,23 @@ RULES: 1. NO EXPLANATIONS. 2. Plausible distractor traps. 3. Output ONLY a valid
 
     try {
         let fullResponse = "";
-        if (rawModel.startsWith("groq:")) {
-            if (!grKey) throw new Error("Groq API key required for this model.");
+        if (org === 'groq') {
             const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${grKey}` },
-                body: JSON.stringify({ model: rawModel.replace("groq:", ""), messages: [{ role: "user", content: prompt }], temperature: 0.3, response_format: { type: "json_object" } })
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeKey}` },
+                body: JSON.stringify({ model: rawModel, messages: [{ role: "user", content: prompt }], temperature: 0.3, response_format: { type: "json_object" } })
             });
+            parseAndCacheHeaders(res, rawModel);
             if (!res.ok) throw new Error(`Groq HTTP error ${res.status}`);
             const data = await res.json();
             fullResponse = data.choices[0].message.content;
         } else {
-            if (!gKey) throw new Error("Gemini API key required for this model.");
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${rawModel}:streamGenerateContent?key=${gKey}`, {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${rawModel}:streamGenerateContent?key=${activeKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
             });
+            parseAndCacheHeaders(res, rawModel);
             if (!res.ok) {
                 const errJson = await res.json();
                 throw new Error(errJson.error?.message || `HTTP error ${res.status}`);
@@ -334,10 +439,11 @@ function clearVault() { if(confirm("Purge vault?")) { mistakeVault = []; localSt
 
 async function sendChat() {
     gKey = localStorage.getItem("GEMINI_KEY") || gKey;
-    const activeKey = gKey || grKey;
+    const org = document.getElementById('org-select').value;
+    const activeKey = org === 'groq' ? grKey : gKey;
     
     if (!activeKey) {
-        alert("API Key missing! Please go to the Config tab to enter your key.");
+        alert(`API Key missing for ${org.toUpperCase()}! Please go to the Config tab.`);
         switchTab('settings');
         return;
     }
@@ -356,32 +462,11 @@ async function sendChat() {
     box.appendChild(ai);
     
     try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${activeKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: "Tutor: " + msg }] }] })
-        });
-        const data = await res.json();
-        ai.innerText = data.candidates[0].content.parts[0].text;
-    } catch(e) { ai.innerText = "Connection error."; }
-    box.scrollTop = box.scrollHeight;
-}
-
-function exportLocalStorage() {
-    const obj = {};
-    for(let i=0; i<localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if(k !== "GEMINI_KEY" && k !== "GROQ_KEY") obj[k] = localStorage.getItem(k);
-    }
-    const a = document.createElement('a');
-    a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2));
-    a.download = "nexus_backup.json";
-    a.click();
-}
-
-function resetExamUI() {
-    if(timerInterval) clearInterval(timerInterval);
-    document.getElementById('exam-results').style.display = 'none';
-    document.getElementById('exam-active').style.display = 'none';
-    document.getElementById('exam-setup').style.display = 'block';
-}
+        let resText = "";
+        if (org === 'groq') {
+            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeKey}` },
+                body: JSON.stringify({ model: "qwen/qwen3-next-80b-a3b-instruct:free", messages: [{ role: "user", content: "Tutor: " + msg }] })
+            });
+            const data = await res.js
