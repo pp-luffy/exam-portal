@@ -14,14 +14,14 @@ let gKey = "";
 let grKey = "";
 let orKey = "";
 
-// Strictly verified active Model IDs for Gemini, Groq, and OpenRouter Free Tier
 const PROVIDER_MODELS = {
     gemini: [
-        { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", maxLimit: 75 },
-        { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash", maxLimit: 75 },
-        { id: "gemini-2.0-flash-lite-preview-02-05", name: "Gemini 2.0 Flash Lite", maxLimit: 60 },
-        { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash", maxLimit: 75 },
-        { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro", maxLimit: 50 }
+        { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash", maxLimit: 75 },
+        { id: "gemini-3.7-flash", name: "Gemini 3.7 Flash", maxLimit: 75 },
+        { id: "gemini-3.6-flash", name: "Gemini 3.6 Flash", maxLimit: 75 },
+        { id: "gemini-3.5-flash", name: "Gemini 3.5 Flash", maxLimit: 75 },
+        { id: "gemini-3.5-flash-lite", name: "Gemini 3.5 Flash Lite", maxLimit: 60 },
+        { id: "gemini-3.1-flash-lite", name: "Gemini 3.1 Flash Lite", maxLimit: 60 }
     ],
     groq: [
         { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B", maxLimit: 60 },
@@ -35,7 +35,11 @@ const PROVIDER_MODELS = {
         { id: "google/gemma-2-9b-it:free", name: "Gemma 2 9B (Free)", maxLimit: 50 },
         { id: "mistralai/mistral-7b-instruct:free", name: "Mistral 7B (Free)", maxLimit: 50 },
         { id: "qwen/qwen-2.5-7b-instruct:free", name: "Qwen 2.5 7B (Free)", maxLimit: 50 },
-        { id: "qwen/qwen-2-72b-instruct:free", name: "Qwen 2 72B (Free)", maxLimit: 80 }
+        { id: "qwen/qwen-2-72b-instruct:free", name: "Qwen 2 72B (Free)", maxLimit: 80 },
+        { id: "nvidia/nemotron-3-ultra-550b-a55b:free", name: "Nemotron 3 Ultra", maxLimit: 100 },
+        { id: "nvidia/nemotron-3-super:free", name: "Nemotron 3 Super", maxLimit: 100 },
+        { id: "google/gemma-4-31b-it:free", name: "Gemma 4 31B", maxLimit: 75 },
+        { id: "google/gemma-4-26b-a4b-it:free", name: "Gemma 4 26B", maxLimit: 75 }
     ]
 };
 
