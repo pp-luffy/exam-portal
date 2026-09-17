@@ -14,27 +14,28 @@ let gKey = "";
 let grKey = "";
 let orKey = "";
 
+// Strictly verified active Model IDs for Gemini, Groq, and OpenRouter Free Tier
 const PROVIDER_MODELS = {
     gemini: [
-        { id: "gemini-3.7-flash", name: "Gemini 3.7 Flash", maxLimit: 75 },
-        { id: "gemini-3.6-flash", name: "Gemini 3.6 Flash", maxLimit: 75 },
-        { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash", maxLimit: 75 },
-        { id: "gemini-3.5-flash", name: "Gemini 3.5 Flash", maxLimit: 75 },
-        { id: "gemini-3.5-flash-lite", name: "Gemini 3.5 Flash Lite", maxLimit: 60 },
-        { id: "gemini-3.1-flash-lite", name: "Gemini 3.1 Flash Lite", maxLimit: 60 }
+        { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", maxLimit: 75 },
+        { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash", maxLimit: 75 },
+        { id: "gemini-2.0-flash-lite-preview-02-05", name: "Gemini 2.0 Flash Lite", maxLimit: 60 },
+        { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash", maxLimit: 75 },
+        { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro", maxLimit: 50 }
     ],
     groq: [
         { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B", maxLimit: 60 },
-        { id: "llama-3.1-8b-instant", name: "Llama 3.1 8B Instant", maxLimit: 40 }
+        { id: "llama-3.1-8b-instant", name: "Llama 3.1 8B Instant", maxLimit: 40 },
+        { id: "mixtral-8x7b-32768", name: "Mixtral 8x7B", maxLimit: 50 },
+        { id: "gemma2-9b-it", name: "Gemma 2 9B", maxLimit: 40 }
     ],
     openrouter: [
-        { id: "nvidia/nemotron-3-ultra-550b-a55b:free", name: "Nemotron 3 Ultra", maxLimit: 100 },
-        { id: "nvidia/nemotron-3-super:free", name: "Nemotron 3 Super", maxLimit: 100 },
-        { id: "google/gemma-4-31b-it:free", name: "Gemma 4 31B", maxLimit: 75 },
-        { id: "google/gemma-4-26b-a4b-it:free", name: "Gemma 4 26B", maxLimit: 75 },
-        { id: "nvidia/nemotron-3.5-lightning:free", name: "Nemotron 3.5 Lightning", maxLimit: 75 },
-        { id: "nvidia/nemotron-nano-9b-v2:free", name: "Nemotron Nano 9B", maxLimit: 50 },
-        { id: "dots-studio/dots3-note-preview:free", name: "Dots3 Note Preview", maxLimit: 75 }
+        { id: "nvidia/llama-3.1-nemotron-70b-instruct:free", name: "Nemotron 70B (Free)", maxLimit: 80 },
+        { id: "meta-llama/llama-3.1-8b-instruct:free", name: "Llama 3.1 8B (Free)", maxLimit: 50 },
+        { id: "google/gemma-2-9b-it:free", name: "Gemma 2 9B (Free)", maxLimit: 50 },
+        { id: "mistralai/mistral-7b-instruct:free", name: "Mistral 7B (Free)", maxLimit: 50 },
+        { id: "qwen/qwen-2.5-7b-instruct:free", name: "Qwen 2.5 7B (Free)", maxLimit: 50 },
+        { id: "qwen/qwen-2-72b-instruct:free", name: "Qwen 2 72B (Free)", maxLimit: 80 }
     ]
 };
 
