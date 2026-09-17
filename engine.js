@@ -41,15 +41,12 @@ function cancelActiveRequest() {
     resetExamUI();
 }
 
-// ==========================================
-// PHASE 2: QA VERIFICATION (WITH 60s RETRY)
-// ==========================================
 async function verifyAndCorrectQuizData(quizData, signal) {
     const terminal = document.getElementById('terminal');
     const groqVerifyKey = localStorage.getItem("GROQ_VERIFY_KEY");
     
     if (!groqVerifyKey) {
-        terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[WARNING]: Verification Groq Key missing. Skipping Phase 2 verification.</span><br>`;
+        terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[WARNING]: Verification Groq Key missing. Skipping Phase 2 QA verification.</span><br>`;
         return quizData; 
     }
 
@@ -107,7 +104,7 @@ ${JSON.stringify(chunkWithIndices)}`;
                             terminal.innerHTML += `<span style='color: var(--neon-yellow);'>[QA WARNING]: Verification Rate limit hit. Pausing this batch for 60 seconds...</span><br>`;
                             await new Promise(resolve => setTimeout(resolve, 60000));
                             attempts++;
-                            continue; // Retry
+                            continue;
                         } else {
                             terminal.innerHTML += `<span style='color: var(--neon-red);'>[QA ERROR]: Rate limit persists after wait. Bypassing QA for this batch.</span><br>`;
                             return null;
@@ -188,6 +185,74 @@ async function executeFallback(prompt, signal) {
     return fullResponse;
 }
 
+// Function to handle moving the verified data into the standalone player tab
+function prepareExamPortalLaunch(mins) {
+    localStorage.setItem("NEXUS_PENDING_EXAM", JSON.stringify({
+        quizData: currentQuizData,
+        mins: mins
+    }));
+    
+    const terminal = document.getElementById('terminal');
+    terminal.innerHTML += `<br><span style='color: var(--neon-green);'>[SYSTEM]: Assessment successfully compiled.</span><br>`;
+    
+    const launchBtnId = 'launch-portal-btn-' + Date.now();
+    terminal.innerHTML += `<br><button id="${launchBtnId}" class="cyber-btn" style="margin-top: 10px; width: 100%;">🚀 ENTER EXAM PORTAL</button>`;
+    
+    const cancelBtn = document.getElementById('terminal-cancel-btn');
+    if (cancelBtn) cancelBtn.style.display = 'none';
+
+    document.getElementById(launchBtnId).addEventListener('click', () => {
+        window.open(window.location.pathname + "?mode=exam", "_blank");
+        resetExamUI(); // Resets the dashboard behind the popup
+    });
+}
+
+// Function triggered when the new tab opens with ?mode=exam
+function initStandaloneExam() {
+    const data = JSON.parse(localStorage.getItem("NEXUS_PENDING_EXAM"));
+    if (!data) {
+        alert("No active exam data found. Returning to dashboard.");
+        window.location.href = window.location.pathname;
+        return;
+    }
+
+    // Hide SPA Shell for distraction-free exam mode
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) sidebar.style.display = 'none';
+    const bottomNav = document.querySelector('.bottom-nav');
+    if (bottomNav) bottomNav.style.display = 'none';
+    
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) {
+        mainContent.style.marginLeft = '0';
+        mainContent.style.maxWidth = '1000px';
+        mainContent.style.paddingBottom = '20px';
+    }
+
+    currentQuizData = data.quizData;
+    secondsLeft = data.mins * 60;
+    totalSecondsTaken = 0;
+    userAnswers = {};
+    userBookmarks = {};
+    currentQIndex = 0;
+    
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const pageExam = document.getElementById('page-exam');
+    if (pageExam) pageExam.classList.add('active');
+    
+    document.getElementById('exam-setup').style.display = 'none';
+    document.getElementById('terminal-screen').style.display = 'none';
+    document.getElementById('exam-results').style.display = 'none';
+    document.getElementById('exam-active').style.display = 'block';
+    
+    const headerTitle = document.querySelector('#page-exam .header-title');
+    if (headerTitle) headerTitle.style.display = 'none';
+
+    buildPalette();
+    renderQuestion(currentQIndex);
+    startTimer();
+}
+
 async function startExam() {
     gKey = localStorage.getItem("GEMINI_KEY") || gKey;
     grKey = localStorage.getItem("GROQ_KEY") || grKey;
@@ -239,9 +304,6 @@ async function startExam() {
     const count = document.getElementById('count').value;
     const lang = document.getElementById('lang').value;
     const mins = parseInt(document.getElementById('timer-mins').value) || 15;
-
-    secondsLeft = mins * 60;
-    totalSecondsTaken = 0;
 
     const adminPromptTxt = isAdmin ? (document.getElementById('admin-prompt').value || "").trim() : "";
 
@@ -344,13 +406,9 @@ ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
         const match = fullResponse.match(/\[[\s\S]*\]/);
         currentQuizData = match ? JSON.parse(match[0]) : JSON.parse(fullResponse);
 
-        // --- PHASE 2: VERIFICATION ---
+        // --- Phase 2 & Launch ---
         currentQuizData = await verifyAndCorrectQuizData(currentQuizData, signal);
-
-        userAnswers = {};
-        userBookmarks = {};
-        currentQIndex = 0;
-        initCBTExam();
+        prepareExamPortalLaunch(mins);
 
     } catch (err) {
         if (err.name === 'AbortError') {
@@ -363,26 +421,15 @@ ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
             const match = fallbackResponse.match(/\[[\s\S]*\]/);
             currentQuizData = match ? JSON.parse(match[0]) : JSON.parse(fallbackResponse);
             
-            // --- PHASE 2 VERIFICATION ON FALLBACK ---
             currentQuizData = await verifyAndCorrectQuizData(currentQuizData, signal);
+            prepareExamPortalLaunch(mins);
             
-            userAnswers = {}; userBookmarks = {}; currentQIndex = 0;
-            initCBTExam();
         } catch (fallbackErr) {
             terminal.style.color = "var(--neon-red)";
             terminal.innerHTML += `<br><br>[CRITICAL FAILURE]: Primary and Fallback models both failed. ${err.message}`;
             setTimeout(resetExamUI, 6000);
         }
     }
-}
-
-function initCBTExam() {
-    document.getElementById('terminal-screen').style.display = 'none';
-    document.getElementById('exam-active').style.display = 'block';
-    document.getElementById('exam-results').style.display = 'none';
-    buildPalette();
-    renderQuestion(currentQIndex);
-    startTimer();
 }
 
 function buildPalette() {
@@ -573,7 +620,7 @@ function emailAssessmentReport() {
     }, 1500);
 }
 
-function restartSameQuiz() { userAnswers = {}; initCBTExam(); }
+function restartSameQuiz() { userAnswers = {}; initStandaloneExam(); }
 
 function addToVault(q) {
     if (!mistakeVault.some(v => v.question === q.question)) {
