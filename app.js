@@ -1,8 +1,19 @@
+// System Boot Sequence Handler
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        const splash = document.getElementById('boot-splash');
+        if (splash) {
+            splash.style.opacity = '0';
+            splash.style.transform = 'scale(1.05)';
+            setTimeout(() => { splash.style.display = 'none'; }, 600);
+        }
+    }, 1600);
+});
+
 let gKey = "";
 let grKey = "";
 let orKey = "";
 
-// Expanded base limits designed for maximum depth without breaking JSON buffers
 const PROVIDER_MODELS = {
     gemini: [
         { id: "gemini-3.7-flash", name: "Gemini 3.7 Flash", maxLimit: 75 },
@@ -31,7 +42,9 @@ document.addEventListener("DOMContentLoaded", function() {
     gKey = localStorage.getItem("GEMINI_KEY") || "";
     grKey = localStorage.getItem("GROQ_KEY") || "";
     orKey = localStorage.getItem("OPENROUTER_KEY") || "";
+    const mailId = localStorage.getItem("DEST_MAIL") || "";
 
+    if (document.getElementById('update-mail') && mailId) document.getElementById('update-mail').value = mailId;
     if (document.getElementById('update-gemini') && gKey) document.getElementById('update-gemini').value = gKey;
     if (document.getElementById('update-groq') && grKey) document.getElementById('update-groq').value = grKey;
     if (document.getElementById('update-openrouter') && orKey) document.getElementById('update-openrouter').value = orKey;
@@ -68,19 +81,13 @@ document.addEventListener("DOMContentLoaded", function() {
     if (countInput) {
         countInput.addEventListener('input', function() {
             const maxVal = parseInt(this.max) || 100;
-            if (parseInt(this.value) > maxVal) {
-                this.value = maxVal;
-            }
-            if (parseInt(this.value) < 1 && this.value !== "") {
-                this.value = 1;
-            }
+            if (parseInt(this.value) > maxVal) this.value = maxVal;
+            if (parseInt(this.value) < 1 && this.value !== "") this.value = 1;
         });
     }
 
     const chatInput = document.getElementById('chat-input');
-    if (chatInput) {
-        chatInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendChat(); });
-    }
+    if (chatInput) chatInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendChat(); });
 
     renderVault();
 });
@@ -121,13 +128,9 @@ function updateQuotaDisplay() {
     if (cachedQuota) {
         statusVal.textContent = cachedQuota;
     } else {
-        if (org === 'openrouter') {
-            statusVal.textContent = "Free Tier: ~20 RPM";
-        } else if (org === 'groq') {
-            statusVal.textContent = "Free Tier: ~30 RPM";
-        } else {
-            statusVal.textContent = "Standard Limits";
-        }
+        if (org === 'openrouter') statusVal.textContent = "Free Tier: ~20 RPM";
+        else if (org === 'groq') statusVal.textContent = "Free Tier: ~30 RPM";
+        else statusVal.textContent = "Standard Limits";
     }
     enforceLanguageConstraints();
 }
@@ -146,33 +149,22 @@ function enforceLanguageConstraints() {
     const found = list.find(m => m.id === modelSelect.value);
     if (found) baseLimit = found.maxLimit;
 
-    // Independent language scaling: Odia text requires more token length allocation per question block
-    if (langSelect.value === 'Odia') {
-        baseLimit = Math.floor(baseLimit * 0.70);
-    }
+    if (langSelect.value === 'Odia') baseLimit = Math.floor(baseLimit * 0.70);
 
     countInput.max = baseLimit;
-    if (countLabel) {
-        countLabel.textContent = `Questions (Max ${baseLimit})`;
-    }
-    
-    if (parseInt(countInput.value) > baseLimit) {
-        countInput.value = baseLimit;
-    }
+    if (countLabel) countLabel.textContent = `Questions (Max ${baseLimit})`;
+    if (parseInt(countInput.value) > baseLimit) countInput.value = baseLimit;
 }
 
 function updateTokens() {
+    const newMail = document.getElementById('update-mail')?.value.trim() || "";
     const newGemini = document.getElementById('update-gemini')?.value.trim() || "";
     const newGroq = document.getElementById('update-groq')?.value.trim() || "";
     const newOpenRouter = document.getElementById('update-openrouter')?.value.trim() || "";
     const msgEl = document.getElementById('token-update-msg');
 
-    if (!newGemini && !newGroq && !newOpenRouter) {
-        alert("Please enter at least one token to update.");
-        return;
-    }
-
     try {
+        if (newMail) localStorage.setItem("DEST_MAIL", newMail);
         if (newGemini) { localStorage.setItem("GEMINI_KEY", newGemini); gKey = newGemini; }
         if (newGroq) { localStorage.setItem("GROQ_KEY", newGroq); grKey = newGroq; }
         if (newOpenRouter) { localStorage.setItem("OPENROUTER_KEY", newOpenRouter); orKey = newOpenRouter; }
@@ -181,11 +173,9 @@ function updateTokens() {
             msgEl.style.display = 'block';
             setTimeout(() => { msgEl.style.display = 'none'; }, 4000);
         } else {
-            alert("Tokens updated successfully!");
+            alert("Configuration saved successfully!");
         }
-    } catch(e) {
-        alert("Failed to save tokens: " + e.message);
-    }
+    } catch(e) { alert("Failed to save configuration: " + e.message); }
 }
 
 function switchTab(tab) {
