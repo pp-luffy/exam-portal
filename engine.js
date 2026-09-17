@@ -9,6 +9,10 @@ let mistakeVault = [];
 let activeController = null;
 let isTimerPaused = false;
 
+// Custom marking globals
+let posMark = 4;
+let negMark = 1;
+
 try { mistakeVault = JSON.parse(localStorage.getItem("NEXUS_VAULT")) || []; } catch(e) { mistakeVault = []; }
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -240,10 +244,12 @@ async function executeFallback(prompt, signal) {
     return fullResponse;
 }
 
-function prepareExamPortalLaunch(mins) {
+function prepareExamPortalLaunch(mins, posM, negM) {
     localStorage.setItem("NEXUS_PENDING_EXAM", JSON.stringify({
         quizData: currentQuizData,
-        mins: mins
+        mins: mins,
+        posMark: posM,
+        negMark: negM
     }));
     
     const terminal = document.getElementById('terminal');
@@ -283,6 +289,9 @@ function initStandaloneExam() {
 
     currentQuizData = data.quizData;
     secondsLeft = data.mins * 60;
+    posMark = data.posMark || 1;
+    negMark = data.negMark || 0;
+    
     totalSecondsTaken = 0;
     userAnswers = {};
     userBookmarks = {};
@@ -360,6 +369,10 @@ async function startExam() {
     const count = document.getElementById('count').value;
     const lang = document.getElementById('lang').value;
     const mins = parseInt(document.getElementById('timer-mins').value) || 15;
+    
+    // Extract marking parameters
+    const posM = parseFloat(document.getElementById('pos-marks').value) || 1;
+    const negM = parseFloat(document.getElementById('neg-marks').value) || 0;
 
     const adminPromptTxt = isAdmin ? (document.getElementById('admin-prompt').value || "").trim() : "";
 
@@ -463,7 +476,7 @@ ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
         currentQuizData = match ? JSON.parse(match[0]) : JSON.parse(fullResponse);
 
         currentQuizData = await verifyAndCorrectQuizData(currentQuizData, signal);
-        prepareExamPortalLaunch(mins);
+        prepareExamPortalLaunch(mins, posM, negM);
 
     } catch (err) {
         if (err.name === 'AbortError') {
@@ -477,7 +490,7 @@ ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
             currentQuizData = match ? JSON.parse(match[0]) : JSON.parse(fallbackResponse);
             
             currentQuizData = await verifyAndCorrectQuizData(currentQuizData, signal);
-            prepareExamPortalLaunch(mins);
+            prepareExamPortalLaunch(mins, posM, negM);
             
         } catch (fallbackErr) {
             terminal.style.color = "var(--neon-red)";
@@ -565,26 +578,48 @@ function toggleFullscreen() {
 
 function confirmSubmit() { if (confirm("Submit examination?")) submitExam(); }
 
+// ==========================================
+// CBT SCORING ALGORITHM (UPDATED FOR MARKS & SKIPPED)
+// ==========================================
 function submitExam() {
     if (timerInterval) clearInterval(timerInterval);
-    let score = 0, wrong = 0, skipped = 0;
+    
+    let correct = 0, wrong = 0, skipped = 0;
+    
     currentQuizData.forEach((q, i) => {
         const sel = userAnswers[i];
-        if (sel === undefined) { skipped++; addToVault(q); }
-        else if (sel === q.correct_option_index) { score++; }
-        else { wrong++; addToVault(q); }
+        if (sel === undefined) { 
+            // Question was unattempted/skipped. Do not penalize or send to Mistake Vault.
+            skipped++; 
+        }
+        else if (sel === q.correct_option_index) { 
+            correct++; 
+        }
+        else { 
+            wrong++; 
+            addToVault(q); // Only add genuinely incorrect answers to vault
+        }
     });
+
+    const maxMarks = currentQuizData.length * posMark;
+    const totalMarks = (correct * posMark) - (wrong * negMark);
+    const acc = Math.round((correct / currentQuizData.length) * 100);
+    
+    // Format safely for decimal negative marks (e.g. 0.833)
+    const formattedTotal = Number.isInteger(totalMarks) ? totalMarks : totalMarks.toFixed(2);
+    const penaltyApplied = Number.isInteger(wrong * negMark) ? (wrong * negMark) : (wrong * negMark).toFixed(2);
 
     document.getElementById('exam-active').style.display = 'none';
     document.getElementById('exam-results').style.display = 'block';
-    const acc = Math.round((score / currentQuizData.length) * 100);
+    
     document.getElementById('score-summary-banner').innerHTML = `
-        <div class="score-banner">SCORE: ${score} / ${currentQuizData.length} (${acc}%)</div>
-        <div style="display:flex; justify-content:space-around; color:var(--text-muted); font-size:14px;">
-            <div>✅ Correct: <strong>${score}</strong></div>
-            <div>❌ Wrong: <strong>${wrong}</strong></div>
-            <div>⏭ Skipped: <strong>${skipped}</strong></div>
+        <div class="score-banner">SCORE: ${formattedTotal} / ${maxMarks} <br><span style="font-size: 16px; color: var(--text-muted);">(${acc}% Accuracy)</span></div>
+        <div style="display:flex; justify-content:space-around; color:var(--text-muted); font-size:14px; flex-wrap: wrap; gap: 10px;">
+            <div>✅ Correct: <strong>${correct}</strong> <span style="color:var(--neon-green);">(+${correct * posMark})</span></div>
+            <div>❌ Wrong: <strong>${wrong}</strong> <span style="color:var(--neon-red);">(-${penaltyApplied})</span></div>
+            <div>⏭ Skipped: <strong>${skipped}</strong> <span style="color:var(--text-muted);">(0)</span></div>
         </div>`;
+        
     renderReviewList('all');
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -594,24 +629,34 @@ function filterReview(mode) { renderReviewList(mode); }
 function renderReviewList(mode) {
     const container = document.getElementById('review-container');
     container.innerHTML = "";
+    
     currentQuizData.forEach((q, i) => {
         const sel = userAnswers[i];
+        const isSkipped = sel === undefined;
         const corr = sel === q.correct_option_index;
+        
+        // In "Review Mistakes" mode, we want to see both Wrong and Skipped questions. Correct questions are hidden.
         if (mode === 'wrong' && corr) return;
-        let html = `<div class="glass-card" style="border-left: 4px solid ${corr ? 'var(--neon-green)' : 'var(--neon-red)'}; padding: 18px;">
-            <p style="font-weight:700; color:${corr ? 'var(--neon-green)' : 'var(--neon-red)'}; margin-top:0;">Q${i+1}. ${corr ? 'CORRECT' : 'INCORRECT'}</p>
+        
+        let statusText = corr ? 'CORRECT' : (isSkipped ? 'SKIPPED' : 'INCORRECT');
+        let statusColor = corr ? 'var(--neon-green)' : (isSkipped ? 'var(--neon-yellow)' : 'var(--neon-red)');
+
+        let html = `<div class="glass-card" style="border-left: 4px solid ${statusColor}; padding: 18px;">
+            <p style="font-weight:700; color:${statusColor}; margin-top:0;">Q${i+1}. ${statusText}</p>
             <p class="q-text" style="font-size:15px;">${q.question}</p>`;
+            
         q.options.forEach((opt, oIdx) => {
             let cls = oIdx === q.correct_option_index ? "correct" : (oIdx === sel ? "wrong" : "");
             html += `<div class="option-card ${cls}" style="padding:10px 14px; margin:4px 0; font-size:14px;"><span>${opt}</span></div>`;
         });
+        
         container.innerHTML += html + `</div>`;
     });
 }
 
 function generateReportHTML() {
     const filter = document.getElementById('export-filter').value;
-    let htmlContent = `<html><head><style>body{font-family:sans-serif;padding:20px;background:#f8fafc;color:#0f172a;} .card{background:#fff;border:1px solid #cbd5e1;padding:16px;border-radius:12px;margin-bottom:12px;} .correct{color:#10b981;font-weight:bold;} .wrong{color:#ef4444;font-weight:bold;}</style></head><body>`;
+    let htmlContent = `<html><head><style>body{font-family:sans-serif;padding:20px;background:#f8fafc;color:#0f172a;} .card{background:#fff;border:1px solid #cbd5e1;padding:16px;border-radius:12px;margin-bottom:12px;} .correct{color:#10b981;font-weight:bold;} .wrong{color:#ef4444;font-weight:bold;} .skipped{color:#f59e0b;font-weight:bold;}</style></head><body>`;
     htmlContent += `<h2>NEXUS OS - Assessment Report</h2><hr>`;
     
     currentQuizData.forEach((q, i) => {
@@ -620,8 +665,10 @@ function generateReportHTML() {
         if (filter === 'correct' && !corr) return;
         if (filter === 'wrong' && corr) return;
 
+        let statusText = (sel === undefined) ? " [Skipped]" : "";
+
         htmlContent += `<div class="card">
-            <p><strong>Q${i+1}.</strong> ${q.question}</p>
+            <p><strong>Q${i+1}.</strong> ${q.question} <span class="skipped">${statusText}</span></p>
             <ul>`;
         q.options.forEach((opt, oIdx) => {
             let tag = "";
