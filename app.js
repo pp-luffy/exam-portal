@@ -106,11 +106,11 @@ function updateQuotaDisplay() {
         statusVal.textContent = cachedQuota;
     } else {
         if (org === 'openrouter') {
-            statusVal.textContent = "Free Tier: ~20 RPM / 200 RPD (OpenRouter)";
+            statusVal.textContent = "Free Tier: ~20 RPM / 200 RPD";
         } else if (org === 'groq') {
-            statusVal.textContent = "Free Tier: ~30 RPM / 14.4K RPD (Groq LPU)";
+            statusVal.textContent = "Free Tier: ~30 RPM / 14.4K RPD";
         } else {
-            statusVal.textContent = "Free Tier: Standard Rate Limits (Gemini)";
+            statusVal.textContent = "Standard Rate Limits";
         }
     }
     enforceLanguageConstraints();
@@ -120,6 +120,7 @@ function enforceLanguageConstraints() {
     const modelSelect = document.getElementById('model-select');
     const langSelect = document.getElementById('lang');
     const countInput = document.getElementById('count');
+    const countLabel = document.getElementById('count-label');
     const orgSelect = document.getElementById('org-select');
     
     if (!modelSelect || !langSelect || !countInput || !orgSelect) return;
@@ -134,6 +135,9 @@ function enforceLanguageConstraints() {
     }
 
     countInput.max = baseLimit;
+    if (countLabel) {
+        countLabel.textContent = `Questions (Max ${baseLimit})`;
+    }
     if (parseInt(countInput.value) > baseLimit) {
         countInput.value = baseLimit;
     }
@@ -191,4 +195,3 @@ function exportLocalStorage() {
     a.download = "nexus_backup.json";
     a.click();
 }
-
