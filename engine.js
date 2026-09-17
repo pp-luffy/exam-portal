@@ -277,7 +277,8 @@ function initStandaloneExam() {
     const mainContent = document.querySelector('.main-content');
     if (mainContent) {
         mainContent.style.marginLeft = '0';
-        mainContent.style.maxWidth = '1000px';
+        // EXPAND TO FULL WIDTH SO THE PALETTE SITS PERFECTLY ON THE RIGHT
+        mainContent.style.maxWidth = '1400px'; 
         mainContent.style.paddingBottom = '20px';
     }
 
@@ -485,20 +486,6 @@ ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
             setTimeout(resetExamUI, 6000);
         }
     }
-}
-
-function initCBTExam() {
-    document.getElementById('terminal-screen').style.display = 'none';
-    document.getElementById('exam-active').style.display = 'block';
-    document.getElementById('exam-results').style.display = 'none';
-    
-    isTimerPaused = false;
-    const pBtn = document.getElementById('pause-timer-btn');
-    if(pBtn) { pBtn.innerHTML = '⏸ Pause'; pBtn.style.color = ''; pBtn.style.borderColor = ''; }
-
-    buildPalette();
-    renderQuestion(currentQIndex);
-    startTimer();
 }
 
 function buildPalette() {
