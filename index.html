@@ -30,7 +30,6 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* Scrollbar customization */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
         ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.3); border-radius: 10px; }
@@ -39,7 +38,6 @@
         .page { display: none; animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
         .page.active { display: block; }
         
-        /* Glass Navigation Bar */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%;
             background: rgba(3, 7, 18, 0.85);
@@ -57,7 +55,6 @@
         .nav-item.active { color: var(--accent-cyan); text-shadow: 0 0 12px rgba(6, 182, 212, 0.6); transform: translateY(-2px); }
         .nav-icon { font-size: 22px; }
 
-        /* Typography & Cards */
         .header-title {
             text-align: center; font-weight: 700; font-size: 26px; margin-bottom: 24px;
             background: linear-gradient(to right, var(--accent-cyan), var(--accent-blue));
@@ -68,11 +65,8 @@
             background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
             border: 1px solid var(--glass-border); border-radius: 16px;
             padding: 24px; margin-bottom: 24px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
-        .glass-card:hover { border-color: rgba(6, 182, 212, 0.3); }
 
-        /* Inputs */
         label { display: block; margin-top: 16px; font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 500; }
         input, select {
             width: 100%; padding: 14px 16px; margin-top: 8px; border-radius: 12px;
@@ -89,10 +83,9 @@
             color: white; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;
             cursor: pointer; box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3); transition: all 0.2s;
         }
-        .cyber-btn:active { transform: scale(0.97); box-shadow: 0 2px 8px rgba(6, 182, 212, 0.2); }
+        .cyber-btn:active { transform: scale(0.97); }
         .cyber-btn.danger { background: linear-gradient(135deg, #ef4444, #b91c1c); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
 
-        /* Terminal & Exam UI */
         #terminal {
             background: rgba(0,0,0,0.9); color: var(--accent-cyan); padding: 20px; border-radius: 12px;
             font-family: 'JetBrains Mono', monospace; height: 280px; overflow-y: auto; font-size: 12px;
@@ -113,16 +106,14 @@
         .wrong { background: rgba(239, 68, 68, 0.15) !important; border-color: var(--accent-red) !important; color: #fecaca; }
         input[type="radio"] { margin-right: 16px; width: 20px; height: 20px; accent-color: var(--accent-cyan); }
 
-        /* Chat HUD */
         .chat-box { height: calc(100vh - 350px); overflow-y: auto; display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px; padding-right: 8px; }
         .msg { padding: 14px 18px; border-radius: 18px; max-width: 85%; font-size: 15px; line-height: 1.5; }
-        .msg.user { background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan)); align-self: flex-end; border-bottom-right-radius: 4px; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2); }
+        .msg.user { background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan)); align-self: flex-end; border-bottom-right-radius: 4px; }
         .msg.ai { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); align-self: flex-start; border-bottom-left-radius: 4px; }
         .chat-input-area { display: flex; gap: 12px; }
         .chat-input-area input { margin-top: 0; flex: 1; }
         .chat-input-area button { margin-top: 0; width: 65px; padding: 0; border-radius: 12px; }
 
-        /* Stats & Vault */
         .score-banner {
             font-size: 28px; font-weight: 700; text-align: center; color: var(--accent-green);
             margin: 30px 0; padding: 24px; background: rgba(16, 185, 129, 0.1);
@@ -136,12 +127,12 @@
 </head>
 <body>
 
-    <!-- SECURE GATEWAY (Auth) -->
+    <!-- AUTHENTICATION PAGE -->
     <div id="page-login" class="app-container page active">
         <h1 class="header-title" style="margin-top: 15vh; font-size: 32px;">NEXUS OS</h1>
         <div class="glass-card">
             <h2 style="font-size: 18px; color: var(--accent-cyan); margin-top:0;">System Authentication</h2>
-            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 24px;">Establish secure neural link. Keys are encrypted in local storage.</p>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 24px;">Establish secure neural link. Keys are encrypted locally.</p>
             
             <label>Master Passcode</label>
             <input type="password" id="app-pass" placeholder="Enter PIN">
@@ -154,47 +145,48 @@
         </div>
     </div>
 
-    <!-- MAIN OS SHELL -->
+    <!-- MAIN APP -->
     <div id="main-app" style="display: none;">
         
-        <!-- EXAM ENGINE PAGE -->
+        <!-- EXAM ENGINE -->
         <div id="page-exam" class="app-container page active">
             <h1 class="header-title">Exam Engine</h1>
             
             <div id="exam-setup" class="glass-card">
-                <label>Neural Engine</label>
+                <label>Neural Engine Model</label>
                 <select id="model-select">
-                    <option value="gemini-3.7-pro">Gemini 3.7 Pro (Heavyweight Logic)</option>
-                    <option value="gemini-3.5-flash">Gemini 3.5 Flash (Ultra-Fast Prep)</option>
+                    <option value="gemini-2.5-pro">Gemini 2.5 Pro (Deep Logic & Reasoning)</option>
+                    <option value="gemini-3.5-flash">Gemini 3.5 Flash (Ultra-Fast Workhorse)</option>
                 </select>
 
                 <label>Target Standard</label>
-                <input type="text" id="exam" value="OPSC / UPSC" placeholder="e.g. UPSC Prelims">
+                <input type="text" id="exam" value="OPSC ASO / UPSC">
                 
-                <label>Concept / Syllabus Topic</label>
-                <input type="text" id="topic" value="ତତ୍ସମ ଶବ୍ଦ (Tatsama Sabda)" placeholder="e.g. Indian Polity">
+                <label>Syllabus Topic</label>
+                <input type="text" id="topic" value="Tatsama sabda">
                 
                 <div style="display:flex; gap: 16px;">
                     <div style="flex: 1;">
                         <label>Questions</label>
-                        <input type="number" id="count" value="10" min="1" max="100">
+                        <input type="number" id="count" value="5" min="1" max="100">
                     </div>
                     <div style="flex: 1;">
                         <label>Language</label>
-                        <input type="text" id="lang" value="Odia">
+                        <select id="lang">
+                            <option value="Odia">Odia</option>
+                            <option value="English">English</option>
+                        </select>
                     </div>
                 </div>
                 
                 <button class="cyber-btn" onclick="startExam()">Generate Exam</button>
             </div>
 
-            <!-- Terminal Stream -->
             <div id="terminal-screen" class="glass-card" style="display: none;">
-                <p class="pulse-text">Bypassing Timeouts & Streaming Data...</p>
+                <p class="pulse-text">Connecting to Gemini API...</p>
                 <div id="terminal"></div>
             </div>
 
-            <!-- Active Test -->
             <div id="exam-active" style="display: none;">
                 <div id="questions-container"></div>
                 <button class="cyber-btn" id="submit-btn" onclick="submitExam()">Analyze & Score</button>
@@ -203,22 +195,22 @@
             </div>
         </div>
 
-        <!-- MISTAKE VAULT PAGE -->
+        <!-- MISTAKE VAULT -->
         <div id="page-vault" class="app-container page">
             <h1 class="header-title">Mistake Vault</h1>
             <div class="glass-card">
-                <p style="font-size: 13px; color: var(--text-muted); margin-top:0;">Questions you answered incorrectly are stored here for spaced repetition.</p>
+                <p style="font-size: 13px; color: var(--text-muted); margin-top:0;">Failed questions saved for review.</p>
                 <div id="vault-container"></div>
                 <button class="cyber-btn danger" onclick="clearVault()" id="clear-vault-btn">Purge Vault</button>
             </div>
         </div>
 
-        <!-- NEXUS AI CHAT PAGE -->
+        <!-- NEXUS AI CHAT -->
         <div id="page-chat" class="app-container page">
             <h1 class="header-title">NEXUS AI</h1>
             <div class="glass-card" style="padding: 16px;">
                 <div class="chat-box" id="chat-box">
-                    <div class="msg ai">System online. I am optimized for UPSC/OPSC syllabus queries. How can I assist?</div>
+                    <div class="msg ai">System online. Ready for queries.</div>
                 </div>
                 <div class="chat-input-area">
                     <input type="text" id="chat-input" placeholder="Type query..." onkeypress="if(event.key === 'Enter') sendChat()">
@@ -227,39 +219,28 @@
             </div>
         </div>
 
-        <!-- SETTINGS PAGE -->
+        <!-- SETTINGS -->
         <div id="page-settings" class="app-container page">
-            <h1 class="header-title">System Settings</h1>
+            <h1 class="header-title">Config</h1>
             <div class="glass-card">
                 <h3 style="color: var(--accent-cyan); margin-top:0;">Telemetry</h3>
-                <p style="color: var(--accent-green); font-size: 14px; font-weight: 500;">● Secure Local Storage Active</p>
-                <p style="color: var(--text-muted); font-size: 13px;">API keys and Mistake Vault data never leave this device.</p>
+                <p style="color: var(--accent-green); font-size: 14px; font-weight: 500;">● Local Storage Active</p>
+                <button class="cyber-btn" style="background: linear-gradient(135deg, #10b981, #059669); margin-top: 15px;" onclick="exportLocalStorage()">Export Local Storage (JSON)</button>
                 <hr style="border: none; border-top: 1px solid var(--glass-border); margin: 24px 0;">
-                <button class="cyber-btn danger" onclick="logout()">Terminate Session (Logout)</button>
+                <button class="cyber-btn danger" onclick="logout()">Terminate Session</button>
             </div>
         </div>
 
-        <!-- BOTTOM NAVIGATION DOCK -->
+        <!-- NAVIGATION DOCK -->
         <div class="bottom-nav">
-            <div class="nav-item active" id="nav-exam" onclick="switchTab('exam')">
-                <span class="nav-icon">📝</span>Engine
-            </div>
-            <div class="nav-item" id="nav-vault" onclick="switchTab('vault')">
-                <span class="nav-icon">🧠</span>Vault
-            </div>
-            <div class="nav-item" id="nav-chat" onclick="switchTab('chat')">
-                <span class="nav-icon">🤖</span>NEXUS
-            </div>
-            <div class="nav-item" id="nav-settings" onclick="switchTab('settings')">
-                <span class="nav-icon">⚙️</span>Config
-            </div>
+            <div class="nav-item active" id="nav-exam" onclick="switchTab('exam')"><span class="nav-icon">📝</span>Engine</div>
+            <div class="nav-item" id="nav-vault" onclick="switchTab('vault')"><span class="nav-icon">🧠</span>Vault</div>
+            <div class="nav-item" id="nav-chat" onclick="switchTab('chat')"><span class="nav-icon">🤖</span>NEXUS</div>
+            <div class="nav-item" id="nav-settings" onclick="switchTab('settings')"><span class="nav-icon">⚙️</span>Config</div>
         </div>
     </div>
 
     <script>
-        // ==========================================
-        // SYSTEM CORE & AUTH
-        // ==========================================
         const MASTER_PASS = "admin2026"; 
         let activeKey = "";
         let currentQuizData = [];
@@ -270,7 +251,7 @@
                 activeKey = localStorage.getItem("GEMINI_KEY");
                 document.getElementById('page-login').classList.remove('active');
                 document.getElementById('main-app').style.display = 'block';
-                renderVault(); // Pre-load vault
+                renderVault();
             }
         };
 
@@ -289,10 +270,7 @@
             }
         }
 
-        function logout() {
-            localStorage.clear();
-            location.reload();
-        }
+        function logout() { localStorage.clear(); location.reload(); }
 
         function switchTab(tab) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -302,9 +280,6 @@
             if(tab === 'vault') renderVault();
         }
 
-        // ==========================================
-        // EXAM ENGINE (GENERATOR)
-        // ==========================================
         async function startExam() {
             document.getElementById('exam-setup').style.display = 'none';
             document.getElementById('terminal-screen').style.display = 'block';
@@ -318,9 +293,8 @@
             const count = document.getElementById('count').value;
             const lang = document.getElementById('lang').value;
             
-            const prompt = `You are a strict expert examiner for ${exam}. Generate EXACTLY ${count} TRICKY practice questions about "${topic}". Target language: ${lang}. 
-RULES: 1. NO EXPLANATIONS. 2. Distractors must be highly plausible traps. 3. Output ONLY a valid JSON array.
-FORMAT:
+            const prompt = `You are an expert examiner for ${exam}. Generate EXACTLY ${count} TRICKY practice questions about "${topic}". Output language must be strictly in ${lang}. 
+RULES: 1. NO EXPLANATIONS. 2. Plausible distractor traps. 3. Output ONLY a valid JSON array matching this exact format:
 [
   {
     "question": "Question text...",
@@ -339,7 +313,10 @@ FORMAT:
                     })
                 });
 
-                if (!response.ok) throw new Error("API Error. Check tokens/network.");
+                if (!response.ok) {
+                    const errJson = await response.json();
+                    throw new Error(errJson.error?.message || `HTTP status ${response.status}`);
+                }
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
@@ -358,7 +335,6 @@ FORMAT:
                     }
                 }
 
-                // Parse standard or nested JSON structure
                 const geminiArray = JSON.parse(fullResponse);
                 let rawJsonStr = "";
                 geminiArray.forEach(b => { if (b.candidates) rawJsonStr += b.candidates[0].content.parts[0].text; });
@@ -370,14 +346,11 @@ FORMAT:
 
             } catch (err) {
                 terminal.style.color = "var(--accent-red)";
-                terminal.textContent += `\n\n[CRITICAL FAILURE] ${err.message}`;
-                setTimeout(resetExamUI, 3000);
+                terminal.textContent += `\n\n[API ERROR]: ${err.message}`;
+                setTimeout(resetExamUI, 6000);
             }
         }
 
-        // ==========================================
-        // EXAM RENDERER & LOGIC
-        // ==========================================
         function renderExamUI() {
             document.getElementById('terminal-screen').style.display = 'none';
             document.getElementById('exam-active').style.display = 'block';
@@ -396,7 +369,6 @@ FORMAT:
             });
         }
 
-        // Style the active radio selection
         function selectOption(qIdx, oIdx) {
             document.querySelectorAll(`input[name="q-${qIdx}"]`).forEach((r, idx) => {
                 document.getElementById(`lbl-${qIdx}-${idx}`).classList.remove('selected');
@@ -409,21 +381,17 @@ FORMAT:
             currentQuizData.forEach((q, i) => {
                 const selected = document.querySelector(`input[name="q-${i}"]:checked`);
                 const correctIdx = q.correct_option_index;
-                
                 document.getElementById(`lbl-${i}-${correctIdx}`).classList.add('correct');
                 
                 if (selected) {
                     const selectedIdx = parseInt(selected.value);
-                    if (selectedIdx === correctIdx) {
-                        score++;
-                    } else {
+                    if (selectedIdx === correctIdx) score++;
+                    else {
                         document.getElementById(`lbl-${i}-${selectedIdx}`).classList.add('wrong');
-                        // SAVE TO MISTAKE VAULT
-                        addToVault(q, selectedIdx);
+                        addToVault(q);
                     }
                 } else {
-                    // Unanswered counts as mistake for the vault
-                    addToVault(q, null);
+                    addToVault(q);
                 }
             });
 
@@ -444,11 +412,7 @@ FORMAT:
             document.getElementById('exam-setup').style.display = 'block';
         }
 
-        // ==========================================
-        // MISTAKE VAULT
-        // ==========================================
-        function addToVault(questionObj, wrongSelectedIdx) {
-            // Avoid duplicates
+        function addToVault(questionObj) {
             if (!mistakeVault.some(v => v.question === questionObj.question)) {
                 questionObj.user_failed_at = new Date().toLocaleDateString();
                 mistakeVault.push(questionObj);
@@ -460,40 +424,29 @@ FORMAT:
             const vContainer = document.getElementById('vault-container');
             const btn = document.getElementById('clear-vault-btn');
             vContainer.innerHTML = "";
-
             if (mistakeVault.length === 0) {
-                vContainer.innerHTML = `<p style="color: var(--accent-green); text-align: center; padding: 20px;">Vault is empty. Flawless execution.</p>`;
+                vContainer.innerHTML = `<p style="color: var(--accent-green); text-align: center; padding: 20px;">Vault is empty.</p>`;
                 btn.style.display = 'none';
                 return;
             }
-            
             btn.style.display = 'block';
-            mistakeVault.forEach((q, i) => {
-                let html = `<div class="glass-card vault-item" style="padding: 16px;">
-                    <p style="font-size: 12px; color: var(--accent-red); margin:0 0 8px 0; font-weight:bold;">Failed on: ${q.user_failed_at}</p>
+            mistakeVault.forEach((q) => {
+                vContainer.innerHTML += `<div class="glass-card vault-item" style="padding: 16px;">
+                    <p style="font-size: 12px; color: var(--accent-red); margin:0 0 8px 0; font-weight:bold;">Failed: ${q.user_failed_at}</p>
                     <p class="q-text" style="font-size: 15px; margin-bottom: 8px;">${q.question}</p>
                     <p style="color: var(--accent-green); font-size: 14px; margin:0;">✔ ${q.options[q.correct_option_index]}</p>
                 </div>`;
-                vContainer.innerHTML += html;
             });
         }
 
         function clearVault() {
-            if(confirm("Purge all recorded mistakes? This cannot be undone.")) {
-                mistakeVault = [];
-                localStorage.removeItem("NEXUS_VAULT");
-                renderVault();
-            }
+            if(confirm("Purge recorded mistakes?")) { mistakeVault = []; localStorage.removeItem("NEXUS_VAULT"); renderVault(); }
         }
 
-        // ==========================================
-        // NEXUS AI CHAT (Using lightweight Flash)
-        // ==========================================
         async function sendChat() {
             const inputEl = document.getElementById('chat-input');
             const msg = inputEl.value.trim();
             if (!msg) return;
-
             const chatBox = document.getElementById('chat-box');
             chatBox.innerHTML += `<div class="msg user">${msg}</div>`;
             inputEl.value = "";
@@ -509,15 +462,32 @@ FORMAT:
                 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${activeKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: "You are a concise UPSC tutor. User says: " + msg }] }] })
+                    body: JSON.stringify({ contents: [{ parts: [{ text: "You are a concise tutor. User says: " + msg }] }] })
                 });
                 const data = await res.json();
                 aiBubble.innerText = data.candidates[0].content.parts[0].text;
             } catch (err) {
-                aiBubble.innerText = "Network interference detected.";
-                aiBubble.style.color = "var(--accent-red)";
+                aiBubble.innerText = "Error connecting.";
             }
             chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function exportLocalStorage() {
+            const dataObj = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key !== "APP_PASS" && key !== "GEMINI_KEY") {
+                    try { dataObj[key] = JSON.parse(localStorage.getItem(key)); } 
+                    catch (e) { dataObj[key] = localStorage.getItem(key); }
+                }
+            }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataObj, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `nexus_export.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
         }
     </script>
 </body>
