@@ -66,6 +66,12 @@ document.addEventListener("DOMContentLoaded", function() {
     const modelSelect = document.getElementById('model-select');
     if (modelSelect) modelSelect.addEventListener('change', updateQuotaDisplay);
 
+    // Explicit direct binding for Save Configuration button
+    const saveTokensBtn = document.getElementById('save-tokens-btn');
+    if (saveTokensBtn) {
+        saveTokensBtn.addEventListener('click', updateTokens);
+    }
+
     safeBind('login-btn', 'click', handleLogin);
     safeBind('logout-btn', 'click', logout);
     safeBind('launch-btn', 'click', startExam);
@@ -82,7 +88,6 @@ document.addEventListener("DOMContentLoaded", function() {
     safeBind('new-quiz-btn', 'click', resetExamUI);
     safeBind('clear-vault-btn', 'click', clearVault);
     safeBind('send-chat-btn', 'click', sendChat);
-    safeBind('save-tokens-btn', 'click', updateTokens);
     safeBind('export-btn', 'click', exportLocalStorage);
 
     const langSelect = document.getElementById('lang');
