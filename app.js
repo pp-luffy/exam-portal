@@ -131,7 +131,7 @@ function handleLogin() {
 
 function processLogin(user) {
     currentUser = user.toLowerCase();
-    isAdmin = ADMIN_USERS.includes(currentUser); // Checks against the admin list
+    isAdmin = ADMIN_USERS.includes(currentUser);
     localStorage.setItem("NEXUS_USER", currentUser);
     
     document.getElementById('login-screen').style.display = 'none';
@@ -145,22 +145,19 @@ function processLogin(user) {
 
 function applySessionEnvironment() {
     const orgSelect = document.getElementById('org-select');
-    const diffSelect = document.getElementById('difficulty');
+    const diffContainer = document.getElementById('difficulty-container');
 
     if (!isAdmin) {
-        if (diffSelect) {
-            diffSelect.value = "2";
-            diffSelect.disabled = true; // Hard-locks difficulty selector for non-admins
-        }
+        if (diffContainer) diffContainer.style.display = 'none'; // Completely hide difficulty for non-admins
         if (orgSelect) {
             Array.from(orgSelect.options).forEach(opt => {
                 opt.style.display = (opt.value === 'gemini') ? 'block' : 'none';
             });
             orgSelect.value = 'gemini';
-            orgSelect.disabled = true; // Locks organization selector to Gemini
+            orgSelect.disabled = true;
         }
     } else {
-        if (diffSelect) diffSelect.disabled = false;
+        if (diffContainer) diffContainer.style.display = 'block';
         if (orgSelect) {
             orgSelect.disabled = false;
             Array.from(orgSelect.options).forEach(opt => {
