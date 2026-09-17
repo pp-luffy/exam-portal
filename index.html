@@ -20,21 +20,31 @@
             --neon-yellow: #f59e0b; --neon-red: #ef4444; --text-main: #f8fafc; --text-muted: #94a3b8;
         }
         * { box-sizing: border-box; }
-        body { 
+        html, body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
             background-color: var(--bg-deep); 
             color: var(--text-main); 
             margin: 0; 
             padding: 0; 
-            min-height: 100vh; 
-            overscroll-behavior-y: none; /* Prevents mobile pull-to-refresh refresh bug */
+            height: 100vh;
+            overflow: hidden; /* Locks page-level rubber banding & pull-to-refresh */
+            overscroll-behavior: none; 
         }
-        .app-shell { display: flex; min-height: 100vh; }
+        .app-shell { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
         .sidebar { display: none; width: 260px; background: #030712; border-right: 1px solid var(--border-glow); padding: 24px; position: fixed; height: 100vh; z-index: 100; }
         .sidebar-brand { font-size: 20px; font-weight: 800; color: var(--neon-cyan); letter-spacing: 2px; margin-bottom: 40px; text-transform: uppercase; }
         .sidebar-nav-item { padding: 14px 18px; border-radius: 12px; cursor: pointer; color: var(--text-muted); font-weight: 600; font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
         .sidebar-nav-item:hover, .sidebar-nav-item.active { background: rgba(0, 242, 254, 0.1); color: var(--neon-cyan); }
-        .main-content { flex: 1; padding: 24px; max-width: 900px; margin: 0 auto; padding-bottom: 120px; }
+        .main-content { 
+            flex: 1; 
+            padding: 24px; 
+            max-width: 900px; 
+            margin: 0 auto; 
+            height: 100vh;
+            overflow-y: auto; 
+            overscroll-behavior-y: contain; /* Keeps scrolling contained inside content box */
+            padding-bottom: 120px; 
+        }
         @media (min-width: 768px) { .sidebar { display: block; } .main-content { margin-left: 260px; padding: 40px; max-width: 1000px; } .bottom-nav { display: none !important; } }
         .page { display: none; } .page.active { display: block; }
         .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #030712; border-top: 1px solid var(--border-glow); display: flex; justify-content: space-around; padding: 12px 0; z-index: 1000; }
@@ -76,7 +86,7 @@
     </style>
 </head>
 <body>
-    <div id="page-login" class="app-shell" style="align-items: center; justify-content: center; min-height: 100vh;">
+    <div id="page-login" class="app-shell" style="align-items: center; justify-content: center; height: 100vh;">
         <div class="glass-card" style="width: 100%; max-width: 440px; margin: 20px;">
             <h1 class="header-title" style="font-size: 26px; text-align: center; margin-bottom: 10px;">NEXUS OS</h1>
             <p style="font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 24px;">Enter PIN and at least one API Key.</p>
@@ -104,10 +114,11 @@
                 <div id="exam-setup" class="glass-card">
                     <label>Neural Engine Model</label>
                     <select id="model-select">
+                        <option value="gemini-3.8-flash">Gemini 3.8 Flash (High Speed / Latest)</option>
                         <option value="gemini-2.5-pro">Gemini 2.5 Pro (Deep Logic)</option>
-                        <option value="gemini-3.8-flash">Gemini 3.8 Flash (High Speed)</option>
-                        <option value="groq:llama-3.3-70b-versatile">Groq Backup: Llama 3.3 70B</option>
-                        <option value="groq:llama-3.1-8b-instant">Groq Backup: Llama 3.1 8B</option>
+                        <option value="groq:llama-3.3-70b-versatile">Groq: Llama 3.3 70B Versatile (Best JSON Adherence)</option>
+                        <option value="groq:openai/gpt-oss-120b">Groq: OpenAI GPT-OSS 120B</option>
+                        <option value="groq:llama-3.1-8b-instant">Groq: Llama 3.1 8B Instant (Ultra Fast)</option>
                     </select>
                     <label>Target Standard</label>
                     <input type="text" id="exam" value="OPSC ASO / UPSC">
