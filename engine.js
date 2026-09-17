@@ -6,7 +6,7 @@ let timerInterval = null;
 let secondsLeft = 0;
 let totalSecondsTaken = 0;
 let mistakeVault = [];
-let activeController = null; // AbortController handle for request cancellation
+let activeController = null;
 
 try { mistakeVault = JSON.parse(localStorage.getItem("NEXUS_VAULT")) || []; } catch(e) { mistakeVault = []; }
 
@@ -32,7 +32,6 @@ function clearChatHistory() {
     }
 }
 
-// Global function to cancel pending AI requests
 function cancelActiveRequest() {
     if (activeController) {
         activeController.abort();
@@ -46,9 +45,13 @@ async function startExam() {
     gKey = localStorage.getItem("GEMINI_KEY") || gKey;
     grKey = localStorage.getItem("GROQ_KEY") || grKey;
     orKey = localStorage.getItem("OPENROUTER_KEY") || orKey;
+    dsKey = localStorage.getItem("DEEPSEEK_KEY") || dsKey;
     
     const org = document.getElementById('org-select').value;
-    const activeKey = org === 'groq' ? grKey : (org === 'openrouter' ? orKey : gKey);
+    let activeKey = gKey;
+    if (org === 'groq') activeKey = grKey;
+    else if (org === 'openrouter') activeKey = orKey;
+    else if (org === 'deepseek') activeKey = dsKey;
     
     if (!activeKey) {
         alert(`API Key missing for ${org.toUpperCase()}! Please enter it in the Config tab.`);
@@ -74,7 +77,6 @@ async function startExam() {
     terminal.style.display = 'block';
     terminal.innerHTML = "<span style='color: var(--neon-cyan);'>[CORE INITIALIZED]: Connecting to neural parameters...</span><br>";
 
-    // Inject a Cancel button dynamically into the terminal box if not already present
     let cancelWrapper = document.getElementById('terminal-cancel-btn');
     if (!cancelWrapper) {
         cancelWrapper = document.createElement('button');
@@ -114,7 +116,6 @@ RULES:
   }
 ]`;
 
-    // Initialize AbortController for this request
     if (activeController) activeController.abort();
     activeController = new AbortController();
     const signal = activeController.signal;
@@ -122,10 +123,10 @@ RULES:
     try {
         let fullResponse = "";
 
-        if (org === 'groq' || org === 'openrouter') {
-            const apiUrl = org === 'openrouter' 
-                ? "https://openrouter.ai/api/v1/chat/completions" 
-                : "https://api.groq.com/openai/v1/chat/completions";
+        if (org === 'groq' || org === 'openrouter' || org === 'deepseek') {
+            let apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+            if (org === 'openrouter') apiUrl = "https://openrouter.ai/api/v1/chat/completions";
+            if (org === 'deepseek') apiUrl = "https://api.deepseek.com/chat/completions";
 
             const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeKey}` };
             if (org === 'openrouter') { headers['HTTP-Referer'] = window.location.href; headers['X-Title'] = 'NEXUS OS CBT Suite'; }
@@ -137,7 +138,7 @@ RULES:
                 max_tokens: 8192 
             };
 
-            if (org === 'groq') {
+            if (org === 'groq' || org === 'deepseek') {
                 payload.response_format = { type: "json_object" };
             }
 
@@ -147,13 +148,6 @@ RULES:
                 body: JSON.stringify(payload),
                 signal: signal
             });
-            
-            const remainingTokens = res.headers.get('x-ratelimit-remaining-tokens') || res.headers.get('x-ratelimit-tokens-remaining');
-            if (remainingTokens) {
-                let statusMsg = `Remaining Tokens: ${remainingTokens}`;
-                document.getElementById('quota-status-val').textContent = statusMsg;
-                localStorage.setItem(`QUOTA_${rawModel}`, statusMsg);
-            }
             
             const data = await res.json();
             if (!res.ok) throw new Error(data.error?.message || `${org.toUpperCase()} HTTP error ${res.status}`);
@@ -429,6 +423,7 @@ async function sendChat() {
     gKey = localStorage.getItem("GEMINI_KEY") || gKey;
     grKey = localStorage.getItem("GROQ_KEY") || grKey;
     orKey = localStorage.getItem("OPENROUTER_KEY") || orKey;
+    dsKey = localStorage.getItem("DEEPSEEK_KEY") || dsKey;
 
     const chatModelSelect = document.getElementById('chat-model-select');
     const rawModel = chatModelSelect ? chatModelSelect.value : "gemini-3.8-flash";
@@ -436,8 +431,12 @@ async function sendChat() {
     let org = "gemini";
     if (rawModel.includes(":free")) org = "openrouter";
     else if (rawModel.includes("openai/") || rawModel.includes("qwen/") || rawModel.includes("groq/")) org = "groq";
+    else if (rawModel.includes("deepseek-v4")) org = "deepseek";
 
-    const activeKey = org === 'groq' ? grKey : (org === 'openrouter' ? orKey : gKey);
+    let activeKey = gKey;
+    if (org === 'groq') activeKey = grKey;
+    else if (org === 'openrouter') activeKey = orKey;
+    else if (org === 'deepseek') activeKey = dsKey;
     
     if (!activeKey) {
         alert(`API Key missing for ${org.toUpperCase()}! Please enter it in the Config tab.`);
@@ -472,10 +471,10 @@ async function sendChat() {
     
     try {
         let resText = "";
-        if (org === 'groq' || org === 'openrouter') {
-            const apiUrl = org === 'openrouter' 
-                ? "https://openrouter.ai/api/v1/chat/completions" 
-                : "https://api.groq.com/openai/v1/chat/completions";
+        if (org === 'groq' || org === 'openrouter' || org === 'deepseek') {
+            let apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+            if (org === 'openrouter') apiUrl = "https://openrouter.ai/api/v1/chat/completions";
+            if (org === 'deepseek') apiUrl = "https://api.deepseek.com/chat/completions";
 
             const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeKey}` };
             if (org === 'openrouter') { headers['HTTP-Referer'] = window.location.href; headers['X-Title'] = 'NEXUS OS CBT Suite'; }
