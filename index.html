@@ -87,28 +87,63 @@
                         <option value="groq">Groq Cloud (LPU Hardware)</option>
                         <option value="openrouter">OpenRouter Free Tier</option>
                     </select>
+
                     <label>Neural Engine Model</label>
                     <select id="model-select"></select>
+
                     <div class="quota-badge" id="quota-display">
                         <span>⚡ Free Tier Quota Status</span>
                         <span id="quota-status-val" style="font-weight:700;">Loading...</span>
                     </div>
-                    <label>Target Standard</label>
-                    <input type="text" id="exam" placeholder="e.g. JEE Main, UPSC, OPSC ASO...">
+
+                    <label>Target Standard / Exam Name</label>
+                    <input type="text" id="exam" placeholder="e.g. UPSC CSE, OPSC ASO, JEE Advanced...">
+                    
+                    <label>Subject Name</label>
+                    <input type="text" id="subject" placeholder="e.g. Indian Polity, Organic Chemistry, Physics...">
+
                     <label>Syllabus Topic</label>
-                    <input type="text" id="topic" placeholder="e.g. Electrostatics, Modern Indian History...">
+                    <input type="text" id="topic" placeholder="e.g. Fundamental Rights, Coordination Compounds...">
+                    
                     <div style="display:flex; gap: 16px;">
-                        <div style="flex: 1;"><label>Questions</label><input type="number" id="count" value="10" min="1" max="100"></div>
-                        <div style="flex: 1;"><label>Language</label><select id="lang"><option value="English">English</option><option value="Odia">Odia</option></select></div>
+                        <div style="flex: 1;">
+                            <label>Difficulty (1 to 5 - Ruthless)</label>
+                            <select id="difficulty">
+                                <option value="1">Level 1 - Standard / Foundation</option>
+                                <option value="2">Level 2 - Moderate / Main Stream</option>
+                                <option value="3">Level 3 - Tough / Deep Analytical</option>
+                                <option value="4">Level 4 - Ruthless / Multi-Statement Trap</option>
+                                <option value="5" selected>Level 5 - Maximum Hardcore (Zero Direct Qs)</option>
+                            </select>
+                        </div>
+                        <div style="flex: 1;">
+                            <label>Questions Count</label>
+                            <input type="number" id="count" value="10" min="1" max="100">
+                        </div>
                     </div>
-                    <label>Timer (Minutes)</label>
-                    <input type="number" id="timer-mins" value="15" min="1" max="180">
+
+                    <div style="display:flex; gap: 16px;">
+                        <div style="flex: 1;">
+                            <label>Language</label>
+                            <select id="lang">
+                                <option value="English">English</option>
+                                <option value="Odia">Odia</option>
+                            </select>
+                        </div>
+                        <div style="flex: 1;">
+                            <label>Timer (Minutes)</label>
+                            <input type="number" id="timer-mins" value="15" min="1" max="180">
+                        </div>
+                    </div>
+                    
                     <button id="launch-btn" class="cyber-btn">Launch Examination</button>
                 </div>
+
                 <div id="terminal-screen" class="glass-card" style="display: none;">
                     <p class="pulse-text">Generating CBT Assessment...</p>
                     <div id="terminal"></div>
                 </div>
+
                 <div id="exam-active" style="display: none;">
                     <div class="cbt-header">
                         <div>
@@ -120,7 +155,9 @@
                             <button id="fullscreen-btn" class="cyber-btn secondary" style="padding: 6px 12px; font-size: 12px; margin:0; width:auto;">⛶ Fullscreen</button>
                         </div>
                     </div>
+
                     <div id="q-palette" class="q-palette-grid"></div>
+
                     <div class="glass-card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
                             <span id="bookmark-badge" style="font-size: 12px; font-weight: 700; color: var(--neon-yellow);"></span>
@@ -129,6 +166,7 @@
                         <h4 class="q-text" id="active-q-text">Loading...</h4>
                         <div id="active-options-container"></div>
                     </div>
+
                     <div class="cbt-footer">
                         <div style="display:flex; gap: 8px; flex-wrap: wrap;">
                             <button id="prev-btn" class="cyber-btn secondary" style="margin:0; width:auto;">← Prev</button>
@@ -141,6 +179,7 @@
                         </div>
                     </div>
                 </div>
+
                 <div id="exam-results" class="glass-card" style="display: none;">
                     <h2 class="header-title" style="text-align: center; margin-bottom: 10px;">Assessment Report</h2>
                     <div id="score-summary-banner"></div>
