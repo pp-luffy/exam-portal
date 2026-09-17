@@ -1,4 +1,3 @@
-const MASTER_PASS = "admin2026";
 let gKey = "";
 let grKey = "";
 let currentQuizData = [];
@@ -13,7 +12,14 @@ let mistakeVault = [];
 try { mistakeVault = JSON.parse(localStorage.getItem("NEXUS_VAULT")) || []; } catch(e) { mistakeVault = []; }
 
 document.addEventListener("DOMContentLoaded", function() {
-    document.getElementById('login-btn').addEventListener('click', executeLogin);
+    // Load existing stored keys on boot
+    gKey = localStorage.getItem("GEMINI_KEY") || "";
+    grKey = localStorage.getItem("GROQ_KEY") || "";
+
+    // Pre-populate config fields if keys exist
+    if (gKey) document.getElementById('update-gemini').value = gKey;
+    if (grKey) document.getElementById('update-groq').value = grKey;
+
     document.getElementById('launch-btn').addEventListener('click', startExam);
     document.getElementById('fullscreen-btn').addEventListener('click', toggleFullscreen);
     document.getElementById('bookmark-btn').addEventListener('click', toggleBookmark);
@@ -30,53 +36,10 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById('send-chat-btn').addEventListener('click', sendChat);
     document.getElementById('chat-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendChat(); });
     document.getElementById('export-btn').addEventListener('click', exportLocalStorage);
-    document.getElementById('logout-btn').addEventListener('click', logout);
     document.getElementById('save-tokens-btn').addEventListener('click', updateTokens);
 
-    try {
-        if (localStorage.getItem("APP_PASS") === MASTER_PASS) {
-            gKey = localStorage.getItem("GEMINI_KEY") || "";
-            grKey = localStorage.getItem("GROQ_KEY") || "";
-            if (gKey || grKey) {
-                document.getElementById('page-login').style.display = 'none';
-                document.getElementById('main-app').style.display = 'flex';
-                renderVault();
-            }
-        }
-    } catch(e) {}
+    renderVault();
 });
-
-function executeLogin() {
-    try {
-        const pass = document.getElementById('app-pass').value.trim();
-        const gemini = document.getElementById('gemini-key').value.trim();
-        const groq = document.getElementById('groq-key').value.trim();
-        const errEl = document.getElementById('login-err');
-
-        if (pass !== MASTER_PASS) {
-            errEl.style.display = 'block';
-            errEl.innerText = "Invalid Passcode. Default is admin2026";
-            return;
-        }
-        if (!gemini && !groq) {
-            errEl.style.display = 'block';
-            errEl.innerText = "Please provide at least one API Key.";
-            return;
-        }
-
-        localStorage.setItem("APP_PASS", pass);
-        if (gemini) localStorage.setItem("GEMINI_KEY", gemini);
-        if (groq) localStorage.setItem("GROQ_KEY", groq);
-        gKey = gemini;
-        grKey = groq;
-
-        document.getElementById('page-login').style.display = 'none';
-        document.getElementById('main-app').style.display = 'flex';
-        renderVault();
-    } catch(e) {
-        alert("Login script error: " + e.message);
-    }
-}
 
 function updateTokens() {
     const newGemini = document.getElementById('update-gemini').value.trim();
@@ -97,9 +60,6 @@ function updateTokens() {
             localStorage.setItem("GROQ_KEY", newGroq);
             grKey = newGroq;
         }
-
-        document.getElementById('update-gemini').value = "";
-        document.getElementById('update-groq').value = "";
         
         msgEl.style.display = 'block';
         setTimeout(() => { msgEl.style.display = 'none'; }, 4000);
@@ -107,8 +67,6 @@ function updateTokens() {
         alert("Failed to save tokens: " + e.message);
     }
 }
-
-function logout() { localStorage.clear(); location.reload(); }
 
 function switchTab(tab) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -125,6 +83,13 @@ function switchTab(tab) {
 }
 
 async function startExam() {
+    const activeKey = gKey || grKey;
+    if (!activeKey) {
+        alert("API Key missing! Please go to the Config tab and enter your Gemini or Groq API Key before launching.");
+        switchTab('settings');
+        return;
+    }
+
     document.getElementById('exam-setup').style.display = 'none';
     document.getElementById('terminal-screen').style.display = 'block';
     const terminal = document.getElementById('terminal');
@@ -348,6 +313,13 @@ function renderVault() {
 function clearVault() { if(confirm("Purge vault?")) { mistakeVault = []; localStorage.removeItem("NEXUS_VAULT"); renderVault(); } }
 
 async function sendChat() {
+    const activeKey = gKey || grKey;
+    if (!activeKey) {
+        alert("API Key missing! Please go to the Config tab to enter your key.");
+        switchTab('settings');
+        return;
+    }
+
     const inp = document.getElementById('chat-input');
     const msg = inp.value.trim();
     if (!msg) return;
@@ -362,8 +334,7 @@ async function sendChat() {
     box.appendChild(ai);
     
     try {
-        const key = gKey || grKey;
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${key}`, {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${activeKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: "Tutor: " + msg }] }] })
@@ -378,7 +349,7 @@ function exportLocalStorage() {
     const obj = {};
     for(let i=0; i<localStorage.length; i++) {
         const k = localStorage.key(i);
-        if(k !== "APP_PASS" && k !== "GEMINI_KEY" && k !== "GROQ_KEY") obj[k] = localStorage.getItem(k);
+        if(k !== "GEMINI_KEY" && k !== "GROQ_KEY") obj[k] = localStorage.getItem(k);
     }
     const a = document.createElement('a');
     a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2));
@@ -391,4 +362,4 @@ function resetExamUI() {
     document.getElementById('exam-results').style.display = 'none';
     document.getElementById('exam-active').style.display = 'none';
     document.getElementById('exam-setup').style.display = 'block';
-}
+                               }
