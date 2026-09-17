@@ -10,7 +10,6 @@ let secondsLeft = 0;
 let totalSecondsTaken = 0;
 let mistakeVault = [];
 
-// Clean provider models map
 const PROVIDER_MODELS = {
     gemini: [
         { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash (High Speed / Latest)", maxLimit: 50 },
@@ -50,7 +49,6 @@ document.addEventListener("DOMContentLoaded", function() {
     const modelSelect = document.getElementById('model-select');
     if (modelSelect) modelSelect.addEventListener('change', updateQuotaDisplay);
 
-    // Force populate dropdown immediately on boot
     updateModelDropdown();
 
     safeBind('launch-btn', 'click', startExam);
@@ -470,4 +468,5 @@ async function sendChat() {
     const inp = document.getElementById('chat-input');
     const msg = inp.value.trim();
     if (!msg) return;
-    const box 
+    const box = document.getElementById('chat-box');
+    box.innerHTML += `<div class="msg use
