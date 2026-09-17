@@ -8,9 +8,7 @@
     <link rel="manifest" href="manifest.json">
     <script>
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').catch(() => {});
-        });
+        window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => {}); });
       }
     </script>
     <style>
@@ -21,22 +19,13 @@
             --neon-yellow: #f59e0b; --neon-red: #ef4444; --text-main: #f8fafc; --text-muted: #94a3b8;
         }
         * { box-sizing: border-box; }
-        html, body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            background-color: var(--bg-deep); 
-            color: var(--text-main); 
-            margin: 0; padding: 0; height: 100vh;
-            overflow: hidden; overscroll-behavior: none; 
-        }
+        html, body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-deep); color: var(--text-main); margin: 0; padding: 0; height: 100vh; overflow: hidden; overscroll-behavior: none; }
         .app-shell { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
         .sidebar { display: none; width: 260px; background: #030712; border-right: 1px solid var(--border-glow); padding: 24px; position: fixed; height: 100vh; z-index: 100; }
         .sidebar-brand { font-size: 20px; font-weight: 800; color: var(--neon-cyan); letter-spacing: 2px; margin-bottom: 40px; text-transform: uppercase; }
         .sidebar-nav-item { padding: 14px 18px; border-radius: 12px; cursor: pointer; color: var(--text-muted); font-weight: 600; font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
         .sidebar-nav-item:hover, .sidebar-nav-item.active { background: rgba(0, 242, 254, 0.1); color: var(--neon-cyan); }
-        .main-content { 
-            flex: 1; padding: 24px; max-width: 900px; margin: 0 auto; 
-            height: 100vh; overflow-y: auto; overscroll-behavior-y: contain; padding-bottom: 120px; 
-        }
+        .main-content { flex: 1; padding: 24px; max-width: 900px; margin: 0 auto; height: 100vh; overflow-y: auto; overscroll-behavior-y: contain; padding-bottom: 120px; }
         @media (min-width: 768px) { .sidebar { display: block; } .main-content { margin-left: 260px; padding: 40px; max-width: 1000px; } .bottom-nav { display: none !important; } }
         .page { display: none; } .page.active { display: block; }
         .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #030712; border-top: 1px solid var(--border-glow); display: flex; justify-content: space-around; padding: 12px 0; z-index: 1000; }
@@ -88,7 +77,7 @@
             <div class="sidebar-nav-item" id="side-settings" onclick="switchTab('settings')">⚙️ Config</div>
         </div>
         <div class="main-content">
-            <!-- EXAM ENGINE PAGE -->
+            <!-- EXAM ENGINE -->
             <div id="page-exam" class="page active">
                 <h1 class="header-title">Exam Engine</h1>
                 <div id="exam-setup" class="glass-card">
@@ -98,46 +87,28 @@
                         <option value="groq">Groq Cloud (LPU Hardware)</option>
                         <option value="openrouter">OpenRouter Free Tier</option>
                     </select>
-
                     <label>Neural Engine Model</label>
                     <select id="model-select"></select>
-
                     <div class="quota-badge" id="quota-display">
                         <span>⚡ Free Tier Quota Status</span>
                         <span id="quota-status-val" style="font-weight:700;">Loading...</span>
                     </div>
-
                     <label>Target Standard</label>
                     <input type="text" id="exam" placeholder="e.g. JEE Main, UPSC, OPSC ASO...">
-                    
                     <label>Syllabus Topic</label>
                     <input type="text" id="topic" placeholder="e.g. Electrostatics, Modern Indian History...">
-                    
                     <div style="display:flex; gap: 16px;">
-                        <div style="flex: 1;">
-                            <label>Questions</label>
-                            <input type="number" id="count" value="10" min="1" max="100">
-                        </div>
-                        <div style="flex: 1;">
-                            <label>Language</label>
-                            <select id="lang">
-                                <option value="English">English</option>
-                                <option value="Odia">Odia</option>
-                            </select>
-                        </div>
+                        <div style="flex: 1;"><label>Questions</label><input type="number" id="count" value="10" min="1" max="100"></div>
+                        <div style="flex: 1;"><label>Language</label><select id="lang"><option value="English">English</option><option value="Odia">Odia</option></select></div>
                     </div>
-
                     <label>Timer (Minutes)</label>
                     <input type="number" id="timer-mins" value="15" min="1" max="180">
-                    
                     <button id="launch-btn" class="cyber-btn">Launch Examination</button>
                 </div>
-
                 <div id="terminal-screen" class="glass-card" style="display: none;">
                     <p class="pulse-text">Generating CBT Assessment...</p>
                     <div id="terminal"></div>
                 </div>
-
                 <div id="exam-active" style="display: none;">
                     <div class="cbt-header">
                         <div>
@@ -149,9 +120,7 @@
                             <button id="fullscreen-btn" class="cyber-btn secondary" style="padding: 6px 12px; font-size: 12px; margin:0; width:auto;">⛶ Fullscreen</button>
                         </div>
                     </div>
-
                     <div id="q-palette" class="q-palette-grid"></div>
-
                     <div class="glass-card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
                             <span id="bookmark-badge" style="font-size: 12px; font-weight: 700; color: var(--neon-yellow);"></span>
@@ -160,7 +129,6 @@
                         <h4 class="q-text" id="active-q-text">Loading...</h4>
                         <div id="active-options-container"></div>
                     </div>
-
                     <div class="cbt-footer">
                         <div style="display:flex; gap: 8px; flex-wrap: wrap;">
                             <button id="prev-btn" class="cyber-btn secondary" style="margin:0; width:auto;">← Prev</button>
@@ -173,7 +141,6 @@
                         </div>
                     </div>
                 </div>
-
                 <div id="exam-results" class="glass-card" style="display: none;">
                     <h2 class="header-title" style="text-align: center; margin-bottom: 10px;">Assessment Report</h2>
                     <div id="score-summary-banner"></div>
@@ -201,16 +168,24 @@
             <div id="page-chat" class="page">
                 <h1 class="header-title">NEXUS AI</h1>
                 <div class="glass-card" style="padding: 20px;">
-                    <div style="margin-bottom: 12px;">
-                        <label style="margin-top:0;">Active Chat Model</label>
-                        <select id="chat-model-select" style="padding: 10px 14px; font-size: 13px; margin-top: 4px;">
-                            <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
-                            <option value="llama-3.3-70b-versatile">Groq: Llama 3.3 70B</option>
-                            <option value="nvidia/nemotron-3-ultra-550b-a55b:free">OpenRouter: Nemotron 3 Ultra</option>
-                        </select>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px;">
+                        <div style="flex: 1;">
+                            <label style="margin-top:0;">Active Chat Model</label>
+                            <select id="chat-model-select" style="padding: 10px 14px; font-size: 13px; margin-top: 4px;">
+                                <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
+                                <option value="llama-3.3-70b-versatile">Groq: Llama 3.3 70B</option>
+                                <option value="nvidia/nemotron-3-ultra-550b-a55b:free">OpenRouter: Nemotron 3 Ultra</option>
+                            </select>
+                        </div>
+                        <div>
+                            <button id="clear-chat-btn" class="cyber-btn secondary" style="padding: 10px 14px; font-size: 12px; margin-top: 22px; width: auto; background: rgba(239, 68, 68, 0.1); border-color: var(--neon-red); color: var(--neon-red);">Clear Chat</button>
+                        </div>
                     </div>
-                    <div class="chat-box" id="chat-box">
-                        <div class="msg ai">Neural tutor online. Ready for queries.</div>
+                    <div class="chat-box" id="chat-box" style="display: flex; flex-direction: column; gap: 16px;">
+                        <div class="msg-wrapper ai" style="display: flex; flex-direction: column; align-items: flex-start;">
+                            <div class="msg ai">Neural tutor online. Ready for queries.</div>
+                            <span class="timestamp" style="font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-left: 4px;">Just now</span>
+                        </div>
                     </div>
                     <div style="display: flex; gap: 12px;">
                         <input type="text" id="chat-input" placeholder="Ask syllabus doubt...">
@@ -219,27 +194,17 @@
                 </div>
             </div>
 
-            <!-- CONFIG / SETTINGS -->
+            <!-- CONFIG -->
             <div id="page-settings" class="page">
                 <h1 class="header-title">System Config</h1>
                 <div class="glass-card">
                     <h3 style="color: var(--neon-cyan); margin-top:0;">API Token Manager</h3>
-                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Update your active Gemini, Groq, or OpenRouter tokens on the fly.</p>
-                    
-                    <label>Update Gemini API Key</label>
-                    <input type="password" id="update-gemini" placeholder="New AIzaSy...">
-                    
-                    <label>Update Groq API Key</label>
-                    <input type="password" id="update-groq" placeholder="New gsk_...">
-                    
-                    <label>Update OpenRouter API Key</label>
-                    <input type="password" id="update-openrouter" placeholder="New sk-or-v1-...">
-                    
+                    <label>Update Gemini API Key</label><input type="password" id="update-gemini" placeholder="New AIzaSy...">
+                    <label>Update Groq API Key</label><input type="password" id="update-groq" placeholder="New gsk_...">
+                    <label>Update OpenRouter API Key</label><input type="password" id="update-openrouter" placeholder="New sk-or-v1-...">
                     <button id="save-tokens-btn" class="cyber-btn" style="width: auto; margin-top: 16px;">Save New Tokens</button>
                     <p id="token-update-msg" style="color: var(--neon-green); font-size: 13px; display: none; margin-top: 10px; font-weight: 600;">Tokens updated successfully!</p>
-                    
                     <hr style="border: none; border-top: 1px solid var(--border-glow); margin: 28px 0;">
-                    
                     <h3 style="color: var(--neon-cyan); margin-top:0;">Telemetry & Storage</h3>
                     <p style="color: var(--neon-green); font-size: 14px; font-weight: 600;">● Secure Local Storage Active</p>
                     <button id="export-btn" class="cyber-btn secondary" style="color: var(--text-main); width: auto;">Export Backup (JSON)</button>
