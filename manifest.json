@@ -1,13 +1,13 @@
 {
-  "name": "NEXUS OS Exam Portal",
+  "name": "NEXUS OS Pro CBT Suite",
   "short_name": "NEXUS OS",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#030712",
-  "theme_color": "#030712",
+  "theme_color": "#00f2fe",
   "icons": [
     {
-      "src": "https://img.icons8.com/fluent-systems-filled/512/FFFFFF/graduation-cap.png",
+      "src": "icon.png",
       "sizes": "512x512",
       "type": "image/png"
     }
