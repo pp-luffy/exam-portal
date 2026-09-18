@@ -1,6 +1,6 @@
 # NEXUS OS | Cybernetic CBT Suite 🚀
 
-NEXUS OS is an advanced, AI-driven Computer-Based Testing (CBT) platform designed for rigorous competitive exam preparation (e.g., JEE, NEET, UPSC, OPSC). It dynamically synthesizes high-quality, zero-duplication multiple-choice questions using a multi-provider LLM architecture, rigorously verifies them through a 2-Tier Quality Assurance pipeline, and evaluates students with real-world exam constraints.
+NEXUS OS is an advanced, AI-driven Computer-Based Testing (CBT) platform designed for rigorous competitive exam preparation (e.g., JEE, NEET, Any other exam). It dynamically synthesizes high-quality, zero-duplication multiple-choice questions using a multi-provider LLM architecture, rigorously verifies them through a 2-Tier Quality Assurance pipeline, and evaluates students with real-world exam constraints.
 
 ## 🌟 Core Features
 
