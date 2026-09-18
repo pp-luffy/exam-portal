@@ -602,7 +602,7 @@ function submitExam() {
 
     const maxMarks = currentQuizData.length * posMark;
     const totalMarks = (correct * posMark) - (wrong * negMark);
-    const acc = Math.round((correct / currentQuizData.length) * 100);
+    const acc = Math.round((correct / (correct + wrong) * 100));
     
     const formattedTotal = Number.isInteger(totalMarks) ? totalMarks : totalMarks.toFixed(2);
     const penaltyApplied = Number.isInteger(wrong * negMark) ? (wrong * negMark) : (wrong * negMark).toFixed(2);
