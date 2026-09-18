@@ -52,3 +52,33 @@ NEXUS OS is completely client-side and requires no backend servers or databases.
 1. Clone the repository:
    ```bash
    git clone [https://github.com/pp-luffy/exam-portal.git](https://github.com/pp-luffy/exam-portal.git)
+
+
+## 🔑 How to Set Up API Keys
+
+NEXUS OS requires API keys from AI providers to generate questions and power the tutor. You do not need all of them—just the one(s) you plan to use. (Groq and Gemini are highly recommended).
+
+### Step 1: Obtain Your API Keys
+Create free accounts and generate your API keys from the following providers:
+*   **Google Gemini:** Get your key from [Google AI Studio](https://aistudio.google.com/app/apikey).
+*   **Groq Cloud:** Get your key from the [GroqCloud Console](https://console.groq.com/keys). *(Note: For the 2-Tier QA system to work optimally, you can generate two separate keys here: one for Primary and one for Verification).*
+*   **OpenRouter:** Get your key from [OpenRouter.ai](https://openrouter.ai/keys).
+*   **DeepSeek:** Get your key from the [DeepSeek Platform](https://platform.deepseek.com/).
+
+### Step 2: Launch the Application
+1. Open the `index.html` file in any modern web browser (Chrome, Edge, Brave, Safari).
+2. You will be greeted by the Boot Splash screen, followed by the Login prompt.
+3. Enter your **Operator ID** (e.g., type `thegodsk` or `saikiran` to unlock Admin privileges) and click **Initialize System**.
+
+### Step 3: Configure the Portal
+1. On the left sidebar (or bottom navigation bar on mobile), click on **⚙️ Config**.
+2. Under the **API Token & Dispatch Manager** section, enter your configuration details:
+   *   **Destination Mail ID:** Enter the email address where you want to send your final assessment PDF/HTML reports.
+   *   **Update [Provider] API Key:** Paste your newly generated API keys into their respective fields. 
+   *   *Optional but Recommended:* Paste a second Groq key into the **Update Verification Groq Key (Phase 2)** field to enable dual-node load balancing and 2-Tier Quality Assurance.
+3. Click the **Save Configuration** button. 
+
+### Step 4: Verify Local Storage
+Once you see the green `Configuration saved successfully!` text, your keys are securely encrypted in your browser's local storage. They will persist even if you close the tab, so you only need to do this once. 
+
+You are now ready to switch back to the **📝 Exam Engine** tab and launch an assessment!
