@@ -494,10 +494,15 @@ ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
 
         currentQuizData = allGeneratedQuestions;
         
-        // Pass through 2-Tier QA Pipeline
-        currentQuizData = await verifyAndCorrectQuizData(currentQuizData, signal);
+        // Pass through 2-Tier QA Pipeline ONLY if user is Admin
+        if (typeof isAdmin !== 'undefined' && isAdmin) {
+            currentQuizData = await verifyAndCorrectQuizData(currentQuizData, signal);
+        } else {
+            terminal.innerHTML += `<br><span style='color: var(--text-muted);'>[SYSTEM]: Neural QA Phase skipped (Standard Operator License). Assessment locked.</span><br>`;
+        }
         
         prepareExamPortalLaunch(mins, posM, negM);
+        
 
     } catch (err) {
         if (err.name === 'AbortError') return;
