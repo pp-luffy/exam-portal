@@ -1,10 +1,10 @@
 // ==========================================
-// NEXUS OS: DAILY EVENING NOTIFIER
+// NEXUS OS: DAILY EVENING NOTIFIER (FIXED)
 // ==========================================
 
 document.addEventListener("DOMContentLoaded", () => {
     
-    // 1. Inject a toggle button into the Settings Page dynamically
+    // 1. Inject the toggle button into the Settings Page dynamically
     const settingsCard = document.querySelector('#page-settings .glass-card');
     if (settingsCard) {
         const notifSection = document.createElement('div');
@@ -18,7 +18,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const btn = document.getElementById('enable-notifs-btn');
         
-        // Update button state if already granted
         if (Notification.permission === "granted") {
             btn.innerHTML = "✅ Notifications Active";
             btn.style.color = "var(--neon-green)";
@@ -32,7 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 btn.style.color = "var(--neon-green)";
                 btn.style.borderColor = "var(--neon-green)";
                 
-                // Fire a test notification
+                // Fire a test notification to confirm it works
                 if ('serviceWorker' in navigator) {
                     navigator.serviceWorker.ready.then(registration => {
                         registration.showNotification("NEXUS OS", {
@@ -42,24 +41,26 @@ document.addEventListener("DOMContentLoaded", () => {
                         });
                     });
                 }
+                
+                scheduleOfflineNotification();
             } else {
                 alert("Notification permission denied by your browser.");
             }
         });
     }
 
-    // 2. Background Clock for the 6:00 PM Trigger
-    setInterval(() => {
+    // 2. The Core Notification Logic
+    function fireEveningNotification() {
         const now = new Date();
+        const currentHour = now.getHours();
         
-        // Target: 6 PM (18:00)
-        if (now.getHours() === 16 && now.getMinutes() === 15) {
-            
+        // Target: ANY time after 6:00 PM (18:00) until midnight
+        if (currentHour >= 18) {
             const lastConfigStr = localStorage.getItem("NEXUS_LAST_CONFIG");
             const lastNotified = localStorage.getItem("NEXUS_NOTIFIED_DATE");
             const todayStr = now.toLocaleDateString();
 
-            // Ensure we only notify once per day and we have a previous test to reference
+            // Fire only if we haven't notified today and permission is granted
             if (lastConfigStr && lastNotified !== todayStr && Notification.permission === "granted") {
                 
                 const lastConfig = JSON.parse(lastConfigStr);
@@ -74,14 +75,53 @@ document.addEventListener("DOMContentLoaded", () => {
                             badge: "icon.png",
                             vibrate: [200, 100, 200, 100, 200],
                             tag: "daily-quiz-reminder",
-                            requireInteraction: true // Keeps the notification on screen until tapped
+                            requireInteraction: true 
                         });
                     });
                 }
 
-                // Log today's date so it doesn't fire repeatedly
+                // Log today's date to prevent spamming
                 localStorage.setItem("NEXUS_NOTIFIED_DATE", todayStr);
             }
         }
-    }, 60000); // Check every 60 seconds
+    }
+
+    // 3. Strategy A: Chrome Offline OS Scheduler (Supported Androids Only)
+    function scheduleOfflineNotification() {
+        if (!('showTrigger' in Notification.prototype)) return; // Exit if browser doesn't support it
+        
+        const now = new Date();
+        const targetTime = new Date();
+        targetTime.setHours(16, 25, 0, 0); // Set to 6:00 PM today
+
+        // If it's already past 6 PM, schedule for tomorrow
+        if (now.getTime() > targetTime.getTime()) {
+            targetTime.setDate(targetTime.getDate() + 1);
+        }
+
+        const lastConfig = JSON.parse(localStorage.getItem("NEXUS_LAST_CONFIG") || "{}");
+        const subject = lastConfig.subject || "General Studies";
+
+        navigator.serviceWorker.ready.then(registration => {
+            registration.showNotification("Evening Revision Time! 🧠", {
+                body: `Scheduled daily quiz reminder for ${subject}.`,
+                icon: "icon.png",
+                tag: "daily-quiz-reminder",
+                showTrigger: new TimestampTrigger(targetTime.getTime()) // Hands scheduling to Android OS
+            });
+        });
+    }
+
+    // 4. Strategy B: Event-Driven Catch-Up (Works everywhere)
+    // Fires instantly when you switch tabs or unlock the phone
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === 'visible') {
+            fireEveningNotification();
+            scheduleOfflineNotification(); // Re-schedule for tomorrow
+        }
+    });
+
+    // 5. Strategy C: Lightweight Backup Polling
+    // Runs in the background only when the app is actively open on the screen
+    setInterval(fireEveningNotification, 60000); 
 });
