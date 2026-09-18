@@ -418,7 +418,8 @@ CRITICAL INSTRUCTIONS:
 1. NO EXPLANATIONS inside the options or question text.
 2. The FIRST option in the array (index 0) MUST ALWAYS BE THE CORRECT ANSWER. The system will randomize them later.
 3. Formulate highly plausible distractor traps for options 2, 3, and 4.
-4. Set "correct_option_index" strictly to 0 for every single question.`;
+4. CRITICAL: Do NOT use LaTeX formatting or dollar signs ($) for mathematical symbols. Write all variables and formulas in plain text (e.g., F1 = F2 = sigma * q / 2 * epsilon_0).
+5. Set "correct_option_index" strictly to 0 for every single question.`;
 
             if (previouslyGeneratedConcepts.length > 0) {
                 prompt += `\n\nANTI-DUPLICATION RULE:\nYou have already generated the following questions. DO NOT REPEAT THESE CONCEPTS:\n`;
