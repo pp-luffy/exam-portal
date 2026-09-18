@@ -334,6 +334,27 @@ async function startExam() {
         return;
     }
 
+    // ==========================================
+    // NEW: SAVE CONFIGURATION STATE BEFORE LAUNCH
+    // ==========================================
+    try {
+        localStorage.setItem("NEXUS_LAST_CONFIG", JSON.stringify({
+            org: document.getElementById('org-select').value,
+            model: document.getElementById('model-select').value,
+            exam: exam,
+            subject: subject,
+            topic: topic,
+            difficulty: difficulty,
+            count: document.getElementById('count').value,
+            posMarks: document.getElementById('pos-marks').value,
+            negMarks: document.getElementById('neg-marks').value,
+            timer: document.getElementById('timer-mins').value,
+            lang: document.getElementById('lang').value,
+            examMode: document.getElementById('exam-mode').value,
+            adminPrompt: isAdmin && document.getElementById('admin-prompt') ? document.getElementById('admin-prompt').value : ""
+        }));
+    } catch(e) { console.warn("Failed to cache config", e); }
+
     document.getElementById('exam-setup').style.display = 'none';
     const terminalScreen = document.getElementById('terminal-screen');
     terminalScreen.style.display = 'block';
@@ -385,7 +406,7 @@ async function startExam() {
             let currentApiKey = keysToUse[i % keysToUse.length];
             let keyLabel = (keysToUse.length > 1 && i % 2 !== 0) ? "Secondary/Verify" : "Primary";
 
-            terminal.innerHTML += `<span style='color: var(--text-muted);'>[BATCH ${i+1}/${chunks.length}]: Requesting ${currentChunkSize} questions via${keyLabel} node...</span><br>`;
+            terminal.innerHTML += `<span style='color: var(--text-muted);'>[BATCH ${i+1}/${chunks.length}]: Requesting ${currentChunkSize} questions via ${keyLabel} node...</span><br>`;
             terminal.scrollTop = terminal.scrollHeight;
 
             let prompt = `You are an expert Question Paper Setter for competitive examinations like ${exam}. 
@@ -401,7 +422,7 @@ CRITICAL INSTRUCTIONS:
 
             if (previouslyGeneratedConcepts.length > 0) {
                 prompt += `\n\nANTI-DUPLICATION RULE:\nYou have already generated the following questions. DO NOT REPEAT THESE CONCEPTS:\n`;
-                previouslyGeneratedConcepts.forEach((q, idx) => { prompt += `${idx+1}.${q.substring(0, 100)}...\n`; });
+                previouslyGeneratedConcepts.forEach((q, idx) => { prompt += `${idx+1}. ${q.substring(0, 100)}...\n`; });
             }
 
             prompt += `\n\nOutput ONLY a valid JSON array matching this exact format:
@@ -437,7 +458,7 @@ ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
                 }
 
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.error?.message || `${org.toUpperCase()} HTTP error${res.status}`);
+                if (!res.ok) throw new Error(data.error?.message || `${org.toUpperCase()} HTTP error ${res.status}`);
                 fullResponse = data.choices[0].message.content;
 
             } else {
@@ -471,7 +492,10 @@ ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
         }
 
         currentQuizData = allGeneratedQuestions;
+        
+        // Pass through 2-Tier QA Pipeline
         currentQuizData = await verifyAndCorrectQuizData(currentQuizData, signal);
+        
         prepareExamPortalLaunch(mins, posM, negM);
 
     } catch (err) {
