@@ -109,14 +109,31 @@
         .cbt-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; background: rgba(2, 6, 23, 0.85); padding: 16px 24px; border-radius: 16px; border: 1px solid var(--border-glow); margin-bottom: 20px; backdrop-filter: blur(16px); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .progress-bar-container { width: 100%; background: rgba(255,255,255,0.06); height: 5px; border-radius: 3px; overflow: hidden; margin-top: 10px; }
         .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue)); width: 0%; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 12px var(--neon-cyan); }
-        .timer-badge { font-family: 'JetBrains Mono', monospace; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); color: var(--neon-yellow); padding: 8px 14px; border-radius: 10px; font-weight: 700; font-size: 13px; text-shadow: 0 0 10px rgba(245,158,11,0.4); box-shadow: inset 0 0 8px rgba(245,158,11,0.1); }
         
+        .timer-badge { font-family: 'JetBrains Mono', monospace; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); color: var(--neon-yellow); padding: 8px 14px; border-radius: 10px; font-weight: 700; font-size: 13px; text-shadow: 0 0 10px rgba(245,158,11,0.4); box-shadow: inset 0 0 8px rgba(245,158,11,0.1); transition: all 0.3s ease; }
+        
+        /* NEW: CRITICAL TIMER STYLES */
+        @keyframes pulseDanger {
+            0% { box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); border-color: rgba(239, 68, 68, 0.6); color: var(--neon-red); }
+            50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.9); border-color: var(--neon-red); color: #fff; background: rgba(239, 68, 68, 0.3); }
+            100% { box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); border-color: rgba(239, 68, 68, 0.6); color: var(--neon-red); }
+        }
+        .timer-critical { animation: pulseDanger 1s infinite; background: rgba(239, 68, 68, 0.1) !important; }
+
         .pal-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); color: var(--text-muted); font-weight: 700; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
         .pal-btn.answered { background: rgba(16, 185, 129, 0.2); border-color: rgba(16,185,129,0.6); color: var(--neon-green); box-shadow: 0 0 10px rgba(16,185,129,0.25); }
         .pal-btn.bookmarked { background: rgba(245, 158, 11, 0.2); border-color: rgba(245,158,11,0.6); color: var(--neon-yellow); box-shadow: 0 0 10px rgba(245,158,11,0.25); }
         .pal-btn.current { border: 2px solid var(--neon-cyan); box-shadow: 0 0 15px var(--neon-cyan); color: #fff; background: rgba(0,242,254,0.1); }
         
         .q-text { font-size: 17px; line-height: 1.7; color: #fff; margin-bottom: 20px; font-weight: 600; word-break: break-word; }
+        
+        /* NEW: QUESTION TRANSITION STYLES */
+        @keyframes slideFade {
+            0% { opacity: 0; transform: translateX(10px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+        .q-transition { animation: slideFade 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
         @keyframes selectPulse { 0% { transform: scale(1); } 50% { transform: scale(1.008); } 100% { transform: scale(1); } }
         .option-card { display: flex; align-items: flex-start; gap: 14px; padding: 16px 20px; background: rgba(0, 0, 0, 0.5); margin: 12px 0; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.08); cursor: pointer; font-size: 14px; line-height: 1.5; word-break: break-word; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
         .option-card input[type="radio"] { margin-top: 3px; accent-color: var(--neon-cyan); flex-shrink: 0; width: 18px; height: 18px; }
@@ -324,9 +341,17 @@
 
                         <!-- RIGHT SIDE: PALETTE -->
                         <div class="cbt-sidebar">
-                            <div class="glass-card" style="padding: 20px; margin-bottom: 0; height: 100%;">
-                                <div style="font-size: 12px; font-weight: 800; color: var(--neon-cyan); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 16px; text-align: center; border-bottom: 1px solid var(--border-glow); padding-bottom: 12px;">Question Palette</div>
-                                <div id="q-palette" class="q-palette-grid" style="border: none; padding: 0; background: transparent; box-shadow: none; margin-bottom: 0;"></div>
+                            <div class="glass-card" style="padding: 20px; margin-bottom: 0; height: 100%; display: flex; flex-direction: column;">
+                                <div style="font-size: 12px; font-weight: 800; color: var(--neon-cyan); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px; text-align: center;">Question Palette</div>
+                                
+                                <!-- NEW FILTER CHIPS -->
+                                <div style="display: flex; gap: 6px; margin-bottom: 16px; border-bottom: 1px solid var(--border-glow); padding-bottom: 12px;">
+                                    <button class="cyber-btn secondary" style="margin:0; padding: 4px 8px; font-size: 9px;" onclick="filterPalette('all')">All</button>
+                                    <button class="cyber-btn secondary" style="margin:0; padding: 4px 8px; font-size: 9px; color: var(--neon-yellow);" onclick="filterPalette('review')">Review</button>
+                                    <button class="cyber-btn secondary" style="margin:0; padding: 4px 8px; font-size: 9px; color: var(--neon-red);" onclick="filterPalette('unanswered')">Empty</button>
+                                </div>
+
+                                <div id="q-palette" class="q-palette-grid" style="border: none; padding: 0; background: transparent; box-shadow: none; margin-bottom: 0; flex: 1;"></div>
                             </div>
                         </div>
                     </div>
