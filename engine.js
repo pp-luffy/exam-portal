@@ -88,22 +88,22 @@ function toggleTimerPause() {
 }
 
 // ==========================================
-// PHASE 2: QA VERIFICATION (OPTIMIZED BURST LOGIC)
+// PHASE 2: 2-TIER QA VERIFICATION (20B Flagging -> 120B Fixing)
 // ==========================================
 async function verifyAndCorrectQuizData(quizData, signal) {
     const terminal = document.getElementById('terminal');
     const groqVerifyKey = localStorage.getItem("GROQ_VERIFY_KEY");
     const groqPrimaryKey = localStorage.getItem("GROQ_KEY"); 
     
-    if (!groqVerifyKey) {
-        terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[WARNING]: Verification Groq Key missing. Skipping Phase 2 QA verification.</span><br>`;
+    if (!groqVerifyKey || !groqPrimaryKey) {
+        terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[WARNING]: Both Groq Keys required for 2-Tier QA. Skipping QA phase.</span><br>`;
         return quizData; 
     }
 
     const lang = document.getElementById('lang') ? document.getElementById('lang').value : "English";
     const BATCH_SIZE = (lang === 'Odia') ? 10 : 25;
 
-    terminal.innerHTML += `<br><span style='color: var(--neon-cyan);'>[PHASE 2]: Initiating Quality Assurance via GPT-OSS-20B (Batch Size: ${BATCH_SIZE})...</span><br>`;
+    terminal.innerHTML += `<br><span style='color: var(--neon-cyan);'>[PHASE 2]: Initiating 2-Tier Neural Quality Assurance...</span><br>`;
 
     let totalCorrections = 0;
     const batches = [];
@@ -111,26 +111,13 @@ async function verifyAndCorrectQuizData(quizData, signal) {
         batches.push(quizData.slice(i, i + BATCH_SIZE).map((q, idx) => ({ index: i + idx, ...q })));
     }
 
-    async function sendVerifyBatch(chunk, apiKey) {
+    async function sendTier1Verify(chunk, apiKey) {
         const verifyPrompt = `You are a strict QA Audit System for a competitive exam engine. 
 Review the following JSON array of multiple-choice questions. Check for factual errors, illogical distractors, or an incorrect 'correct_option_index'.
-
 If ALL questions are 100% accurate, return EXACTLY: {"corrections": []}
-
-If ANY questions are flawed, return a JSON object with a "corrections" array containing ONLY the fixed questions. Use this exact schema:
-{
-  "corrections": [
-    {
-      "index": 0, // MUST be the exact 'index' integer provided in the original array
-      "question": "The corrected question text...",
-      "options": ["Opt1", "Opt2", "Opt3", "Opt4"],
-      "correct_option_index": 2
-    }
-  ]
-}
-
-Original Array Chunk to Audit:
-${JSON.stringify(chunk)}`;
+If ANY questions are flawed, return a JSON object with a "corrections" array containing the flawed questions and your suggested fixes.
+Schema: {"corrections": [{"index": 0, "question": "...", "options": ["...", "..."], "correct_option_index": 0}]}
+Array to Audit:\n${JSON.stringify(chunk)}`;
 
         const payload = { 
             model: "openai/gpt-oss-20b", 
@@ -142,90 +129,102 @@ ${JSON.stringify(chunk)}`;
 
         try {
             const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                body: JSON.stringify(payload),
-                signal: signal
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                body: JSON.stringify(payload), signal: signal
             });
             if (res.status === 429) return { status: 429 };
-            if (!res.ok) throw new Error(`QA HTTP ${res.status}`);
+            if (!res.ok) throw new Error(`Tier 1 HTTP ${res.status}`);
             const data = await res.json();
             return { status: 200, data: JSON.parse(data.choices[0].message.content) };
         } catch (err) {
-            if (err.name !== 'AbortError') console.warn("QA Batch Error:", err);
             return { status: 500, error: err };
         }
     }
 
-    function applyCorrections(parsed) {
-        if (parsed && parsed.corrections && Array.isArray(parsed.corrections) && parsed.corrections.length > 0) {
-            totalCorrections += parsed.corrections.length;
-            parsed.corrections.forEach(c => {
-                if (c.index !== undefined && c.index >= 0 && c.index < quizData.length) {
-                    quizData[c.index].question = c.question;
-                    quizData[c.index].options = c.options;
-                    quizData[c.index].correct_option_index = c.correct_option_index;
-                }
+    async function sendTier2ExpertReview(flaggedItems, apiKey) {
+        terminal.innerHTML += `<span style='color: var(--neon-yellow);'>[EXPERT QA]: ${flaggedItems.length} anomaly(s) flagged. Escalating to 120B node for deep review...</span><br>`;
+        terminal.scrollTop = terminal.scrollHeight;
+
+        const reviewPrompt = `You are an Expert Chief QA Reviewer (120B parameter model).
+A preliminary fast QA system flagged the following multiple-choice questions for potential errors.
+Review each flagged item carefully. 
+- If the original question HAS an issue, FIX IT and return the corrected version.
+- If the original question IS PERFECTLY FINE and the fast QA was hallucinating, KEEP the original version intact.
+Return ONLY a JSON object with a "corrections" array in this exact schema:
+{"corrections": [{"index": <int>, "question": "...", "options": ["..."], "correct_option_index": <int>}]}
+
+Flagged items to review:\n${JSON.stringify(flaggedItems)}`;
+
+        const payload = { 
+            model: "openai/gpt-oss-120b", 
+            messages: [{ role: "user", content: reviewPrompt }], 
+            temperature: 0.1, 
+            max_tokens: 4096,
+            response_format: { type: "json_object" }
+        };
+
+        try {
+            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                body: JSON.stringify(payload), signal: signal
             });
+            if (res.status === 429) {
+                terminal.innerHTML += `<span style='color: var(--neon-red);'>[RATE LIMIT]: 120B node throttled. Retrying escalation in 30s...</span><br>`;
+                await new Promise(r => setTimeout(r, 30000));
+                return await sendTier2ExpertReview(flaggedItems, apiKey); // Retry escalation
+            }
+            if (!res.ok) throw new Error(`Tier 2 HTTP ${res.status}`);
+            const data = await res.json();
+            return { status: 200, data: JSON.parse(data.choices[0].message.content) };
+        } catch (err) {
+            return { status: 500, error: err };
         }
     }
 
-    let i = 0;
-    let dualBurstMode = false;
-
-    while (i < batches.length) {
-        terminal.innerHTML += `<span style='color: var(--text-muted);'>[QA]: Processing Batch ${i+1}/${batches.length}...</span><br>`;
+    for (let i = 0; i < batches.length; i++) {
+        terminal.innerHTML += `<span style='color: var(--text-muted);'>[QA]: Scanning Batch ${i+1}/${batches.length} (20B Fast Node)...</span><br>`;
         terminal.scrollTop = terminal.scrollHeight;
         
-        if (dualBurstMode && groqPrimaryKey && i + 1 < batches.length) {
-            terminal.innerHTML += `<span style='color: var(--text-muted);'>[QA]: Bursting Batch ${i+2}/${batches.length} concurrently...</span><br>`;
-            terminal.scrollTop = terminal.scrollHeight;
+        let t1Res = await sendTier1Verify(batches[i], groqVerifyKey);
+        
+        if (t1Res.status === 429) {
+            terminal.innerHTML += `<span style='color: var(--neon-yellow);'>[QA WARNING]: Rate limit hit on 20B node. Pausing for 60s...</span><br>`;
+            await new Promise(resolve => setTimeout(resolve, 60000));
+            i--; // Retry this chunk
+            continue;
+        }
+
+        if (t1Res.data && t1Res.data.corrections && t1Res.data.corrections.length > 0) {
+            // Package the original questions + the fast QA's warnings
+            let flaggedPayload = t1Res.data.corrections.map(c => {
+                let original = batches[i].find(orig => orig.index === c.index);
+                return {
+                    index: c.index,
+                    original_question: original,
+                    tier1_suggested_fix: c
+                };
+            });
+
+            // Escalate to 120B model
+            let t2Res = await sendTier2ExpertReview(flaggedPayload, groqPrimaryKey);
             
-            let p1 = sendVerifyBatch(batches[i], groqVerifyKey);
-            let p2 = sendVerifyBatch(batches[i+1], groqPrimaryKey);
-            
-            let [res1, res2] = await Promise.all([p1, p2]);
-            
-            if (res1.status === 429 || res2.status === 429) {
-                terminal.innerHTML += `<span style='color: var(--neon-yellow);'>[QA WARNING]: Rate limit hit during burst. Pausing for 60 seconds...</span><br>`;
-                terminal.scrollTop = terminal.scrollHeight;
-                await new Promise(resolve => setTimeout(resolve, 60000));
-                continue; 
-            }
-            
-            if (res1.data) applyCorrections(res1.data);
-            if (res2.data) applyCorrections(res2.data);
-            
-            i += 2;
-            if (i < batches.length) await new Promise(r => setTimeout(r, 2000));
-            
-        } else {
-            let res = await sendVerifyBatch(batches[i], groqVerifyKey);
-            
-            if (res.status === 429) {
-                terminal.innerHTML += `<span style='color: var(--neon-yellow);'>[QA WARNING]: Rate limit hit. Pausing for 60 seconds to reset token buckets...</span><br>`;
-                terminal.scrollTop = terminal.scrollHeight;
-                
-                await new Promise(resolve => setTimeout(resolve, 60000));
-                
-                terminal.innerHTML += `<span style='color: var(--neon-cyan);'>[QA SYSTEM]: 60s elapsed. Dual-token burst active.</span><br>`;
-                terminal.scrollTop = terminal.scrollHeight;
-                dualBurstMode = true; 
-                
-            } else {
-                if (res.data) applyCorrections(res.data);
-                i++;
-                if (i < batches.length) {
-                    await new Promise(r => setTimeout(r, 2000));
-                }
+            if (t2Res.data && t2Res.data.corrections) {
+                t2Res.data.corrections.forEach(finalFix => {
+                    if (finalFix.index !== undefined && finalFix.index >= 0 && finalFix.index < quizData.length) {
+                        quizData[finalFix.index].question = finalFix.question;
+                        quizData[finalFix.index].options = finalFix.options;
+                        quizData[finalFix.index].correct_option_index = finalFix.correct_option_index;
+                        totalCorrections++;
+                    }
+                });
             }
         }
     }
 
     if (totalCorrections > 0) {
-        terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[QA ALERT]: Intercepted and dynamically patched ${totalCorrections} flawed question(s).</span><br>`;
+        terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[QA RESOLVED]: Expert 120B node finalized ${totalCorrections} correction(s).</span><br>`;
     } else {
-        terminal.innerHTML += `<br><span style='color: var(--neon-green);'>[QA CLEAR]: 0 anomalies detected. Assessment locked.</span><br>`;
+        terminal.innerHTML += `<br><span style='color: var(--neon-green);'>[QA CLEAR]: 0 anomalies confirmed. Assessment locked.</span><br>`;
     }
 
     return quizData;
@@ -304,7 +303,7 @@ function initStandaloneExam() {
 }
 
 // ==========================================
-// PHASE 1: GENERATION (WITH CHUNKING & TOKEN DISTRIBUTION)
+// PHASE 1: GENERATION (CHUNKING + INDEX 0 TRICK)
 // ==========================================
 async function startExam() {
     gKey = localStorage.getItem("GEMINI_KEY") || gKey;
@@ -362,7 +361,6 @@ async function startExam() {
     const negM = parseFloat(document.getElementById('neg-marks').value) || 0;
     const adminPromptTxt = isAdmin ? (document.getElementById('admin-prompt').value || "").trim() : "";
 
-    // Chunking Logic (Max 25 questions per API call to avoid token truncation)
     let chunks = [];
     let remaining = totalCount;
     while (remaining > 0) {
@@ -378,41 +376,40 @@ async function startExam() {
     let allGeneratedQuestions = [];
     let previouslyGeneratedConcepts = [];
 
-    // Distribute tokens if using Groq
     let keysToUse = [activeKey];
     if (org === 'groq' && grvKey) keysToUse = [grKey, grvKey];
 
     try {
         for (let i = 0; i < chunks.length; i++) {
             let currentChunkSize = chunks[i];
-            let currentApiKey = keysToUse[i % keysToUse.length]; // Alternates between primary and verify keys
+            let currentApiKey = keysToUse[i % keysToUse.length];
             let keyLabel = (keysToUse.length > 1 && i % 2 !== 0) ? "Secondary/Verify" : "Primary";
 
             terminal.innerHTML += `<span style='color: var(--text-muted);'>[BATCH ${i+1}/${chunks.length}]: Requesting ${currentChunkSize} questions via${keyLabel} node...</span><br>`;
             terminal.scrollTop = terminal.scrollHeight;
 
-            let prompt = `You are a ruthless, expert Chief Question Paper Setter for competitive examinations like ${exam}. 
+            let prompt = `You are an expert Question Paper Setter for competitive examinations like ${exam}. 
 Generate EXACTLY ${currentChunkSize} high-standard questions for the Subject: "${subject}", focusing on the Topic: "${topic}". 
 Output language must strictly be ${lang}.
 DIFFICULTY LEVEL: Level ${difficulty} out of 5.
 
-QUALITY PROTOCOL:
-1. FACT CHECK: 100% accurate.
-2. SINGLE TRUE ANSWER: EXACTLY ONE unambiguously correct option.
-3. INDEX CHECK: correct_option_index strictly matches the 0-based array position.
-4. NO EXPLANATIONS inside the question text or options array.`;
+CRITICAL INSTRUCTIONS:
+1. NO EXPLANATIONS inside the options or question text.
+2. The FIRST option in the array (index 0) MUST ALWAYS BE THE CORRECT ANSWER. The system will randomize them later.
+3. Formulate highly plausible distractor traps for options 2, 3, and 4.
+4. Set "correct_option_index" strictly to 0 for every single question.`;
 
             if (previouslyGeneratedConcepts.length > 0) {
-                prompt += `\n\nCRITICAL ANTI-DUPLICATION RULE:\nYou have already generated the following questions. DO NOT REPEAT OR OVERLAP WITH THESE CONCEPTS:\n`;
+                prompt += `\n\nANTI-DUPLICATION RULE:\nYou have already generated the following questions. DO NOT REPEAT THESE CONCEPTS:\n`;
                 previouslyGeneratedConcepts.forEach((q, idx) => { prompt += `${idx+1}.${q.substring(0, 100)}...\n`; });
             }
 
-            prompt += `\nOutput ONLY a valid JSON array matching this exact format:
+            prompt += `\n\nOutput ONLY a valid JSON array matching this exact format:
 [
   {
     "question": "Question text...",
-    "options": ["Opt1", "Opt2", "Opt3", "Opt4"],
-    "correct_option_index": 2
+    "options": ["Correct Option", "Distractor 1", "Distractor 2", "Distractor 3"],
+    "correct_option_index": 0
   }
 ]
 ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
@@ -427,7 +424,7 @@ ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
                 const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentApiKey}` };
                 if (org === 'openrouter') { headers['HTTP-Referer'] = window.location.href; headers['X-Title'] = 'NEXUS OS CBT Suite'; }
 
-                const payload = { model: rawModel, messages: [{ role: "user", content: prompt }], temperature: 0.4, max_tokens: 8192 };
+                const payload = { model: rawModel, messages: [{ role: "user", content: prompt }], temperature: 0.2, max_tokens: 8192 };
                 if (org === 'groq' || org === 'deepseek') payload.response_format = { type: "json_object" };
 
                 const res = await fetch(apiUrl, { method: 'POST', headers: headers, body: JSON.stringify(payload), signal: signal });
@@ -435,7 +432,7 @@ ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
                 if (res.status === 429) {
                     terminal.innerHTML += `<span style='color: var(--neon-yellow);'>[RATE LIMIT]: Pausing for 60s before retrying batch...</span><br>`;
                     await new Promise(r => setTimeout(r, 60000));
-                    i--; // Retry this chunk
+                    i--; 
                     continue;
                 }
 
@@ -446,7 +443,7 @@ ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
             } else {
                 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${rawModel}:streamGenerateContent?key=${currentApiKey}`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 65536, temperature: 0.4 } }),
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 65536, temperature: 0.2 } }),
                     signal: signal
                 });
                 
@@ -470,7 +467,7 @@ ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
             let parsedChunk = match ? JSON.parse(match[0]) : JSON.parse(fullResponse);
             
             allGeneratedQuestions = allGeneratedQuestions.concat(parsedChunk);
-            parsedChunk.forEach(q => previouslyGeneratedConcepts.push(q.question)); // Store concepts to prevent duplicates
+            parsedChunk.forEach(q => previouslyGeneratedConcepts.push(q.question)); 
         }
 
         currentQuizData = allGeneratedQuestions;
@@ -602,7 +599,7 @@ function submitExam() {
 
     const maxMarks = currentQuizData.length * posMark;
     const totalMarks = (correct * posMark) - (wrong * negMark);
-    const acc = Math.round((correct / (correct + wrong) * 100));
+    const acc = Math.round((correct / currentQuizData.length) * 100);
     
     const formattedTotal = Number.isInteger(totalMarks) ? totalMarks : totalMarks.toFixed(2);
     const penaltyApplied = Number.isInteger(wrong * negMark) ? (wrong * negMark) : (wrong * negMark).toFixed(2);
