@@ -26,6 +26,34 @@ document.addEventListener("DOMContentLoaded", function() {
     if (mailBtn) mailBtn.addEventListener('click', () => emailAssessmentReport());
 });
 
+// ==========================================
+// NEW: SHUFFLE QUIZ OPTIONS (Fisher-Yates Algorithm)
+// ==========================================
+function shuffleQuizOptions(quizData) {
+    let clonedData = JSON.parse(JSON.stringify(quizData)); // Deep copy 
+    clonedData.forEach(q => {
+        if (!q.options || q.options.length === 0) return;
+        
+        // Map original options to retain tracking of the correct answer
+        let mappedOptions = q.options.map((opt, idx) => ({
+            text: opt,
+            isCorrect: idx === q.correct_option_index
+        }));
+        
+        // Fisher-Yates Shuffle
+        for (let i = mappedOptions.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [mappedOptions[i], mappedOptions[j]] = [mappedOptions[j], mappedOptions[i]];
+        }
+        
+        // Re-assign shuffled options and the new index for the correct answer
+        q.options = mappedOptions.map(m => m.text);
+        q.correct_option_index = mappedOptions.findIndex(m => m.isCorrect);
+    });
+    return clonedData;
+}
+
+
 function clearChatHistory() {
     const box = document.getElementById('chat-box');
     if (box) {
@@ -287,7 +315,9 @@ function initStandaloneExam() {
         mainContent.style.paddingBottom = '20px';
     }
 
-    currentQuizData = data.quizData;
+    // Apply the Fisher-Yates shuffle directly to the initialized questions
+    currentQuizData = shuffleQuizOptions(data.quizData);
+    
     secondsLeft = data.mins * 60;
     posMark = data.posMark || 1;
     negMark = data.negMark || 0;
@@ -526,7 +556,7 @@ function renderQuestion(index) {
     const q = currentQuizData[index];
     document.getElementById('q-counter').innerText = `Question ${index + 1} of ${currentQuizData.length}`;
     document.getElementById('progress-fill').style.width = `${((index + 1) / currentQuizData.length) * 100}%`;
-    document.getElementById('bookmark-badge').innerText = userBookmarks[index] ? "★ Bookmarked" : "";
+    document.getElementById('bookmark-badge').innerText = userBookmarks[index] ? "★ Marked for Review" : "";
     document.getElementById('active-q-text').innerText = `${index + 1}. ${q.question}`;
     
     const optContainer = document.getElementById('active-options-container');
