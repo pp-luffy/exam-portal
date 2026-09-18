@@ -189,6 +189,41 @@ function processLogin(user) {
     }
 }
 
+// ==========================================
+// NEW: LOAD PREVIOUS CONFIGURATION ON BOOT
+// ==========================================
+function loadExamConfig() {
+    try {
+        const saved = JSON.parse(localStorage.getItem("NEXUS_LAST_CONFIG"));
+        if (!saved) return;
+        
+        if (isAdmin && document.getElementById('org-select')) {
+            document.getElementById('org-select').value = saved.org || "gemini";
+        }
+        
+        // Ensure model dropdown matches the organization before selecting the saved model
+        updateModelDropdown(); 
+        
+        if (document.getElementById('model-select') && saved.model) document.getElementById('model-select').value = saved.model;
+        if (document.getElementById('exam')) document.getElementById('exam').value = saved.exam || "";
+        if (document.getElementById('subject')) document.getElementById('subject').value = saved.subject || "";
+        if (document.getElementById('topic')) document.getElementById('topic').value = saved.topic || "";
+        
+        if (isAdmin && document.getElementById('difficulty')) document.getElementById('difficulty').value = saved.difficulty || "2";
+        if (document.getElementById('count')) document.getElementById('count').value = saved.count || "10";
+        if (document.getElementById('pos-marks')) document.getElementById('pos-marks').value = saved.posMarks || "4";
+        if (document.getElementById('neg-marks')) document.getElementById('neg-marks').value = saved.negMarks || "1";
+        if (document.getElementById('timer-mins')) document.getElementById('timer-mins').value = saved.timer || "15";
+        if (document.getElementById('lang')) document.getElementById('lang').value = saved.lang || "English";
+        if (document.getElementById('exam-mode')) document.getElementById('exam-mode').value = saved.examMode || "strict";
+        if (isAdmin && document.getElementById('admin-prompt')) document.getElementById('admin-prompt').value = saved.adminPrompt || "";
+        
+        enforceLanguageConstraints();
+    } catch (e) {
+        console.warn("Could not load previous config", e);
+    }
+}
+
 function applySessionEnvironment() {
     const orgSelect = document.getElementById('org-select');
     const diffContainer = document.getElementById('difficulty-container');
@@ -222,6 +257,9 @@ function applySessionEnvironment() {
     }
 
     updateModelDropdown();
+    
+    // NEW: Fire the load function right after base environment setup
+    loadExamConfig();
 }
 
 function logout() {
