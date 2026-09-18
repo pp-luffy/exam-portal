@@ -9,6 +9,9 @@ let mistakeVault = [];
 let activeController = null;
 let isTimerPaused = false;
 
+// Per-Question Time Tracker
+let timeTracker = {}; 
+
 // Custom marking globals
 let posMark = 4;
 let negMark = 1;
@@ -27,32 +30,25 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 // ==========================================
-// NEW: SHUFFLE QUIZ OPTIONS (Fisher-Yates Algorithm)
+// SHUFFLE QUIZ OPTIONS (Fisher-Yates Algorithm)
 // ==========================================
 function shuffleQuizOptions(quizData) {
-    let clonedData = JSON.parse(JSON.stringify(quizData)); // Deep copy 
+    let clonedData = JSON.parse(JSON.stringify(quizData)); 
     clonedData.forEach(q => {
         if (!q.options || q.options.length === 0) return;
-        
-        // Map original options to retain tracking of the correct answer
         let mappedOptions = q.options.map((opt, idx) => ({
             text: opt,
             isCorrect: idx === q.correct_option_index
         }));
-        
-        // Fisher-Yates Shuffle
         for (let i = mappedOptions.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [mappedOptions[i], mappedOptions[j]] = [mappedOptions[j], mappedOptions[i]];
         }
-        
-        // Re-assign shuffled options and the new index for the correct answer
         q.options = mappedOptions.map(m => m.text);
         q.correct_option_index = mappedOptions.findIndex(m => m.isCorrect);
     });
     return clonedData;
 }
-
 
 function clearChatHistory() {
     const box = document.getElementById('chat-box');
@@ -235,49 +231,9 @@ ${JSON.stringify(chunk)}`;
     return quizData;
 }
 
-async function executeFallback(prompt, signal) {
-    const terminal = document.getElementById('terminal');
-    terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[WARNING]: Primary endpoint failed. Initiating automated failover to Gemini 3.8 Flash...</span><br>`;
-    
-    const fallbackKey = localStorage.getItem("GEMINI_KEY");
-    if (!fallbackKey) throw new Error("Fallback failed: Gemini API Key not found.");
-
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:streamGenerateContent?key=${fallbackKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 65536, temperature: 0.4 }
-        }),
-        signal: signal
-    });
-    
-    if (!res.ok) throw new Error(`Fallback HTTP ${res.status}`);
-    
-    let fullResponse = "";
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const matches = [...chunk.matchAll(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/g)];
-        for (const m of matches) {
-            const snippet = m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
-            terminal.textContent += snippet;
-            terminal.scrollTop = terminal.scrollHeight;
-            fullResponse += snippet;
-        }
-    }
-    return fullResponse;
-}
-
 function prepareExamPortalLaunch(mins, posM, negM) {
     localStorage.setItem("NEXUS_PENDING_EXAM", JSON.stringify({
-        quizData: currentQuizData,
-        mins: mins,
-        posMark: posM,
-        negMark: negM
+        quizData: currentQuizData, mins: mins, posMark: posM, negMark: negM
     }));
     
     const terminal = document.getElementById('terminal');
@@ -315,9 +271,7 @@ function initStandaloneExam() {
         mainContent.style.paddingBottom = '20px';
     }
 
-    // Apply the Fisher-Yates shuffle directly to the initialized questions
     currentQuizData = shuffleQuizOptions(data.quizData);
-    
     secondsLeft = data.mins * 60;
     posMark = data.posMark || 1;
     negMark = data.negMark || 0;
@@ -326,6 +280,7 @@ function initStandaloneExam() {
     userAnswers = {};
     userBookmarks = {};
     currentQIndex = 0;
+    timeTracker = {}; 
     
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const pageExam = document.getElementById('page-exam');
@@ -348,11 +303,15 @@ function initStandaloneExam() {
     startTimer();
 }
 
+// ==========================================
+// PHASE 1: GENERATION (WITH CHUNKING & TOKEN DISTRIBUTION)
+// ==========================================
 async function startExam() {
     gKey = localStorage.getItem("GEMINI_KEY") || gKey;
     grKey = localStorage.getItem("GROQ_KEY") || grKey;
     orKey = localStorage.getItem("OPENROUTER_KEY") || orKey;
     dsKey = localStorage.getItem("DEEPSEEK_KEY") || dsKey;
+    const grvKey = localStorage.getItem("GROQ_VERIFY_KEY"); 
     
     const org = document.getElementById('org-select').value;
     let activeKey = gKey;
@@ -396,34 +355,59 @@ async function startExam() {
     }
 
     const rawModel = document.getElementById('model-select').value;
-    const count = document.getElementById('count').value;
+    const totalCount = parseInt(document.getElementById('count').value);
     const lang = document.getElementById('lang').value;
     const mins = parseInt(document.getElementById('timer-mins').value) || 15;
-    
-    // Extract marking parameters
     const posM = parseFloat(document.getElementById('pos-marks').value) || 1;
     const negM = parseFloat(document.getElementById('neg-marks').value) || 0;
-
     const adminPromptTxt = isAdmin ? (document.getElementById('admin-prompt').value || "").trim() : "";
 
-    const prompt = `You are a ruthless, expert Chief Question Paper Setter AND a rigorous Quality Reviewer for competitive examinations like ${exam}. 
-Generate EXACTLY ${count} high-standard questions for the Subject: "${subject}", focusing on the Topic: "${topic}". 
+    // Chunking Logic (Max 25 questions per API call to avoid token truncation)
+    let chunks = [];
+    let remaining = totalCount;
+    while (remaining > 0) {
+        let chunkSize = Math.min(remaining, 25);
+        chunks.push(chunkSize);
+        remaining -= chunkSize;
+    }
+
+    if (activeController) activeController.abort();
+    activeController = new AbortController();
+    const signal = activeController.signal;
+
+    let allGeneratedQuestions = [];
+    let previouslyGeneratedConcepts = [];
+
+    // Distribute tokens if using Groq
+    let keysToUse = [activeKey];
+    if (org === 'groq' && grvKey) keysToUse = [grKey, grvKey];
+
+    try {
+        for (let i = 0; i < chunks.length; i++) {
+            let currentChunkSize = chunks[i];
+            let currentApiKey = keysToUse[i % keysToUse.length]; // Alternates between primary and verify keys
+            let keyLabel = (keysToUse.length > 1 && i % 2 !== 0) ? "Secondary/Verify" : "Primary";
+
+            terminal.innerHTML += `<span style='color: var(--text-muted);'>[BATCH ${i+1}/${chunks.length}]: Requesting ${currentChunkSize} questions via${keyLabel} node...</span><br>`;
+            terminal.scrollTop = terminal.scrollHeight;
+
+            let prompt = `You are a ruthless, expert Chief Question Paper Setter for competitive examinations like ${exam}. 
+Generate EXACTLY ${currentChunkSize} high-standard questions for the Subject: "${subject}", focusing on the Topic: "${topic}". 
 Output language must strictly be ${lang}.
-
 DIFFICULTY LEVEL: Level ${difficulty} out of 5.
-- Formulate deep analytical questions, multi-statement evaluation traps, pairing mismatches, and subtle conceptual nuances matching top-tier competitive exams.
-- Construct ruthless, multi-concept integration traps with highly tricky options where superficial working leads directly to distractor options.
 
-QUALITY & VERIFICATION PROTOCOL (MANDATORY):
-Before writing each question into the JSON, you MUST internally execute this strict verification checklist:
-1. FACT CHECK: Is the underlying concept and answer 100% factually accurate without ambiguity?
-2. SINGLE TRUE ANSWER: Is there EXACTLY ONE unambiguously correct option? Are all other distractors definitively incorrect?
-3. INDEX CHECK: Does the correct_option_index strictly match the 0-based array position (0 to 3) of the correct answer?
+QUALITY PROTOCOL:
+1. FACT CHECK: 100% accurate.
+2. SINGLE TRUE ANSWER: EXACTLY ONE unambiguously correct option.
+3. INDEX CHECK: correct_option_index strictly matches the 0-based array position.
+4. NO EXPLANATIONS inside the question text or options array.`;
 
-RULES: 
-1. NO EXPLANATIONS inside the question text or options array.
-2. Formulate highly plausible distractor traps.
-3. Output ONLY a valid JSON array matching this exact format, with no extra markdown text outside of it:
+            if (previouslyGeneratedConcepts.length > 0) {
+                prompt += `\n\nCRITICAL ANTI-DUPLICATION RULE:\nYou have already generated the following questions. DO NOT REPEAT OR OVERLAP WITH THESE CONCEPTS:\n`;
+                previouslyGeneratedConcepts.forEach((q, idx) => { prompt += `${idx+1}.${q.substring(0, 100)}...\n`; });
+            }
+
+            prompt += `\nOutput ONLY a valid JSON array matching this exact format:
 [
   {
     "question": "Question text...",
@@ -433,100 +417,71 @@ RULES:
 ]
 ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
 
-    if (activeController) activeController.abort();
-    activeController = new AbortController();
-    const signal = activeController.signal;
+            let fullResponse = "";
 
-    try {
-        let fullResponse = "";
+            if (org === 'groq' || org === 'openrouter' || org === 'deepseek') {
+                let apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+                if (org === 'openrouter') apiUrl = "https://openrouter.ai/api/v1/chat/completions";
+                if (org === 'deepseek') apiUrl = "https://api.deepseek.com/chat/completions";
 
-        if (org === 'groq' || org === 'openrouter' || org === 'deepseek') {
-            let apiUrl = "https://api.groq.com/openai/v1/chat/completions";
-            if (org === 'openrouter') apiUrl = "https://openrouter.ai/api/v1/chat/completions";
-            if (org === 'deepseek') apiUrl = "https://api.deepseek.com/chat/completions";
+                const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentApiKey}` };
+                if (org === 'openrouter') { headers['HTTP-Referer'] = window.location.href; headers['X-Title'] = 'NEXUS OS CBT Suite'; }
 
-            const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeKey}` };
-            if (org === 'openrouter') { headers['HTTP-Referer'] = window.location.href; headers['X-Title'] = 'NEXUS OS CBT Suite'; }
+                const payload = { model: rawModel, messages: [{ role: "user", content: prompt }], temperature: 0.4, max_tokens: 8192 };
+                if (org === 'groq' || org === 'deepseek') payload.response_format = { type: "json_object" };
 
-            const payload = { 
-                model: rawModel, 
-                messages: [{ role: "user", content: prompt }], 
-                temperature: 0.4, 
-                max_tokens: 8192 
-            };
+                const res = await fetch(apiUrl, { method: 'POST', headers: headers, body: JSON.stringify(payload), signal: signal });
+                
+                if (res.status === 429) {
+                    terminal.innerHTML += `<span style='color: var(--neon-yellow);'>[RATE LIMIT]: Pausing for 60s before retrying batch...</span><br>`;
+                    await new Promise(r => setTimeout(r, 60000));
+                    i--; // Retry this chunk
+                    continue;
+                }
 
-            if (org === 'groq' || org === 'deepseek') {
-                payload.response_format = { type: "json_object" };
-            }
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error?.message || `${org.toUpperCase()} HTTP error${res.status}`);
+                fullResponse = data.choices[0].message.content;
 
-            const res = await fetch(apiUrl, {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify(payload),
-                signal: signal
-            });
-            
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error?.message || `${org.toUpperCase()} HTTP error ${res.status}`);
-            fullResponse = data.choices[0].message.content;
-
-        } else {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${rawModel}:streamGenerateContent?key=${activeKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: { maxOutputTokens: 65536, temperature: 0.4 }
-                }),
-                signal: signal
-            });
-            
-            if (!res.ok) {
-                const errJson = await res.json();
-                throw new Error(errJson.error?.message || `HTTP error ${res.status}`);
-            }
-            
-            const reader = res.body.getReader();
-            const decoder = new TextDecoder();
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-                const chunk = decoder.decode(value, { stream: true });
-                const matches = [...chunk.matchAll(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/g)];
-                for (const m of matches) {
-                    const snippet = m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
-                    terminal.textContent += snippet;
-                    terminal.scrollTop = terminal.scrollHeight;
-                    fullResponse += snippet;
+            } else {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${rawModel}:streamGenerateContent?key=${currentApiKey}`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 65536, temperature: 0.4 } }),
+                    signal: signal
+                });
+                
+                if (!res.ok) {
+                    const errJson = await res.json();
+                    throw new Error(errJson.error?.message || `HTTP error ${res.status}`);
+                }
+                
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value, { stream: true });
+                    const matches = [...chunk.matchAll(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/g)];
+                    for (const m of matches) fullResponse += m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
                 }
             }
+
+            const match = fullResponse.match(/\[[\s\S]*\]/);
+            let parsedChunk = match ? JSON.parse(match[0]) : JSON.parse(fullResponse);
+            
+            allGeneratedQuestions = allGeneratedQuestions.concat(parsedChunk);
+            parsedChunk.forEach(q => previouslyGeneratedConcepts.push(q.question)); // Store concepts to prevent duplicates
         }
 
-        const match = fullResponse.match(/\[[\s\S]*\]/);
-        currentQuizData = match ? JSON.parse(match[0]) : JSON.parse(fullResponse);
-
+        currentQuizData = allGeneratedQuestions;
         currentQuizData = await verifyAndCorrectQuizData(currentQuizData, signal);
         prepareExamPortalLaunch(mins, posM, negM);
 
     } catch (err) {
-        if (err.name === 'AbortError') {
-            console.log('[SYSTEM]: Request aborted.');
-            return;
-        }
-        
-        try {
-            const fallbackResponse = await executeFallback(prompt, signal);
-            const match = fallbackResponse.match(/\[[\s\S]*\]/);
-            currentQuizData = match ? JSON.parse(match[0]) : JSON.parse(fallbackResponse);
-            
-            currentQuizData = await verifyAndCorrectQuizData(currentQuizData, signal);
-            prepareExamPortalLaunch(mins, posM, negM);
-            
-        } catch (fallbackErr) {
-            terminal.style.color = "var(--neon-red)";
-            terminal.innerHTML += `<br><br>[CRITICAL FAILURE]: Primary and Fallback models both failed. ${err.message}`;
-            setTimeout(() => resetExamUI(), 6000);
-        }
+        if (err.name === 'AbortError') return;
+        terminal.style.color = "var(--neon-red)";
+        terminal.innerHTML += `<br><br>[CRITICAL FAILURE]: Generation failed. ${err.message}`;
+        setTimeout(() => resetExamUI(), 6000);
     }
 }
 
@@ -551,20 +506,39 @@ function updatePaletteStates() {
     });
 }
 
+function filterPalette(filterType) {
+    currentQuizData.forEach((q, i) => {
+        const btn = document.getElementById(`pal-${i}`);
+        if (!btn) return;
+        const isAnswered = userAnswers[i] !== undefined;
+        const isBookmarked = userBookmarks[i] === true;
+        if (filterType === 'all') btn.style.display = 'flex';
+        else if (filterType === 'review') btn.style.display = isBookmarked ? 'flex' : 'none';
+        else if (filterType === 'unanswered') btn.style.display = (!isAnswered && !isBookmarked) ? 'flex' : 'none';
+    });
+}
+window.filterPalette = filterPalette; // Expose for inline HTML handler
+
 function renderQuestion(index) {
     currentQIndex = index;
     const q = currentQuizData[index];
-    document.getElementById('q-counter').innerText = `Question ${index + 1} of ${currentQuizData.length}`;
+    document.getElementById('q-counter').innerText = `Question ${index + 1} of${currentQuizData.length}`;
     document.getElementById('progress-fill').style.width = `${((index + 1) / currentQuizData.length) * 100}%`;
     document.getElementById('bookmark-badge').innerText = userBookmarks[index] ? "★ Marked for Review" : "";
-    document.getElementById('active-q-text').innerText = `${index + 1}. ${q.question}`;
+    
+    const qCard = document.getElementById('active-q-text').parentElement;
+    qCard.classList.remove('q-transition');
+    void qCard.offsetWidth; // Trigger DOM reflow to restart animation
+    qCard.classList.add('q-transition');
+
+    document.getElementById('active-q-text').innerText = `${index + 1}.${q.question}`;
     
     const optContainer = document.getElementById('active-options-container');
     optContainer.innerHTML = "";
     q.options.forEach((opt, oIdx) => {
         const isSelected = userAnswers[index] === oIdx ? "selected" : "";
         optContainer.innerHTML += `
-            <div class="option-card ${isSelected}" onclick="selectOption(${index}, ${oIdx})">
+            <div class="option-card ${isSelected}" onclick="selectOption(${index},${oIdx})">
                 <input type="radio" style="margin-right:12px;" ${isSelected ? "checked" : ""}> 
                 <span>${opt}</span>
             </div>`;
@@ -576,10 +550,7 @@ function selectOption(qIdx, oIdx) {
     userAnswers[qIdx] = oIdx; 
     try {
         localStorage.setItem("NEXUS_ACTIVE_PROGRESS", JSON.stringify({
-            quizData: currentQuizData,
-            answers: userAnswers,
-            currentIndex: qIdx,
-            secondsLeft: secondsLeft
+            quizData: currentQuizData, answers: userAnswers, currentIndex: qIdx, secondsLeft: secondsLeft
         }));
     } catch(e) {}
     renderQuestion(qIdx); 
@@ -593,11 +564,20 @@ function jumpToQuestion(idx) { renderQuestion(idx); }
 
 function startTimer() {
     if (timerInterval) clearInterval(timerInterval);
+    const timerDisplay = document.getElementById('timer-display');
+    timerDisplay.classList.remove('timer-critical');
+
     timerInterval = setInterval(() => {
         if (isTimerPaused) return; 
         if (secondsLeft <= 0) { clearInterval(timerInterval); submitExam(); return; }
-        secondsLeft--; totalSecondsTaken++;
-        document.getElementById('timer-display').innerText = `${Math.floor(secondsLeft/60).toString().padStart(2,'0')}:${(secondsLeft%60).toString().padStart(2,'0')}`;
+        
+        secondsLeft--; 
+        totalSecondsTaken++;
+        timeTracker[currentQIndex] = (timeTracker[currentQIndex] || 0) + 1;
+
+        if (secondsLeft <= 60) timerDisplay.classList.add('timer-critical');
+
+        timerDisplay.innerText = `${Math.floor(secondsLeft/60).toString().padStart(2,'0')}:${(secondsLeft%60).toString().padStart(2,'0')}`;
     }, 1000);
 }
 
@@ -608,9 +588,6 @@ function toggleFullscreen() {
 
 function confirmSubmit() { if (confirm("Submit examination?")) submitExam(); }
 
-// ==========================================
-// CBT SCORING ALGORITHM (UPDATED FOR MARKS & SKIPPED)
-// ==========================================
 function submitExam() {
     if (timerInterval) clearInterval(timerInterval);
     
@@ -618,24 +595,15 @@ function submitExam() {
     
     currentQuizData.forEach((q, i) => {
         const sel = userAnswers[i];
-        if (sel === undefined) { 
-            // Question was unattempted/skipped. Do not penalize or send to Mistake Vault.
-            skipped++; 
-        }
-        else if (sel === q.correct_option_index) { 
-            correct++; 
-        }
-        else { 
-            wrong++; 
-            addToVault(q); // Only add genuinely incorrect answers to vault
-        }
+        if (sel === undefined) { skipped++; }
+        else if (sel === q.correct_option_index) { correct++; }
+        else { wrong++; addToVault(q); }
     });
 
     const maxMarks = currentQuizData.length * posMark;
     const totalMarks = (correct * posMark) - (wrong * negMark);
     const acc = Math.round((correct / currentQuizData.length) * 100);
     
-    // Format safely for decimal negative marks (e.g. 0.833)
     const formattedTotal = Number.isInteger(totalMarks) ? totalMarks : totalMarks.toFixed(2);
     const penaltyApplied = Number.isInteger(wrong * negMark) ? (wrong * negMark) : (wrong * negMark).toFixed(2);
 
@@ -665,14 +633,19 @@ function renderReviewList(mode) {
         const isSkipped = sel === undefined;
         const corr = sel === q.correct_option_index;
         
-        // In "Review Mistakes" mode, we want to see both Wrong and Skipped questions. Correct questions are hidden.
         if (mode === 'wrong' && corr) return;
         
         let statusText = corr ? 'CORRECT' : (isSkipped ? 'SKIPPED' : 'INCORRECT');
         let statusColor = corr ? 'var(--neon-green)' : (isSkipped ? 'var(--neon-yellow)' : 'var(--neon-red)');
 
+        let timeSpent = timeTracker[i] || 0;
+        let timeStr = `${Math.floor(timeSpent/60)}m${timeSpent%60}s`;
+        let timeTrapHtml = timeSpent >= 120 
+            ? `<span style="color: var(--neon-red); font-size: 12px; margin-left: 10px; font-weight:bold;">⚠️ Time Trap (${timeStr})</span>` 
+            : `<span style="color: var(--text-muted); font-size: 12px; margin-left: 10px;">⏱ ${timeStr}</span>`;
+
         let html = `<div class="glass-card" style="border-left: 4px solid ${statusColor}; padding: 18px;">
-            <p style="font-weight:700; color:${statusColor}; margin-top:0;">Q${i+1}. ${statusText}</p>
+            <p style="font-weight:700; color:${statusColor}; margin-top:0; display:flex; align-items:center;">Q${i+1}. ${statusText}${timeTrapHtml}</p>
             <p class="q-text" style="font-size:15px;">${q.question}</p>`;
             
         q.options.forEach((opt, oIdx) => {
@@ -696,68 +669,51 @@ function generateReportHTML() {
         if (filter === 'wrong' && corr) return;
 
         let statusText = (sel === undefined) ? " [Skipped]" : "";
+        let timeSpent = timeTracker[i] || 0;
+        let timeStr = ` (Time: ${Math.floor(timeSpent/60)}m${timeSpent%60}s)`;
 
         htmlContent += `<div class="card">
-            <p><strong>Q${i+1}.</strong> ${q.question} <span class="skipped">${statusText}</span></p>
+            <p><strong>Q${i+1}.</strong>${q.question} <span class="skipped">${statusText}</span> <span style="font-size:12px; color:#64748b;">${timeStr}</span></p>
             <ul>`;
         q.options.forEach((opt, oIdx) => {
-            let tag = "";
-            if (oIdx === q.correct_option_index) tag = " ✔ [Correct Answer]";
-            else if (oIdx === sel) tag = " ❌ [Your Answer]";
+            let tag = oIdx === q.correct_option_index ? " ✔ [Correct]" : (oIdx === sel ? " ❌ [Your Answer]" : "");
             htmlContent += `<li>${opt}${tag}</li>`;
         });
         htmlContent += `</ul></div>`;
     });
-    htmlContent += `</body></html>`;
-    return htmlContent;
+    return htmlContent + `</body></html>`;
 }
 
 function downloadAssessmentReport() {
     const format = document.getElementById('export-format').value;
     const html = generateReportHTML();
-
     if (format === 'pdf') {
-        const win = window.open('', '_blank');
-        win.document.write(html);
-        win.document.close();
-        win.print();
+        const win = window.open('', '_blank'); win.document.write(html); win.document.close(); win.print();
     } else {
         const blob = new Blob([html], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `nexus_exam_report_${Date.now()}.html`;
-        a.click();
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = `nexus_exam_report_${Date.now()}.html`; a.click();
     }
 }
 
 function emailAssessmentReport() {
     const mailId = localStorage.getItem("DEST_MAIL") || "";
-    if (!mailId) {
-        alert("Destination Mail ID is not set! Please configure it in the Config tab.");
-        switchTab('settings');
-        return;
-    }
-
-    const format = document.getElementById('export-format').value;
-    const exam = document.getElementById('exam').value || "Assessment";
-    
-    alert(`Downloading the ${format.toUpperCase()} report now. Please ATTACH this downloaded file to the email window that opens next.`);
+    if (!mailId) return alert("Destination Mail ID is not set!");
     downloadAssessmentReport();
-
-    const subject = encodeURIComponent(`NEXUS OS CBT Assessment Report: ${exam}`);
-    const body = encodeURIComponent(`Hello,\n\nPlease find the attached ${format.toUpperCase()} CBT test report.\n\nExam Target: ${document.getElementById('exam').value}\nSubject: ${document.getElementById('subject').value}\nTopic: ${document.getElementById('topic').value}\n\n(Note to operator: Ensure you have attached the downloaded file before sending).`);
-
-    setTimeout(() => {
-        window.location.href = `mailto:${mailId}?subject=${subject}&body=${body}`;
-    }, 1500);
+    setTimeout(() => { window.location.href = `mailto:${mailId}?subject=CBT Report&body=Please find the attached report.`; }, 1500);
 }
 
 function restartSameQuiz() { userAnswers = {}; initStandaloneExam(); }
 
+// ==========================================
+// SPACED REPETITION SYSTEM (SRS)
+// ==========================================
 function addToVault(q) {
-    if (!mistakeVault.some(v => v.question === q.question)) {
+    let existingItem = mistakeVault.find(v => v.question === q.question);
+    if (!existingItem) {
         q.user_failed_at = new Date().toLocaleDateString();
+        q.srs_stage = 0; 
+        q.next_review_date = Date.now() + 86400000; // Due in 1 Day (86.4m ms)
         mistakeVault.push(q);
         try { localStorage.setItem("NEXUS_VAULT", JSON.stringify(mistakeVault)); } catch(e){}
     }
@@ -769,18 +725,73 @@ function renderVault() {
     c.innerHTML = "";
     
     const adminJsonBox = document.getElementById('vault-json-textarea');
-    if (adminJsonBox) {
-        adminJsonBox.value = JSON.stringify(mistakeVault, null, 2);
-    }
+    if (adminJsonBox) adminJsonBox.value = JSON.stringify(mistakeVault, null, 2);
 
     if (mistakeVault.length === 0) { c.innerHTML = `<p style="color:var(--neon-green); text-align:center;">Vault is empty.</p>`; return; }
-    mistakeVault.forEach(q => {
-        c.innerHTML += `<div class="glass-card" style="border-left:4px solid var(--neon-red); padding:16px;">
-            <p style="font-size:11px; color:var(--neon-red); margin:0 0 6px 0; font-weight:bold;">Failed: ${q.user_failed_at}</p>
+    
+    const now = Date.now();
+
+    // Sort vault: Due items first
+    mistakeVault.sort((a, b) => (a.next_review_date || 0) - (b.next_review_date || 0));
+
+    mistakeVault.forEach((q, idx) => {
+        const isDue = now >= (q.next_review_date || 0);
+        
+        let dueText = isDue 
+            ? `<span style="color:var(--neon-yellow); font-weight:bold;">⚠️ Review Due</span>` 
+            : `<span style="color:var(--text-muted);">Next Review: ${new Date(q.next_review_date).toLocaleDateString()}</span>`;
+        
+        let btnHtml = isDue 
+            ? `<button class="cyber-btn" style="padding: 6px 14px; font-size: 11px; margin-top: 14px; width: auto;" onclick="startVaultReview(${idx})">🧠 Review Now</button>`
+            : ``;
+
+        c.innerHTML += `<div class="glass-card" id="vault-card-${idx}" style="border-left:4px solid var(--neon-red); padding:16px;">
+            <div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-bottom:10px;">
+                <p style="font-size:11px; color:var(--neon-red); margin:0; font-weight:bold;">Failed: ${q.user_failed_at} | Level: ${q.srs_stage || 0}</p>
+                <p style="font-size:11px; margin:0;">${dueText}</p>
+            </div>
             <p class="q-text" style="font-size:15px; margin-bottom:8px;">${q.question}</p>
-            <p style="color:var(--neon-green); font-size:14px; margin:0;">✔ ${q.options[q.correct_option_index]}</p>
+            ${!isDue ? `<p style="color:var(--neon-green); font-size:14px; margin:0;">✔ ${q.options[q.correct_option_index]}</p>` : ''}
+            ${btnHtml}
         </div>`;
     });
+}
+
+function startVaultReview(idx) {
+    const c = document.getElementById(`vault-card-${idx}`);
+    const q = mistakeVault[idx];
+    
+    let reviewOptions = q.options.map((opt, i) => ({ text: opt, originalIndex: i }));
+    reviewOptions.sort(() => Math.random() - 0.5);
+    
+    let optsHtml = "";
+    reviewOptions.forEach((opt) => {
+        optsHtml += `<div class="option-card" onclick="submitVaultReview(${idx}, ${opt.originalIndex})" style="padding:10px 14px; font-size:14px; margin:6px 0;">${opt.text}</div>`;
+    });
+
+    c.innerHTML = `
+        <p style="color:var(--neon-cyan); font-weight:bold; font-size:12px; margin-top:0;">[ ACTIVE SRS RECALL ]</p>
+        <p class="q-text" style="font-size:15px; margin-bottom:12px;">${q.question}</p>
+        ${optsHtml}
+        <button class="cyber-btn secondary" style="margin-top:10px; padding: 6px 12px; font-size:11px; width:auto;" onclick="renderVault()">Cancel</button>
+    `;
+}
+
+function submitVaultReview(idx, selectedOriginalIdx) {
+    const q = mistakeVault[idx];
+    if (selectedOriginalIdx === q.correct_option_index) {
+        q.srs_stage = (q.srs_stage || 0) + 1;
+        const intervals = [1, 3, 7, 14, 30, 90]; 
+        const addDays = intervals[Math.min(q.srs_stage, intervals.length - 1)];
+        q.next_review_date = Date.now() + (addDays * 86400000);
+        alert(`Correct! Moving to SRS Level ${q.srs_stage}. Next review in ${addDays} days.`);
+    } else {
+        q.srs_stage = 0;
+        q.next_review_date = Date.now() + 86400000;
+        alert(`Incorrect. The right answer was:\n\n${q.options[q.correct_option_index]}\n\nSRS Level reset to 0. Try again tomorrow.`);
+    }
+    localStorage.setItem("NEXUS_VAULT", JSON.stringify(mistakeVault));
+    renderVault();
 }
 
 function clearVault() { if(confirm("Purge vault?")) { mistakeVault = []; localStorage.removeItem("NEXUS_VAULT"); renderVault(); } }
