@@ -86,7 +86,6 @@ document.addEventListener("DOMContentLoaded", function() {
     const sendChatBtn = document.getElementById('send-chat-btn');
     if (sendChatBtn) sendChatBtn.addEventListener('click', () => sendChat());
 
-    // ALL EVENT BINDINGS WRAPPED IN ARROW FUNCTIONS TO PREVENT LOAD ORDER BUGS
     safeBind('login-btn', 'click', () => handleLogin());
     safeBind('logout-btn', 'click', () => logout());
     safeBind('launch-btn', 'click', () => startExam());
