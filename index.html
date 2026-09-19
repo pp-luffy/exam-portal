@@ -112,7 +112,6 @@
         
         .timer-badge { font-family: 'JetBrains Mono', monospace; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); color: var(--neon-yellow); padding: 8px 14px; border-radius: 10px; font-weight: 700; font-size: 13px; text-shadow: 0 0 10px rgba(245,158,11,0.4); box-shadow: inset 0 0 8px rgba(245,158,11,0.1); transition: all 0.3s ease; }
         
-        /* CRITICAL TIMER STYLES */
         @keyframes pulseDanger {
             0% { box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); border-color: rgba(239, 68, 68, 0.6); color: var(--neon-red); }
             50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.9); border-color: var(--neon-red); color: #fff; background: rgba(239, 68, 68, 0.3); }
@@ -127,7 +126,6 @@
         
         .q-text { font-size: 17px; line-height: 1.7; color: #fff; margin-bottom: 20px; font-weight: 600; word-break: break-word; }
         
-        /* QUESTION TRANSITION STYLES */
         @keyframes slideFade {
             0% { opacity: 0; transform: translateX(10px); }
             100% { opacity: 1; transform: translateX(0); }
@@ -205,25 +203,25 @@
         <div class="glass-card" style="max-width: 420px; text-align: center; padding: 45px 35px;">
             <div class="boot-logo" style="margin-bottom: 35px; font-size: 32px;">NEXUS OS</div>
             <label style="text-align: left;">Operator Identification ID</label>
-            <input type="text" id="login-username" placeholder="Enter username..." style="margin-bottom: 24px;">
-            <button id="login-btn" class="cyber-btn">INITIALIZE SYSTEM</button>
+            <input type="text" id="login-username" placeholder="Enter username..." style="margin-bottom: 24px;" onkeypress="if(event.key === 'Enter') window.handleLogin()">
+            <button id="login-btn" type="button" class="cyber-btn" onclick="window.handleLogin()">INITIALIZE SYSTEM</button>
         </div>
     </div>
 
     <div id="main-app" class="app-shell" style="display: none;">
         <div class="sidebar">
             <div class="sidebar-brand">NEXUS OS</div>
-            <div class="sidebar-nav-item active" id="side-exam" onclick="switchTab('exam')">📝 Exam Engine</div>
-            <div class="sidebar-nav-item" id="side-vault" onclick="switchTab('vault')">🧠 Mistake Vault</div>
-            <div class="sidebar-nav-item" id="side-chat" onclick="switchTab('chat')">🤖 NEXUS AI</div>
-            <div class="sidebar-nav-item" id="side-settings" onclick="switchTab('settings')">⚙️ Config</div>
+            <div class="sidebar-nav-item active" id="side-exam" onclick="window.switchTab('exam')">📝 Exam Engine</div>
+            <div class="sidebar-nav-item" id="side-vault" onclick="window.switchTab('vault')">🧠 Mistake Vault</div>
+            <div class="sidebar-nav-item" id="side-chat" onclick="window.switchTab('chat')">🤖 NEXUS AI</div>
+            <div class="sidebar-nav-item" id="side-settings" onclick="window.switchTab('settings')">⚙️ Config</div>
         </div>
         <div class="main-content">
             <div id="page-exam" class="page active">
                 <h1 class="header-title">Exam Engine</h1>
                 <div id="exam-setup" class="glass-card">
                     <label>Provider Organization</label>
-                    <select id="org-select">
+                    <select id="org-select" onchange="window.updateModelDropdown()">
                         <option value="gemini">Google Gemini AI</option>
                         <option value="groq">Groq Cloud (LPU Hardware)</option>
                         <option value="openrouter">OpenRouter Free Tier</option>
@@ -231,7 +229,7 @@
                     </select>
 
                     <label>Neural Engine Model</label>
-                    <select id="model-select"></select>
+                    <select id="model-select" onchange="window.updateQuotaDisplay()"></select>
 
                     <div class="quota-badge" id="quota-display">
                         <span>⚡ Quota Status</span>
@@ -252,7 +250,7 @@
                     <div style="display:flex; gap: 14px;">
                         <div id="difficulty-container" style="flex: 1;">
                             <label>Difficulty Level</label>
-                            <select id="difficulty">
+                            <select id="difficulty" onchange="window.enforceLanguageConstraints()">
                                 <option value="1">Level 1 - Foundation</option>
                                 <option value="2" selected>Level 2 - Moderate</option>
                                 <option value="3">Level 3 - Advanced</option>
@@ -298,7 +296,7 @@
                     <div style="display:flex; gap: 14px;">
                         <div style="flex: 1;">
                             <label>Output Language</label>
-                            <select id="lang">
+                            <select id="lang" onchange="window.enforceLanguageConstraints()">
                                 <option value="English">English</option>
                                 <option value="Odia">Odia</option>
                             </select>
@@ -312,7 +310,7 @@
                         </div>
                     </div>
                     
-                    <button id="launch-btn" class="cyber-btn">Launch Examination</button>
+                    <button type="button" id="launch-btn" class="cyber-btn" onclick="window.startExam()">Launch Examination</button>
                 </div>
 
                 <div id="terminal-screen" class="glass-card" style="display: none;">
@@ -335,16 +333,16 @@
                                 </div>
                                 <div style="display:flex; align-items:center; gap:8px;">
                                     <div id="timer-display" class="timer-badge">10:00</div>
-                                    <button id="pause-timer-btn" class="cyber-btn secondary" style="display:none; padding: 6px 10px; font-size: 11px; margin:0; width:auto;">⏸ Pause</button>
-                                    <button id="exit-exam-btn" class="cyber-btn danger" style="padding: 6px 10px; font-size: 11px; margin:0; width:auto;">✖ Exit</button>
-                                    <button id="fullscreen-btn" class="cyber-btn secondary" style="padding: 6px 10px; font-size: 11px; margin:0; width:auto;">⛶ Fullscreen</button>
+                                    <button type="button" id="pause-timer-btn" class="cyber-btn secondary" style="display:none; padding: 6px 10px; font-size: 11px; margin:0; width:auto;" onclick="window.toggleTimerPause()">⏸ Pause</button>
+                                    <button type="button" id="exit-exam-btn" class="cyber-btn danger" style="padding: 6px 10px; font-size: 11px; margin:0; width:auto;" onclick="window.confirmExitExam()">✖ Exit</button>
+                                    <button type="button" id="fullscreen-btn" class="cyber-btn secondary" style="padding: 6px 10px; font-size: 11px; margin:0; width:auto;" onclick="window.toggleFullscreen()">⛶ Fullscreen</button>
                                 </div>
                             </div>
 
                             <div class="glass-card" style="margin-bottom: 20px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
                                     <span id="bookmark-badge" style="font-size: 12px; font-weight: 700; color: var(--neon-yellow);"></span>
-                                    <button id="bookmark-btn" class="cyber-btn secondary" style="padding: 4px 12px; font-size: 11px; margin:0; width:auto;">🔖 Mark for Review</button>
+                                    <button type="button" id="bookmark-btn" class="cyber-btn secondary" style="padding: 4px 12px; font-size: 11px; margin:0; width:auto;" onclick="window.toggleBookmark()">🔖 Mark for Review</button>
                                 </div>
                                 <h4 class="q-text" id="active-q-text">Loading...</h4>
                                 <div id="active-options-container"></div>
@@ -352,13 +350,13 @@
 
                             <div class="cbt-footer">
                                 <div style="display:flex; gap: 8px; flex-wrap: wrap;">
-                                    <button id="prev-btn" class="cyber-btn secondary" style="margin:0; width:auto;">← Prev</button>
-                                    <button id="skip-btn" class="cyber-btn secondary" style="margin:0; width:auto;">Skip</button>
-                                    <button id="clear-btn" class="cyber-btn secondary" style="margin:0; width:auto;">Clear</button>
+                                    <button type="button" id="prev-btn" class="cyber-btn secondary" style="margin:0; width:auto;" onclick="window.navigateQ(-1)">← Prev</button>
+                                    <button type="button" id="skip-btn" class="cyber-btn secondary" style="margin:0; width:auto;" onclick="window.skipQ()">Skip</button>
+                                    <button type="button" id="clear-btn" class="cyber-btn secondary" style="margin:0; width:auto;" onclick="window.clearAnswer()">Clear</button>
                                 </div>
                                 <div style="display:flex; gap: 8px; flex-wrap: wrap;">
-                                    <button id="next-btn" class="cyber-btn" style="margin:0; width:auto;">Next →</button>
-                                    <button id="submit-btn" class="cyber-btn danger" style="margin:0; width:auto;">Submit</button>
+                                    <button type="button" id="next-btn" class="cyber-btn" style="margin:0; width:auto;" onclick="window.navigateQ(1)">Next →</button>
+                                    <button type="button" id="submit-btn" class="cyber-btn danger" style="margin:0; width:auto;" onclick="window.confirmSubmit()">Submit</button>
                                 </div>
                             </div>
                         </div>
@@ -370,9 +368,9 @@
                                 
                                 <!-- FILTER CHIPS -->
                                 <div style="display: flex; gap: 6px; margin-bottom: 16px; border-bottom: 1px solid var(--border-glow); padding-bottom: 12px;">
-                                    <button class="cyber-btn secondary" style="margin:0; padding: 4px 8px; font-size: 9px;" onclick="filterPalette('all')">All</button>
-                                    <button class="cyber-btn secondary" style="margin:0; padding: 4px 8px; font-size: 9px; color: var(--neon-yellow);" onclick="filterPalette('review')">Review</button>
-                                    <button class="cyber-btn secondary" style="margin:0; padding: 4px 8px; font-size: 9px; color: var(--neon-red);" onclick="filterPalette('unanswered')">Empty</button>
+                                    <button type="button" class="cyber-btn secondary" style="margin:0; padding: 4px 8px; font-size: 9px;" onclick="window.filterPalette('all')">All</button>
+                                    <button type="button" class="cyber-btn secondary" style="margin:0; padding: 4px 8px; font-size: 9px; color: var(--neon-yellow);" onclick="window.filterPalette('review')">Review</button>
+                                    <button type="button" class="cyber-btn secondary" style="margin:0; padding: 4px 8px; font-size: 9px; color: var(--neon-red);" onclick="window.filterPalette('unanswered')">Empty</button>
                                 </div>
 
                                 <div id="q-palette" class="q-palette-grid" style="border: none; padding: 0; background: transparent; box-shadow: none; margin-bottom: 0; flex: 1;"></div>
@@ -406,16 +404,16 @@
                             </div>
                         </div>
                         <div style="display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap;">
-                            <button id="download-report-btn" class="cyber-btn secondary" style="flex: 1; margin:0; font-size: 12px; padding: 14px;">📥 Download Report</button>
-                            <button id="mail-report-btn" class="cyber-btn" style="flex: 1; margin:0; font-size: 12px; padding: 14px;">✉️ Send to Config Email</button>
+                            <button type="button" id="download-report-btn" class="cyber-btn secondary" style="flex: 1; margin:0; font-size: 12px; padding: 14px;" onclick="window.downloadAssessmentReport()">📥 Download Report</button>
+                            <button type="button" id="mail-report-btn" class="cyber-btn" style="flex: 1; margin:0; font-size: 12px; padding: 14px;" onclick="window.emailAssessmentReport()">✉️ Send to Config Email</button>
                         </div>
                     </div>
 
                     <div style="display: flex; gap: 12px; justify-content: center; margin: 24px 0; flex-wrap: wrap;">
-                        <button id="rev-all-btn" class="cyber-btn" style="margin:0; width:auto;">Review All</button>
-                        <button id="rev-wrong-btn" class="cyber-btn secondary" style="margin:0; width:auto;">Review Mistakes</button>
-                        <button id="retry-btn" class="cyber-btn secondary" style="margin:0; width:auto;">Try Again</button>
-                        <button id="new-quiz-btn" class="cyber-btn secondary" style="margin:0; width:auto;">New Quiz</button>
+                        <button type="button" id="rev-all-btn" class="cyber-btn" style="margin:0; width:auto;" onclick="window.filterReview('all')">Review All</button>
+                        <button type="button" id="rev-wrong-btn" class="cyber-btn secondary" style="margin:0; width:auto;" onclick="window.filterReview('wrong')">Review Mistakes</button>
+                        <button type="button" id="retry-btn" class="cyber-btn secondary" style="margin:0; width:auto;" onclick="window.restartSameQuiz()">Try Again</button>
+                        <button type="button" id="new-quiz-btn" class="cyber-btn secondary" style="margin:0; width:auto;" onclick="window.startNewQuiz()">New Quiz</button>
                     </div>
                     <div id="review-container"></div>
                 </div>
@@ -426,12 +424,12 @@
                 <div class="glass-card">
                     <p style="font-size: 13px; color: var(--text-muted); margin-top:0;">Failed questions securely archived for review.</p>
                     <div id="vault-container"></div>
-                    <button id="clear-vault-btn" class="cyber-btn danger">Purge Vault</button>
+                    <button type="button" id="clear-vault-btn" class="cyber-btn danger" onclick="window.clearVault()">Purge Vault</button>
 
                     <div id="admin-vault-editor" style="display:none; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-glow);">
                         <h3 style="color: var(--neon-cyan); margin-top: 0; font-size: 14px;">[ADMIN] Raw JSON Editor</h3>
                         <textarea id="vault-json-textarea" rows="8" style="font-family: 'JetBrains Mono', monospace; font-size: 11px;"></textarea>
-                        <button id="save-vault-json-btn" class="cyber-btn secondary" style="width: auto; margin-top: 12px; padding: 10px 16px; font-size: 12px;">Save JSON Changes</button>
+                        <button type="button" id="save-vault-json-btn" class="cyber-btn secondary" style="width: auto; margin-top: 12px; padding: 10px 16px; font-size: 12px;" onclick="window.saveVaultJson()">Save JSON Changes</button>
                     </div>
                 </div>
             </div>
@@ -450,7 +448,7 @@
                             </select>
                         </div>
                         <div>
-                            <button id="clear-chat-btn" class="cyber-btn secondary" style="padding: 12px 16px; font-size: 12px; margin-top: 24px; width: auto; background: rgba(239, 68, 68, 0.1); border-color: var(--neon-red); color: var(--neon-red);">Clear Chat</button>
+                            <button type="button" id="clear-chat-btn" class="cyber-btn secondary" style="padding: 12px 16px; font-size: 12px; margin-top: 24px; width: auto; background: rgba(239, 68, 68, 0.1); border-color: var(--neon-red); color: var(--neon-red);" onclick="window.clearChatHistory()">Clear Chat</button>
                         </div>
                     </div>
                     <div class="chat-box" id="chat-box" style="display: flex; flex-direction: column; gap: 16px;">
@@ -460,8 +458,8 @@
                         </div>
                     </div>
                     <div style="display: flex; gap: 14px;">
-                        <input type="text" id="chat-input" placeholder="Ask syllabus doubt...">
-                        <button id="send-chat-btn" class="cyber-btn" style="width: 70px; margin:0;">➤</button>
+                        <input type="text" id="chat-input" placeholder="Ask syllabus doubt..." onkeypress="if(event.key === 'Enter') window.sendChat()">
+                        <button type="button" id="send-chat-btn" class="cyber-btn" style="width: 70px; margin:0;" onclick="window.sendChat()">➤</button>
                     </div>
                 </div>
             </div>
@@ -475,41 +473,38 @@
                     
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                         <label style="margin-top: 0;">Multi-Key Neural Tokens</label>
-                        <button id="add-api-key-btn" class="cyber-btn secondary" style="width: auto; margin: 0; padding: 6px 12px; font-size: 11px;">+ Add Token</button>
+                        <button type="button" id="add-api-key-btn" class="cyber-btn secondary" style="width: auto; margin: 0; padding: 6px 12px; font-size: 11px;" onclick="window.addEmptyKeyRow()">+ Add Token</button>
                     </div>
                     <p style="font-size: 11px; color: var(--text-muted); margin-top: 0; margin-bottom: 15px;">Tokens for a provider are chosen at random to balance load and prevent rate limits.</p>
                     
-                    <!-- DYNAMIC API KEYS CONTAINER -->
                     <div id="api-keys-container" style="max-height: 300px; overflow-y: auto; padding-right: 5px; margin-bottom: 20px;">
-                        <!-- Keys injected by JS -->
                     </div>
 
-                    <button id="save-tokens-btn" class="cyber-btn" style="width: auto;">Save Configuration</button>
+                    <button type="button" id="save-tokens-btn" class="cyber-btn" style="width: auto;" onclick="window.updateTokens()">Save Configuration</button>
                     <p id="token-update-msg" style="color: var(--neon-green); font-size: 13px; display: none; margin-top: 12px; font-weight: 600;">Configuration saved successfully!</p>
                     
                     <hr style="border: none; border-top: 1px solid var(--border-glow); margin: 30px 0;">
                     
                     <h3 style="color: var(--neon-cyan); margin-top:0; font-size: 16px; letter-spacing: 1px;">Session Management</h3>
                     <p style="color: var(--text-muted); font-size: 13px;">Active Operator: <span id="active-operator-name" style="color: var(--text-main); font-weight: bold;"></span></p>
-                    <button id="logout-btn" class="cyber-btn danger" style="width: auto; margin-top: 12px;">Sign Out</button>
+                    <button type="button" id="logout-btn" class="cyber-btn danger" style="width: auto; margin-top: 12px;" onclick="window.logout()">Sign Out</button>
 
                     <hr style="border: none; border-top: 1px solid var(--border-glow); margin: 30px 0;">
 
                     <h3 style="color: var(--neon-cyan); margin-top:0; font-size: 16px; letter-spacing: 1px;">Telemetry & Storage</h3>
                     <p style="color: var(--neon-green); font-size: 13px; font-weight: 600;">● Secure Local Storage Active</p>
-                    <button id="export-btn" class="cyber-btn secondary" style="color: var(--text-main); width: auto; margin-top: 12px;">Export Backup (JSON)</button>
+                    <button type="button" id="export-btn" class="cyber-btn secondary" style="color: var(--text-main); width: auto; margin-top: 12px;" onclick="window.exportLocalStorage()">Export Backup (JSON)</button>
                 </div>
             </div>
         </div>
 
         <div class="bottom-nav">
-            <div class="nav-item active" id="nav-exam" onclick="switchTab('exam')"><span class="nav-icon">📝</span>Engine</div>
-            <div class="nav-item" id="nav-vault" onclick="switchTab('vault')"><span class="nav-icon">🧠</span>Vault</div>
-            <div class="nav-item" id="nav-chat" onclick="switchTab('chat')"><span class="nav-icon">🤖</span>NEXUS</div>
-            <div class="nav-item" id="nav-settings" onclick="switchTab('settings')"><span class="nav-icon">⚙️</span>Config</div>
+            <div class="nav-item active" id="nav-exam" onclick="window.switchTab('exam')"><span class="nav-icon">📝</span>Engine</div>
+            <div class="nav-item" id="nav-vault" onclick="window.switchTab('vault')"><span class="nav-icon">🧠</span>Vault</div>
+            <div class="nav-item" id="nav-chat" onclick="window.switchTab('chat')"><span class="nav-icon">🤖</span>NEXUS</div>
+            <div class="nav-item" id="nav-settings" onclick="window.switchTab('settings')"><span class="nav-icon">⚙️</span>Config</div>
         </div>
     </div>
-    <script src="app.js"></script>
     <script src="engine.js"></script>
     <script src="aspirant.js"></script>
     <script src="notifier.js"></script>
