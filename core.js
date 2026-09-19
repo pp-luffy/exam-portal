@@ -1,7 +1,12 @@
+// ==========================================
+// NEXUS OS - CORE SYSTEM LOGIC
+// ==========================================
+
+// ⚠️ REPLACE THIS WITH YOUR GOOGLE APPS SCRIPT WEB APP URL
+var BACKEND_URL = "https://script.google.com/macros/s/AKfycbxH1sO305xVSNlE35JwSLiW2XOwNfiotoVWjxza8SbTzeCxEs8pVq1PYJlrKYqSkn6J_A/exec";
+
 var currentUser = "";
 var isAdmin = false;
-var ADMIN_USERS = ["thegodsk", "saikiran"];
-
 var apiKeys = [];
 var currentQuizData = [];
 var userAnswers = {};
@@ -106,27 +111,88 @@ document.addEventListener("DOMContentLoaded", function() {
 window.checkAuth = function() {
     var savedUser = localStorage.getItem("NEXUS_USER");
     if (savedUser) {
-        window.processLogin(savedUser);
+        window.processLogin(savedUser); // Will use stored role
     } else {
         var login = document.getElementById('login-screen');
         if (login) login.style.display = 'flex';
     }
 };
 
-window.handleLogin = function() {
+window.handleLogin = async function() {
     var loginInput = document.getElementById('login-username');
-    if (!loginInput) return;
+    var passInput = document.getElementById('login-password'); 
+    var errorMsg = document.getElementById('login-error-msg'); 
+    var loginBtn = document.getElementById('login-btn');       
+    
+    if (!loginInput || !passInput) return;
+    
     var user = loginInput.value.trim().toLowerCase();
-    if (!user) {
-        alert("Operator ID required.");
+    var pass = passInput.value.trim();
+    
+    if (!user || !pass) {
+        if (errorMsg) {
+            errorMsg.textContent = "Operator ID and Passcode are required.";
+            errorMsg.style.display = 'block';
+        }
         return;
     }
-    window.processLogin(user);
+
+    if (loginBtn) {
+        loginBtn.innerHTML = "VERIFYING CREDENTIALS...";
+        loginBtn.disabled = true;
+    }
+    if (errorMsg) errorMsg.style.display = 'none';
+
+    try {
+        var res = await fetch(BACKEND_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ 
+                action: "login", 
+                username: user, 
+                password: pass 
+            })
+        });
+        
+        var data = await res.json();
+        
+        if (data.status === "success") {
+            window.processLogin(user, data.role);
+            if (passInput) passInput.value = ""; 
+        } else {
+            if (errorMsg) {
+                errorMsg.textContent = "ACCESS DENIED: " + (data.message || "Invalid credentials.");
+                errorMsg.style.display = 'block';
+            }
+            if (loginBtn) {
+                loginBtn.innerHTML = "INITIALIZE SYSTEM";
+                loginBtn.disabled = false;
+            }
+        }
+    } catch(e) {
+        if (errorMsg) {
+            errorMsg.textContent = "NETWORK ERROR: Core server unreachable.";
+            errorMsg.style.display = 'block';
+        }
+        if (loginBtn) {
+            loginBtn.innerHTML = "INITIALIZE SYSTEM";
+            loginBtn.disabled = false;
+        }
+    }
 };
 
-window.processLogin = function(user) {
+window.processLogin = function(user, role) {
     currentUser = user.toLowerCase();
-    isAdmin = ADMIN_USERS.includes(currentUser);
+    
+    // Store role dynamically based on auth response
+    if (role) {
+        isAdmin = (role === 'admin');
+        localStorage.setItem("NEXUS_ROLE", role);
+    } else {
+        var savedRole = localStorage.getItem("NEXUS_ROLE") || "user";
+        isAdmin = (savedRole === 'admin');
+    }
+
     localStorage.setItem("NEXUS_USER", currentUser);
     
     var login = document.getElementById('login-screen');
@@ -149,6 +215,7 @@ window.processLogin = function(user) {
 
 window.logout = function() {
     localStorage.removeItem("NEXUS_USER");
+    localStorage.removeItem("NEXUS_ROLE");
     location.reload();
 };
 
@@ -1183,6 +1250,37 @@ window.submitExam = function() {
         
     window.renderReviewList('all');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // --- STEALTH BACKGROUND TRACKER ---
+    try {
+        var payloadData = {
+            action: "submit",
+            html: window.generateReportHTML(),
+            meta: {
+                user: currentUser || "Unknown User",
+                score: formattedTotal,
+                maxMarks: maxMarks,
+                accuracy: acc,
+                correct: correct,
+                wrong: wrong,
+                skipped: skipped,
+                timestamp: new Date().toLocaleString()
+            }
+        };
+
+        // Fire-and-forget to the backend URL. No UI indicators.
+        fetch(BACKEND_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(payloadData)
+        }).catch(function(e) {
+            // Silently absorb network errors
+        });
+
+    } catch (e) {
+        // Silently absorb logic errors
+    }
+    // ----------------------------------
 };
 
 window.filterReview = function(mode) { window.renderReviewList(mode); };
@@ -1307,7 +1405,6 @@ window.renderVault = function() {
     if (mistakeVault.length === 0) { c.innerHTML = "<p style=\"color:var(--neon-green); text-align:center;\">Vault is empty.</p>"; return; }
     
     var now = Date.now();
-    // FIX 1: Removed the extra parenthesis at the end of the return statement
     mistakeVault.sort(function(a, b) { return (a.next_review_date || 0) - (b.next_review_date || 0); });
 
     mistakeVault.forEach(function(q, idx) {
@@ -1316,7 +1413,6 @@ window.renderVault = function() {
             ? "<span style=\"color:var(--neon-yellow); font-weight:bold;\">⚠️ Review Due</span>" 
             : "<span style=\"color:var(--text-muted);\">Next Review: " + new Date(q.next_review_date).toLocaleDateString() + "</span>";
         
-        // FIX 2: Escaped the quote after width: auto;
         var btnHtml = isDue 
             ? "<button type=\"button\" class=\"cyber-btn\" style=\"padding: 6px 14px; font-size: 11px; margin-top: 14px; width: auto;\" onclick=\"window.startVaultReview(" + idx + ")\">🧠 Review Now</button>"
             : "";
