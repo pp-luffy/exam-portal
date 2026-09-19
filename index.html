@@ -166,6 +166,30 @@
             .cbt-sidebar { width: 340px; flex-shrink: 0; position: sticky; top: 20px; }
             .q-palette-grid { max-height: calc(100vh - 200px); align-content: flex-start; }
         }
+
+        /* NEW STYLES FOR API KEY MANAGER */
+        .api-key-row {
+            display: flex; gap: 10px; align-items: center; margin-bottom: 12px;
+            background: rgba(0, 0, 0, 0.4); padding: 12px; border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            flex-wrap: wrap;
+        }
+        .api-key-row select, .api-key-row input {
+            margin-top: 0; padding: 10px 14px;
+        }
+        .key-input-wrapper {
+            position: relative; flex: 2; min-width: 200px; display: flex;
+        }
+        .key-input-wrapper input {
+            width: 100%; padding-right: 70px; /* Space for icons */
+        }
+        .key-action-btn {
+            background: none; border: none; color: var(--text-muted);
+            font-size: 14px; cursor: pointer; transition: color 0.3s;
+            padding: 5px;
+        }
+        .key-action-btn:hover { color: var(--neon-cyan); }
+        .key-action-btn.del:hover { color: var(--neon-red); }
     </style>
 </head>
 <body>
@@ -446,13 +470,21 @@
                 <h1 class="header-title">System Config</h1>
                 <div class="glass-card">
                     <h3 style="color: var(--neon-cyan); margin-top:0; font-size: 16px; letter-spacing: 1px;">API Token & Dispatch Manager</h3>
-                    <label>Destination Mail ID for Reports</label><input type="email" id="update-mail" placeholder="e.g. student@gmail.com">
-                    <label>Update Gemini API Key</label><input type="password" id="update-gemini" placeholder="New AIzaSy...">
-                    <label>Update Primary Groq API Key</label><input type="password" id="update-groq" placeholder="New gsk_...">
-                    <label>Update Verification Groq Key (Phase 2)</label><input type="password" id="update-groq-verify" placeholder="New gsk_ (For QA)">
-                    <label>Update OpenRouter API Key</label><input type="password" id="update-openrouter" placeholder="New sk-or-v1-...">
-                    <label>Update DeepSeek API Key</label><input type="password" id="update-deepseek" placeholder="New sk-...">
-                    <button id="save-tokens-btn" class="cyber-btn" style="width: auto; margin-top: 20px;">Save Configuration</button>
+                    <label>Destination Mail ID for Reports</label>
+                    <input type="email" id="update-mail" placeholder="e.g. student@gmail.com" style="margin-bottom: 20px;">
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <label style="margin-top: 0;">Multi-Key Neural Tokens</label>
+                        <button id="add-api-key-btn" class="cyber-btn secondary" style="width: auto; margin: 0; padding: 6px 12px; font-size: 11px;">+ Add Token</button>
+                    </div>
+                    <p style="font-size: 11px; color: var(--text-muted); margin-top: 0; margin-bottom: 15px;">Tokens for a provider are chosen at random to balance load and prevent rate limits.</p>
+                    
+                    <!-- DYNAMIC API KEYS CONTAINER -->
+                    <div id="api-keys-container" style="max-height: 300px; overflow-y: auto; padding-right: 5px; margin-bottom: 20px;">
+                        <!-- Keys injected by JS -->
+                    </div>
+
+                    <button id="save-tokens-btn" class="cyber-btn" style="width: auto;">Save Configuration</button>
                     <p id="token-update-msg" style="color: var(--neon-green); font-size: 13px; display: none; margin-top: 12px; font-weight: 600;">Configuration saved successfully!</p>
                     
                     <hr style="border: none; border-top: 1px solid var(--border-glow); margin: 30px 0;">
@@ -479,8 +511,7 @@
     </div>
     <script src="app.js"></script>
     <script src="engine.js"></script>
-    <!-- ADD THIS SINGLE LINE: -->
     <script src="aspirant.js"></script>
-    <script src="notifier.js"></script> <!-- ADD THIS LINE -->
+    <script src="notifier.js"></script>
 </body>
 </html>
