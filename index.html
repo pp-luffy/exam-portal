@@ -202,8 +202,17 @@
     <div id="login-screen" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 500; background: radial-gradient(circle at center, #0b1329 0%, #020617 100%); flex-direction: column; align-items: center; justify-content: center; padding: 20px;">
         <div class="glass-card" style="max-width: 420px; text-align: center; padding: 45px 35px;">
             <div class="boot-logo" style="margin-bottom: 35px; font-size: 32px;">NEXUS OS</div>
+            
             <label style="text-align: left;">Operator Identification ID</label>
-            <input type="text" id="login-username" placeholder="Enter username..." style="margin-bottom: 24px;" onkeypress="if(event.key === 'Enter') window.handleLogin()">
+            <input type="text" id="login-username" placeholder="Enter username..." style="margin-bottom: 16px;">
+            
+            <!-- ADDED PASSWORD FIELD -->
+            <label style="text-align: left;">Secure Passcode</label>
+            <input type="password" id="login-password" placeholder="Enter passcode..." style="margin-bottom: 12px;" onkeypress="if(event.key === 'Enter') window.handleLogin()">
+            
+            <!-- ADDED ERROR MESSAGE CONTAINER -->
+            <p id="login-error-msg" style="color: var(--neon-red); font-size: 12px; display: none; margin-top: 0; margin-bottom: 16px; font-weight: 600;"></p>
+            
             <button id="login-btn" type="button" class="cyber-btn" onclick="window.handleLogin()">INITIALIZE SYSTEM</button>
         </div>
     </div>
