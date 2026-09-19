@@ -1307,7 +1307,8 @@ window.renderVault = function() {
     if (mistakeVault.length === 0) { c.innerHTML = "<p style=\"color:var(--neon-green); text-align:center;\">Vault is empty.</p>"; return; }
     
     var now = Date.now();
-    mistakeVault.sort(function(a, b) { return (a.next_review_date || 0) - (b.next_review_date || 0)); });
+    // FIX 1: Removed the extra parenthesis at the end of the return statement
+    mistakeVault.sort(function(a, b) { return (a.next_review_date || 0) - (b.next_review_date || 0); });
 
     mistakeVault.forEach(function(q, idx) {
         var isDue = now >= (q.next_review_date || 0);
@@ -1315,8 +1316,9 @@ window.renderVault = function() {
             ? "<span style=\"color:var(--neon-yellow); font-weight:bold;\">⚠️ Review Due</span>" 
             : "<span style=\"color:var(--text-muted);\">Next Review: " + new Date(q.next_review_date).toLocaleDateString() + "</span>";
         
+        // FIX 2: Escaped the quote after width: auto;
         var btnHtml = isDue 
-            ? "<button type=\"button\" class=\"cyber-btn\" style=\"padding: 6px 14px; font-size: 11px; margin-top: 14px; width: auto;" onclick=\"window.startVaultReview(" + idx + ")\">🧠 Review Now</button>"
+            ? "<button type=\"button\" class=\"cyber-btn\" style=\"padding: 6px 14px; font-size: 11px; margin-top: 14px; width: auto;\" onclick=\"window.startVaultReview(" + idx + ")\">🧠 Review Now</button>"
             : "";
 
         var answerHtml = !isDue 
