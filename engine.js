@@ -1,4 +1,3 @@
-// Using 'var' prevents fatal SyntaxErrors if aspirant.js or notifier.js use the same variable names
 var currentUser = "";
 var isAdmin = false;
 var ADMIN_USERS = ["thegodsk", "saikiran"];
@@ -45,7 +44,6 @@ var PROVIDER_MODELS = {
 };
 
 document.addEventListener("DOMContentLoaded", function() {
-    // 🛡️ AGGRESSIVE FAILSAFE: Force the splash screen to hide after 2.5s no matter what
     var bootFailsafe = setTimeout(function() {
         var s = document.getElementById('boot-splash');
         if (s) s.style.display = 'none';
@@ -81,7 +79,6 @@ document.addEventListener("DOMContentLoaded", function() {
         window.checkAuth();
     }
     
-    // Core Initializations
     try { window.loadApiKeys(); } catch(e) { console.error("Key Load Error:", e); }
     
     var mailId = localStorage.getItem("DEST_MAIL") || "";
@@ -103,7 +100,7 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 // ==========================================
-// GLOBALLY ACCESSIBLE METHODS
+// AUTH & SESSION CONTROLS
 // ==========================================
 
 window.checkAuth = function() {
@@ -139,7 +136,7 @@ window.processLogin = function(user) {
     if (mainApp) mainApp.style.display = 'flex';
     
     var operatorSpan = document.getElementById('active-operator-name');
-    if (operatorSpan) operatorSpan.textContent = currentUser;
+    if (operatorSpan) operatorSpan.textContent = currentUser + (isAdmin ? " [ADMIN / UNRESTRICTED]" : " [STANDARD OPERATOR]");
 
     window.applySessionEnvironment();
 
@@ -161,12 +158,17 @@ window.applySessionEnvironment = function() {
     var adminPrompt = document.getElementById('admin-prompt');
     var adminVault = document.getElementById('admin-vault-editor');
     var pauseTimerBtn = document.getElementById('pause-timer-btn');
+    var addKeyBtn = document.getElementById('add-api-key-btn');
+    var chatModelSelect = document.getElementById('chat-model-select');
 
     if (!isAdmin) {
+        // Strict UI limitations for non-admins
         if (diffContainer) diffContainer.style.display = 'none';
         if (adminPrompt) adminPrompt.style.display = 'none';
         if (adminVault) adminVault.style.display = 'none';
         if (pauseTimerBtn) pauseTimerBtn.style.display = 'none';
+        if (addKeyBtn) addKeyBtn.style.display = 'none';
+        
         if (orgSelect) {
             Array.from(orgSelect.options).forEach(function(opt) {
                 opt.style.display = (opt.value === 'gemini') ? 'block' : 'none';
@@ -174,19 +176,38 @@ window.applySessionEnvironment = function() {
             orgSelect.value = 'gemini';
             orgSelect.disabled = true;
         }
+
+        // Lock Chat Model to Gemini 3.8 / 3.7
+        if (chatModelSelect) {
+            chatModelSelect.innerHTML = 
+                '<option value="gemini-3.8-flash">Gemini 3.8 Flash</option>' +
+                '<option value="gemini-3.7-flash">Gemini 3.7 Flash</option>';
+        }
     } else {
+        // Admin full-access environment
         if (diffContainer) diffContainer.style.display = 'block';
         if (adminPrompt) adminPrompt.style.display = 'block';
         if (adminVault) adminVault.style.display = 'block';
         if (pauseTimerBtn) pauseTimerBtn.style.display = 'inline-block';
+        if (addKeyBtn) addKeyBtn.style.display = 'inline-block';
+        
         if (orgSelect) {
             orgSelect.disabled = false;
             Array.from(orgSelect.options).forEach(function(opt) {
                 opt.style.display = 'block';
             });
         }
+
+        if (chatModelSelect) {
+            chatModelSelect.innerHTML = 
+                '<option value="gemini-3.8-flash">Gemini 3.8 Flash</option>' +
+                '<option value="openai/gpt-oss-120b">Groq: GPT-OSS 120B</option>' +
+                '<option value="openai/gpt-oss-20b">Groq: GPT-OSS 20B (Fast Tutor)</option>' +
+                '<option value="nvidia/nemotron-3-ultra-550b-a55b:free">OpenRouter: Nemotron 3 Ultra</option>';
+        }
     }
 
+    window.renderApiKeysUI();
     window.updateModelDropdown();
     window.loadExamConfig();
 };
@@ -202,7 +223,19 @@ window.loadExamConfig = function() {
         
         window.updateModelDropdown(); 
         
-        if (document.getElementById('model-select') && saved.model) document.getElementById('model-select').value = saved.model;
+        if (document.getElementById('model-select') && saved.model) {
+            if (!isAdmin) {
+                // Non-admin can only load 3.8 or 3.7
+                if (saved.model === "gemini-3.7-flash" || saved.model === "gemini-3.8-flash") {
+                    document.getElementById('model-select').value = saved.model;
+                } else {
+                    document.getElementById('model-select').value = "gemini-3.8-flash";
+                }
+            } else {
+                document.getElementById('model-select').value = saved.model;
+            }
+        }
+        
         if (document.getElementById('exam')) document.getElementById('exam').value = saved.exam || "";
         if (document.getElementById('subject')) document.getElementById('subject').value = saved.subject || "";
         if (document.getElementById('topic')) document.getElementById('topic').value = saved.topic || "";
@@ -230,8 +263,16 @@ window.updateModelDropdown = function() {
     var org = orgSelect.value;
     modelSelect.innerHTML = "";
     
-    var list = PROVIDER_MODELS[org] || [];
-    if (!isAdmin) list = (PROVIDER_MODELS['gemini'] || []).slice(0, 2);
+    var list = [];
+    if (!isAdmin) {
+        // Non-admins are restricted strictly to Gemini 3.8 Flash & Gemini 3.7 Flash
+        list = [
+            { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash", maxLimit: 75 },
+            { id: "gemini-3.7-flash", name: "Gemini 3.7 Flash", maxLimit: 75 }
+        ];
+    } else {
+        list = PROVIDER_MODELS[org] || [];
+    }
 
     list.forEach(function(m) {
         var opt = document.createElement('option');
@@ -256,7 +297,8 @@ window.updateQuotaDisplay = function() {
     if (cachedQuota) {
         statusVal.textContent = cachedQuota;
     } else {
-        if (org === 'openrouter') statusVal.textContent = "Free Tier: ~20 RPM";
+        if (!isAdmin) statusVal.textContent = "Gemini Free Quota (Standard)";
+        else if (org === 'openrouter') statusVal.textContent = "Free Tier: ~20 RPM";
         else if (org === 'groq') statusVal.textContent = "Free Tier: ~30 RPM";
         else if (org === 'deepseek') statusVal.textContent = "Native API Limits";
         else statusVal.textContent = "Standard Limits";
@@ -309,7 +351,7 @@ window.exportLocalStorage = function() {
 };
 
 // ==========================================
-// API KEY MANAGER (MULTI-KEY SUPPORT)
+// API KEY MANAGER (ROLE-AWARE)
 // ==========================================
 window.loadApiKeys = function() {
     try {
@@ -324,11 +366,11 @@ window.loadApiKeys = function() {
             var or = localStorage.getItem("OPENROUTER_KEY");
             var ds = localStorage.getItem("DEEPSEEK_KEY");
             
-            if(g) apiKeys.push({ id: Date.now()+1, provider: "gemini", name: "Legacy Gemini", key: g });
-            if(gr) apiKeys.push({ id: Date.now()+2, provider: "groq", name: "Legacy Groq", key: gr });
-            if(grv) apiKeys.push({ id: Date.now()+3, provider: "groq", name: "Legacy Groq Verify", key: grv });
-            if(or) apiKeys.push({ id: Date.now()+4, provider: "openrouter", name: "Legacy OpenRouter", key: or });
-            if(ds) apiKeys.push({ id: Date.now()+5, provider: "deepseek", name: "Legacy DeepSeek", key: ds });
+            if(g) apiKeys.push({ id: Date.now()+1, provider: "gemini", name: "Gemini Key", key: g });
+            if(gr) apiKeys.push({ id: Date.now()+2, provider: "groq", name: "Groq Key", key: gr });
+            if(grv) apiKeys.push({ id: Date.now()+3, provider: "groq", name: "Groq Verify Key", key: grv });
+            if(or) apiKeys.push({ id: Date.now()+4, provider: "openrouter", name: "OpenRouter Key", key: or });
+            if(ds) apiKeys.push({ id: Date.now()+5, provider: "deepseek", name: "DeepSeek Key", key: ds });
             
             if (apiKeys.length > 0) localStorage.setItem("NEXUS_API_KEYS", JSON.stringify(apiKeys));
         }
@@ -347,12 +389,12 @@ window.syncKeysFromDOM = function() {
         var keyNode = row.querySelector('.key-input');
         
         var provider = providerNode ? providerNode.value : 'gemini';
-        var name = nameNode ? nameNode.value : 'Token';
+        var name = nameNode ? nameNode.value : 'Gemini Key';
         var key = keyNode ? keyNode.value : '';
         
         synced.push({
             id: apiKeys[i] ? apiKeys[i].id : (Date.now() + i),
-            provider: provider,
+            provider: isAdmin ? provider : 'gemini',
             name: name,
             key: key
         });
@@ -367,6 +409,28 @@ window.renderApiKeysUI = function() {
     if (!container) return;
     container.innerHTML = "";
     
+    // Non-admins: Only 1 Gemini Key is permitted
+    if (!isAdmin) {
+        var geminiKeyObj = apiKeys.find(function(k) { return k.provider === 'gemini'; }) || { id: Date.now(), provider: "gemini", name: "Gemini Key", key: "" };
+        var row = document.createElement('div');
+        row.className = "api-key-row";
+        row.innerHTML = 
+            '<select class="key-provider" style="flex: 1; min-width: 120px;" disabled>' +
+                '<option value="gemini" selected>Google Gemini</option>' +
+            '</select>' +
+            '<input type="text" class="key-name" value="Gemini API Key" style="flex: 1; min-width: 120px;" disabled>' +
+            '<div class="key-input-wrapper">' +
+                '<input type="password" class="key-input" id="key-input-0" placeholder="Paste Gemini API Key..." value="' + (geminiKeyObj.key || '') + '" oninput="window.updateNonAdminGeminiKey(this.value)">' +
+                '<div style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display:flex; gap: 4px;">' +
+                    '<button type="button" class="key-action-btn" onclick="window.toggleKeyVisibility(0)" title="Toggle Visibility">👁</button>' +
+                    '<button type="button" class="key-action-btn" onclick="window.copyKey(0)" title="Copy Token">📋</button>' +
+                '</div>' +
+            '</div>';
+        container.appendChild(row);
+        return;
+    }
+
+    // Admin: Full Multi-Key Manager
     if (apiKeys.length === 0) {
         container.innerHTML = "<p style='color: var(--text-muted); font-size: 12px; font-style: italic;'>No API tokens configured. Click '+ Add Token' to begin.</p>";
         return;
@@ -381,9 +445,6 @@ window.renderApiKeysUI = function() {
         var selOpenRouter = k.provider === 'openrouter' ? 'selected' : '';
         var selDeepSeek = k.provider === 'deepseek' ? 'selected' : '';
         
-        var keyName = k.name || '';
-        var keyValue = k.key || '';
-        
         row.innerHTML = 
             '<select class="key-provider" style="flex: 1; min-width: 120px;" onchange="window.updateKeyData(' + index + ', \'provider\', this.value)">' +
                 '<option value="gemini" ' + selGemini + '>Gemini</option>' +
@@ -391,9 +452,9 @@ window.renderApiKeysUI = function() {
                 '<option value="openrouter" ' + selOpenRouter + '>OpenRouter</option>' +
                 '<option value="deepseek" ' + selDeepSeek + '>DeepSeek</option>' +
             '</select>' +
-            '<input type="text" class="key-name" placeholder="Identifier Name" value="' + keyName + '" style="flex: 1; min-width: 120px;" oninput="window.updateKeyData(' + index + ', \'name\', this.value)">' +
+            '<input type="text" class="key-name" placeholder="Identifier Name" value="' + (k.name || '') + '" style="flex: 1; min-width: 120px;" oninput="window.updateKeyData(' + index + ', \'name\', this.value)">' +
             '<div class="key-input-wrapper">' +
-                '<input type="password" class="key-input" id="key-input-' + index + '" placeholder="API Token" value="' + keyValue + '" oninput="window.updateKeyData(' + index + ', \'key\', this.value)">' +
+                '<input type="password" class="key-input" id="key-input-' + index + '" placeholder="API Token" value="' + (k.key || '') + '" oninput="window.updateKeyData(' + index + ', \'key\', this.value)">' +
                 '<div style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display:flex; gap: 4px;">' +
                     '<button type="button" class="key-action-btn" onclick="window.toggleKeyVisibility(' + index + ')" title="Toggle Visibility">👁</button>' +
                     '<button type="button" class="key-action-btn" onclick="window.copyKey(' + index + ')" title="Copy Token">📋</button>' +
@@ -404,7 +465,17 @@ window.renderApiKeysUI = function() {
     });
 };
 
+window.updateNonAdminGeminiKey = function(val) {
+    var idx = apiKeys.findIndex(function(k) { return k.provider === 'gemini'; });
+    if (idx >= 0) {
+        apiKeys[idx].key = val;
+    } else {
+        apiKeys.push({ id: Date.now(), provider: "gemini", name: "Gemini Key", key: val });
+    }
+};
+
 window.addEmptyKeyRow = function() {
+    if (!isAdmin) return;
     window.syncKeysFromDOM();
     apiKeys.push({ id: Date.now(), provider: "gemini", name: "Token " + (apiKeys.length + 1), key: "" });
     window.renderApiKeysUI();
@@ -430,6 +501,7 @@ window.copyKey = function(index) {
 };
 
 window.deleteKey = function(index) {
+    if (!isAdmin) return;
     window.syncKeysFromDOM();
     var nameToDel = apiKeys[index] ? apiKeys[index].name : 'Token';
     if(confirm("Delete token '" + nameToDel + "'?")) {
@@ -459,13 +531,6 @@ window.updateTokens = function() {
     } catch(e) { alert("Failed to save configuration: " + e.message); }
 };
 
-window.getRandomKey = function(provider) {
-    var available = apiKeys.filter(function(k) { return k.provider === provider && (k.key || "").trim() !== ""; });
-    if (available.length === 0) return null;
-    var rnd = available[Math.floor(Math.random() * available.length)];
-    return rnd.key.trim();
-};
-
 window.cancellableDelay = function(ms, signal) {
     return new Promise(function(resolve, reject) {
         if (signal && signal.aborted) return reject(new Error("Aborted by operator."));
@@ -480,7 +545,7 @@ window.cancellableDelay = function(ms, signal) {
 };
 
 // ==========================================
-// EXAM & GENERATION LOGIC
+// EXAM GENERATION ENGINE
 // ==========================================
 
 window.cancelActiveRequest = function() {
@@ -513,6 +578,12 @@ window.confirmExitExam = function() {
 
 window.startExam = async function() {
     var org = document.getElementById('org-select').value;
+    
+    // Strict enforcement: Non-admins can only use Gemini
+    if (!isAdmin) {
+        org = 'gemini';
+    }
+
     var availableKeys = apiKeys.filter(function(k) { return k.provider === org && (k.key || "").trim() !== ""; }).map(function(k) { return k.key.trim(); });
     
     if (availableKeys.length === 0) {
@@ -532,10 +603,18 @@ window.startExam = async function() {
         return;
     }
 
+    var rawModel = document.getElementById('model-select').value;
+    // Strict enforcement: Non-admins can only run gemini-3.8-flash or gemini-3.7-flash
+    if (!isAdmin) {
+        if (rawModel !== 'gemini-3.8-flash' && rawModel !== 'gemini-3.7-flash') {
+            rawModel = 'gemini-3.8-flash';
+        }
+    }
+
     try {
         localStorage.setItem("NEXUS_LAST_CONFIG", JSON.stringify({
-            org: document.getElementById('org-select').value,
-            model: document.getElementById('model-select').value,
+            org: org,
+            model: rawModel,
             exam: exam,
             subject: subject,
             topic: topic,
@@ -556,7 +635,7 @@ window.startExam = async function() {
     
     var terminal = document.getElementById('terminal');
     terminal.style.display = 'block';
-    terminal.innerHTML = "<span style='color: var(--neon-cyan);'>[PHASE 1]: Synthesizing base neural parameters...</span><br>";
+    terminal.innerHTML = "<span style='color: var(--neon-cyan);'>[PHASE 1]: Synthesizing base neural parameters (" + rawModel + ")...</span><br>";
 
     var cancelWrapper = document.getElementById('terminal-cancel-btn');
     if (!cancelWrapper) {
@@ -570,8 +649,9 @@ window.startExam = async function() {
     }
     cancelWrapper.style.display = 'inline-flex';
 
-    var rawModel = document.getElementById('model-select').value;
     var totalCount = parseInt(document.getElementById('count').value);
+    if (!isAdmin && totalCount > 10) totalCount = 10;
+
     var lang = document.getElementById('lang').value;
     var mins = parseInt(document.getElementById('timer-mins').value) || 15;
     var posM = parseFloat(document.getElementById('pos-marks').value) || 1;
@@ -599,7 +679,8 @@ window.startExam = async function() {
         for (var i = 0; i < chunks.length; i++) {
             var currentChunkSize = chunks[i];
             
-            var currentApiKey = availableKeys[i % availableKeys.length];
+            // KEY ROTATION: Admins rotate across keys; Non-admins strictly stick to the first key
+            var currentApiKey = isAdmin ? availableKeys[i % availableKeys.length] : availableKeys[0];
             if (!usedGenKeys.includes(currentApiKey)) usedGenKeys.push(currentApiKey);
 
             terminal.innerHTML += "<span style='color: var(--text-muted);'>[BATCH " + (i+1) + "/" + chunks.length + "]: Requesting " + currentChunkSize + " questions...</span><br>";
@@ -626,7 +707,7 @@ window.startExam = async function() {
             basePrompt += "\n\nOutput ONLY a valid JSON array matching this exact format:\n";
             basePrompt += "[\n  {\n    \"question\": \"Question text...\",\n    \"options\": [\"Correct Option\", \"Distractor 1\", \"Distractor 2\", \"Distractor 3\"],\n    \"correct_option_index\": 0\n  }\n]\n";
             
-            if (adminPromptTxt) {
+            if (isAdmin && adminPromptTxt) {
                 basePrompt += "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt;
             }
 
@@ -692,10 +773,11 @@ window.startExam = async function() {
 
         currentQuizData = allGeneratedQuestions;
         
-        if (typeof isAdmin !== 'undefined' && isAdmin) {
+        // VERIFICATION: Admins run Phase 2 Neural QA; Non-admins skip it completely
+        if (isAdmin) {
             currentQuizData = await window.verifyAndCorrectQuizData(currentQuizData, signal, usedGenKeys);
         } else {
-            terminal.innerHTML += "<br><span style='color: var(--text-muted);'>[SYSTEM]: Neural QA Phase skipped (Standard Operator License). Assessment locked.</span><br>";
+            terminal.innerHTML += "<br><span style='color: var(--text-muted);'>[SYSTEM]: Neural QA Verification skipped (Standard License). Assessment locked.</span><br>";
         }
         
         window.prepareExamPortalLaunch(mins, posM, negM);
@@ -709,6 +791,7 @@ window.startExam = async function() {
 };
 
 window.verifyAndCorrectQuizData = async function(quizData, signal, usedGenKeys) {
+    if (!isAdmin) return quizData;
     if (!usedGenKeys) usedGenKeys = [];
     var terminal = document.getElementById('terminal');
     var allGroqKeys = apiKeys.filter(function(k) { return k.provider === "groq" && (k.key || "").trim() !== ""; }).map(function(k) { return k.key.trim(); });
@@ -1224,7 +1307,7 @@ window.renderVault = function() {
     if (mistakeVault.length === 0) { c.innerHTML = "<p style=\"color:var(--neon-green); text-align:center;\">Vault is empty.</p>"; return; }
     
     var now = Date.now();
-    mistakeVault.sort(function(a, b) { return (a.next_review_date || 0) - (b.next_review_date || 0); });
+    mistakeVault.sort(function(a, b) { return (a.next_review_date || 0) - (b.next_review_date || 0)); });
 
     mistakeVault.forEach(function(q, idx) {
         var isDue = now >= (q.next_review_date || 0);
@@ -1233,7 +1316,7 @@ window.renderVault = function() {
             : "<span style=\"color:var(--text-muted);\">Next Review: " + new Date(q.next_review_date).toLocaleDateString() + "</span>";
         
         var btnHtml = isDue 
-            ? "<button type=\"button\" class=\"cyber-btn\" style=\"padding: 6px 14px; font-size: 11px; margin-top: 14px; width: auto;\" onclick=\"window.startVaultReview(" + idx + ")\">🧠 Review Now</button>"
+            ? "<button type=\"button\" class=\"cyber-btn\" style=\"padding: 6px 14px; font-size: 11px; margin-top: 14px; width: auto;" onclick=\"window.startVaultReview(" + idx + ")\">🧠 Review Now</button>"
             : "";
 
         var answerHtml = !isDue 
@@ -1314,16 +1397,25 @@ window.sendChat = async function() {
     var rawModel = chatModelSelect ? chatModelSelect.value : "gemini-3.8-flash";
     
     var org = "gemini";
-    if (rawModel.includes(":free")) org = "openrouter";
-    else if (rawModel.includes("openai/") || rawModel.includes("qwen/") || rawModel.includes("groq/")) org = "groq";
-    else if (rawModel.includes("deepseek-v4")) org = "deepseek";
+    if (isAdmin) {
+        if (rawModel.includes(":free")) org = "openrouter";
+        else if (rawModel.includes("openai/") || rawModel.includes("qwen/") || rawModel.includes("groq/")) org = "groq";
+        else if (rawModel.includes("deepseek-v4")) org = "deepseek";
+    } else {
+        // Non-admin can only use Gemini 3.8 Flash or Gemini 3.7 Flash
+        if (rawModel !== 'gemini-3.7-flash' && rawModel !== 'gemini-3.8-flash') {
+            rawModel = 'gemini-3.8-flash';
+        }
+    }
 
-    var activeKey = window.getRandomKey(org);
-    if (!activeKey) {
+    var availableKeys = apiKeys.filter(function(k) { return k.provider === org && (k.key || "").trim() !== ""; }).map(function(k) { return k.key.trim(); });
+    if (availableKeys.length === 0) {
         alert("No valid API Key found for " + org.toUpperCase() + "! Please add it in the Config tab.");
         window.switchTab('settings');
         return;
     }
+
+    var activeKey = isAdmin ? availableKeys[Math.floor(Math.random() * availableKeys.length)] : availableKeys[0];
 
     var inp = document.getElementById('chat-input');
     if (!inp) return;
