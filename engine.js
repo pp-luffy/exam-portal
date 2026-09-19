@@ -2,29 +2,22 @@ let currentUser = "";
 let isAdmin = false;
 const ADMIN_USERS = ["thegodsk", "saikiran"];
 
-// API Key Manager State
 let apiKeys = [];
+let currentQuizData = [];
+let userAnswers = {};
+let userBookmarks = {};
+let currentQIndex = 0;
+let timerInterval = null;
+let secondsLeft = 0;
+let totalSecondsTaken = 0;
+let mistakeVault = [];
+let activeController = null;
+let isTimerPaused = false;
+let timeTracker = {}; 
+let posMark = 4;
+let negMark = 1;
 
-window.addEventListener('load', () => {
-    if (window.location.search.includes('mode=exam')) {
-        const splash = document.getElementById('boot-splash');
-        if (splash) splash.style.display = 'none';
-        checkAuth();
-        return;
-    }
-
-    setTimeout(() => {
-        const splash = document.getElementById('boot-splash');
-        if (splash) {
-            splash.style.opacity = '0';
-            splash.style.transform = 'scale(1.05)';
-            setTimeout(() => { 
-                splash.style.display = 'none'; 
-                checkAuth();
-            }, 600);
-        }
-    }, 1600);
-});
+try { mistakeVault = JSON.parse(localStorage.getItem("NEXUS_VAULT")) || []; } catch(e) { mistakeVault = []; }
 
 const PROVIDER_MODELS = {
     gemini: [
@@ -43,74 +36,38 @@ const PROVIDER_MODELS = {
     openrouter: [
         { id: "openrouter/free", name: "Auto Router (Best for Uptime)", maxLimit: 100 },
         { id: "nvidia/nemotron-3-ultra-550b-a55b:free", name: "Nemotron 3 Ultra", maxLimit: 100 },
-        { id: "poolside/laguna-s-2.1:free", name: "Laguna S 2.1", maxLimit: 75 }
+        { id: "poolside/laguna-s-2.1:free", name: "Laguna S 2.1 (Fast Logic)", maxLimit: 75 },
+        { id: "inclusionai/ling-3.0-flash-fin:free", name: "Ling 3.0 Flash", maxLimit: 75 },
+        { id: "nex-agi/nex-n2.5-mini:free", name: "Nex-N2.5 Mini", maxLimit: 75 }
     ],
-    deepseek: [] // Models removed temporarily due to balance issues
+    deepseek: []
 };
 
-document.addEventListener("DOMContentLoaded", function() {
-    loadApiKeys();
+window.addEventListener('load', () => {
+    if (window.location.search.includes('mode=exam')) {
+        const splash = document.getElementById('boot-splash');
+        if (splash) splash.style.display = 'none';
+        window.checkAuth();
+        return;
+    }
+
+    setTimeout(() => {
+        const splash = document.getElementById('boot-splash');
+        if (splash) {
+            splash.style.opacity = '0';
+            splash.style.transform = 'scale(1.05)';
+            setTimeout(() => { 
+                splash.style.display = 'none'; 
+                window.checkAuth();
+            }, 600);
+        }
+    }, 1600);
+    
+    // Core Initializations
+    window.loadApiKeys();
     
     const mailId = localStorage.getItem("DEST_MAIL") || "";
     if (document.getElementById('update-mail') && mailId) document.getElementById('update-mail').value = mailId;
-
-    const orgSelect = document.getElementById('org-select');
-    if (orgSelect) orgSelect.addEventListener('change', () => updateModelDropdown());
-    
-    const modelSelect = document.getElementById('model-select');
-    if (modelSelect) modelSelect.addEventListener('change', () => updateQuotaDisplay());
-
-    const diffSelect = document.getElementById('difficulty');
-    if (diffSelect) diffSelect.addEventListener('change', () => enforceLanguageConstraints());
-
-    const saveTokensBtn = document.getElementById('save-tokens-btn');
-    if (saveTokensBtn) saveTokensBtn.addEventListener('click', () => updateTokens());
-    
-    const addKeyBtn = document.getElementById('add-api-key-btn');
-    if (addKeyBtn) addKeyBtn.addEventListener('click', () => addEmptyKeyRow());
-
-    const sendChatBtn = document.getElementById('send-chat-btn');
-    if (sendChatBtn) sendChatBtn.addEventListener('click', () => sendChat());
-
-    safeBind('login-btn', 'click', () => handleLogin());
-    safeBind('logout-btn', 'click', () => logout());
-    safeBind('launch-btn', 'click', () => startExam());
-    safeBind('exit-exam-btn', 'click', () => confirmExitExam());
-    safeBind('pause-timer-btn', 'click', () => toggleTimerPause());
-    safeBind('fullscreen-btn', 'click', () => toggleFullscreen());
-    safeBind('bookmark-btn', 'click', () => toggleBookmark());
-    safeBind('prev-btn', 'click', () => navigateQ(-1));
-    safeBind('skip-btn', 'click', () => skipQ());
-    safeBind('clear-btn', 'click', () => clearAnswer());
-    safeBind('next-btn', 'click', () => navigateQ(1));
-    safeBind('submit-btn', 'click', () => confirmSubmit());
-    safeBind('rev-all-btn', 'click', () => filterReview('all'));
-    safeBind('rev-wrong-btn', 'click', () => filterReview('wrong'));
-    safeBind('retry-btn', 'click', () => restartSameQuiz());
-    safeBind('clear-vault-btn', 'click', () => clearVault());
-    safeBind('export-btn', 'click', () => exportLocalStorage());
-
-    safeBind('new-quiz-btn', 'click', () => {
-        if (window.location.search.includes('mode=exam')) {
-            window.close(); 
-        } else {
-            resetExamUI();
-        }
-    });
-
-    safeBind('save-vault-json-btn', 'click', () => {
-        try {
-            mistakeVault = JSON.parse(document.getElementById('vault-json-textarea').value);
-            localStorage.setItem("NEXUS_VAULT", JSON.stringify(mistakeVault));
-            renderVault();
-            alert("Vault JSON Updated Successfully.");
-        } catch(e) {
-            alert("Invalid JSON format! Please correct errors.");
-        }
-    });
-
-    const langSelect = document.getElementById('lang');
-    if (langSelect) langSelect.addEventListener('change', () => enforceLanguageConstraints());
 
     const countInput = document.getElementById('count');
     if (countInput) {
@@ -123,171 +80,32 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    const chatInput = document.getElementById('chat-input');
-    if (chatInput) chatInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendChat(); });
-    
-    const loginInput = document.getElementById('login-username');
-    if (loginInput) loginInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') handleLogin(); });
-
-    renderVault();
+    window.renderVault();
 });
 
-function safeBind(id, event, fn) {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener(event, fn);
-}
-
 // ==========================================
-// API KEY MANAGER (MULTI-KEY SUPPORT)
+// GLOBALLY ACCESSIBLE METHODS
 // ==========================================
-function loadApiKeys() {
-    try {
-        let stored = JSON.parse(localStorage.getItem("NEXUS_API_KEYS"));
-        if (Array.isArray(stored) && stored.length > 0) {
-            apiKeys = stored;
-        } else {
-            // Migrate legacy keys if they exist
-            apiKeys = [];
-            const g = localStorage.getItem("GEMINI_KEY");
-            const gr = localStorage.getItem("GROQ_KEY");
-            const grv = localStorage.getItem("GROQ_VERIFY_KEY");
-            const or = localStorage.getItem("OPENROUTER_KEY");
-            const ds = localStorage.getItem("DEEPSEEK_KEY");
-            
-            if(g) apiKeys.push({ id: Date.now()+1, provider: "gemini", name: "Legacy Gemini", key: g });
-            if(gr) apiKeys.push({ id: Date.now()+2, provider: "groq", name: "Legacy Groq", key: gr });
-            if(grv) apiKeys.push({ id: Date.now()+3, provider: "groq", name: "Legacy Groq Verify", key: grv });
-            if(or) apiKeys.push({ id: Date.now()+4, provider: "openrouter", name: "Legacy OpenRouter", key: or });
-            if(ds) apiKeys.push({ id: Date.now()+5, provider: "deepseek", name: "Legacy DeepSeek", key: ds });
-            
-            if (apiKeys.length > 0) localStorage.setItem("NEXUS_API_KEYS", JSON.stringify(apiKeys));
-        }
-    } catch(e) { apiKeys = []; }
-    renderApiKeysUI();
-}
 
-function renderApiKeysUI() {
-    const container = document.getElementById('api-keys-container');
-    if (!container) return;
-    container.innerHTML = "";
-    
-    if (apiKeys.length === 0) {
-        container.innerHTML = "<p style='color: var(--text-muted); font-size: 12px; font-style: italic;'>No API tokens configured. Click '+ Add Token' to begin.</p>";
-        return;
-    }
-
-    apiKeys.forEach((k, index) => {
-        const row = document.createElement('div');
-        row.className = "api-key-row";
-        row.innerHTML = `
-            <select class="key-provider" style="flex: 1; min-width: 120px;" onchange="updateKeyData(${index}, 'provider', this.value)">
-                <option value="gemini" ${k.provider==='gemini'?'selected':''}>Gemini</option>
-                <option value="groq" ${k.provider==='groq'?'selected':''}>Groq</option>
-                <option value="openrouter" ${k.provider==='openrouter'?'selected':''}>OpenRouter</option>
-                <option value="deepseek" ${k.provider==='deepseek'?'selected':''}>DeepSeek</option>
-            </select>
-            <input type="text" placeholder="Identifier Name" value="${k.name}" style="flex: 1; min-width: 120px;" onchange="updateKeyData(${index}, 'name', this.value)">
-            <div class="key-input-wrapper">
-                <input type="password" id="key-input-${index}" placeholder="API Token" value="${k.key}" onchange="updateKeyData(${index}, 'key', this.value)">
-                <div style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display:flex; gap: 4px;">
-                    <button class="key-action-btn" onclick="toggleKeyVisibility(${index})" title="Toggle Visibility">👁</button>
-                    <button class="key-action-btn" onclick="copyKey(${index})" title="Copy Token">📋</button>
-                    <button class="key-action-btn del" onclick="deleteKey(${index})" title="Delete Token">❌</button>
-                </div>
-            </div>
-        `;
-        container.appendChild(row);
-    });
-}
-
-function addEmptyKeyRow() {
-    apiKeys.push({ id: Date.now(), provider: "gemini", name: "New Token", key: "" });
-    renderApiKeysUI();
-    const container = document.getElementById('api-keys-container');
-    container.scrollTop = container.scrollHeight;
-}
-
-window.updateKeyData = function(index, field, value) {
-    if (apiKeys[index]) apiKeys[index][field] = value;
-}
-
-window.toggleKeyVisibility = function(index) {
-    const input = document.getElementById(`key-input-${index}`);
-    if (input) input.type = input.type === "password" ? "text" : "password";
-}
-
-window.copyKey = function(index) {
-    if (apiKeys[index] && apiKeys[index].key) {
-        navigator.clipboard.writeText(apiKeys[index].key);
-        alert(`Token '${apiKeys[index].name}' copied to clipboard.`);
-    }
-}
-
-window.deleteKey = function(index) {
-    if(confirm(`Delete token '${apiKeys[index].name}'?`)) {
-        apiKeys.splice(index, 1);
-        renderApiKeysUI();
-    }
-}
-
-function updateTokens() {
-    const newMail = document.getElementById('update-mail')?.value.trim() || "";
-    try {
-        if (newMail !== "") localStorage.setItem("DEST_MAIL", newMail);
-        // Filter out empty keys
-        apiKeys = apiKeys.filter(k => k.key.trim() !== "");
-        localStorage.setItem("NEXUS_API_KEYS", JSON.stringify(apiKeys));
-        renderApiKeysUI();
-
-        const msgEl = document.getElementById('token-update-msg');
-        if (msgEl) {
-            msgEl.style.display = 'block';
-            setTimeout(() => { msgEl.style.display = 'none'; }, 4000);
-        } else {
-            alert("Configuration saved successfully!");
-        }
-    } catch(e) { alert("Failed to save configuration: " + e.message); }
-}
-
-// Random Key Picker
-function getRandomKey(provider) {
-    const available = apiKeys.filter(k => k.provider === provider && k.key.trim() !== "");
-    if (available.length === 0) return null;
-    const rnd = available[Math.floor(Math.random() * available.length)];
-    return rnd.key.trim();
-}
-
-// Ensure the delay can be interrupted instantly by the AbortSignal (Fixes infinite timeout bug)
-function cancellableDelay(ms, signal) {
-    return new Promise((resolve, reject) => {
-        if (signal?.aborted) return reject(new Error("Aborted by operator."));
-        const timer = setTimeout(resolve, ms);
-        signal?.addEventListener('abort', () => {
-            clearTimeout(timer);
-            reject(new Error("Aborted by operator."));
-        }, { once: true });
-    });
-}
-
-function checkAuth() {
+window.checkAuth = function() {
     const savedUser = localStorage.getItem("NEXUS_USER");
     if (savedUser) {
-        processLogin(savedUser);
+        window.processLogin(savedUser);
     } else {
         document.getElementById('login-screen').style.display = 'flex';
     }
-}
+};
 
-function handleLogin() {
+window.handleLogin = function() {
     const user = document.getElementById('login-username').value.trim().toLowerCase();
     if (!user) {
         alert("Operator ID required.");
         return;
     }
-    processLogin(user);
-}
+    window.processLogin(user);
+};
 
-function processLogin(user) {
+window.processLogin = function(user) {
     currentUser = user.toLowerCase();
     isAdmin = ADMIN_USERS.includes(currentUser);
     localStorage.setItem("NEXUS_USER", currentUser);
@@ -298,47 +116,21 @@ function processLogin(user) {
     const operatorSpan = document.getElementById('active-operator-name');
     if (operatorSpan) operatorSpan.textContent = currentUser;
 
-    applySessionEnvironment();
+    window.applySessionEnvironment();
 
     if (window.location.search.includes('mode=exam')) {
-        if (typeof initStandaloneExam === 'function') {
-            initStandaloneExam();
+        if (typeof window.initStandaloneExam === 'function') {
+            window.initStandaloneExam();
         }
     }
-}
+};
 
-function loadExamConfig() {
-    try {
-        const saved = JSON.parse(localStorage.getItem("NEXUS_LAST_CONFIG"));
-        if (!saved) return;
-        
-        if (isAdmin && document.getElementById('org-select')) {
-            document.getElementById('org-select').value = saved.org || "gemini";
-        }
-        
-        updateModelDropdown(); 
-        
-        if (document.getElementById('model-select') && saved.model) document.getElementById('model-select').value = saved.model;
-        if (document.getElementById('exam')) document.getElementById('exam').value = saved.exam || "";
-        if (document.getElementById('subject')) document.getElementById('subject').value = saved.subject || "";
-        if (document.getElementById('topic')) document.getElementById('topic').value = saved.topic || "";
-        
-        if (isAdmin && document.getElementById('difficulty')) document.getElementById('difficulty').value = saved.difficulty || "2";
-        if (document.getElementById('count')) document.getElementById('count').value = saved.count || "10";
-        if (document.getElementById('pos-marks')) document.getElementById('pos-marks').value = saved.posMarks || "4";
-        if (document.getElementById('neg-marks')) document.getElementById('neg-marks').value = saved.negMarks || "1";
-        if (document.getElementById('timer-mins')) document.getElementById('timer-mins').value = saved.timer || "15";
-        if (document.getElementById('lang')) document.getElementById('lang').value = saved.lang || "English";
-        if (document.getElementById('exam-mode')) document.getElementById('exam-mode').value = saved.examMode || "strict";
-        if (isAdmin && document.getElementById('admin-prompt')) document.getElementById('admin-prompt').value = saved.adminPrompt || "";
-        
-        enforceLanguageConstraints();
-    } catch (e) {
-        console.warn("Could not load previous config", e);
-    }
-}
+window.logout = function() {
+    localStorage.removeItem("NEXUS_USER");
+    location.reload();
+};
 
-function applySessionEnvironment() {
+window.applySessionEnvironment = function() {
     const orgSelect = document.getElementById('org-select');
     const diffContainer = document.getElementById('difficulty-container');
     const adminPrompt = document.getElementById('admin-prompt');
@@ -370,27 +162,42 @@ function applySessionEnvironment() {
         }
     }
 
-    updateModelDropdown();
-    loadExamConfig();
-}
+    window.updateModelDropdown();
+    window.loadExamConfig();
+};
 
-function logout() {
-    localStorage.removeItem("NEXUS_USER");
-    location.reload();
-}
-
-function confirmExitExam() {
-    if (confirm("Are you sure you want to exit the examination? Current progress will be lost.")) {
-        if (window.location.search.includes('mode=exam')) {
-            window.close(); 
-        } else {
-            if (typeof cancelActiveRequest === 'function') cancelActiveRequest();
-            resetExamUI();
+window.loadExamConfig = function() {
+    try {
+        const saved = JSON.parse(localStorage.getItem("NEXUS_LAST_CONFIG"));
+        if (!saved) return;
+        
+        if (isAdmin && document.getElementById('org-select')) {
+            document.getElementById('org-select').value = saved.org || "gemini";
         }
+        
+        window.updateModelDropdown(); 
+        
+        if (document.getElementById('model-select') && saved.model) document.getElementById('model-select').value = saved.model;
+        if (document.getElementById('exam')) document.getElementById('exam').value = saved.exam || "";
+        if (document.getElementById('subject')) document.getElementById('subject').value = saved.subject || "";
+        if (document.getElementById('topic')) document.getElementById('topic').value = saved.topic || "";
+        
+        if (isAdmin && document.getElementById('difficulty')) document.getElementById('difficulty').value = saved.difficulty || "2";
+        if (document.getElementById('count')) document.getElementById('count').value = saved.count || "10";
+        if (document.getElementById('pos-marks')) document.getElementById('pos-marks').value = saved.posMarks || "4";
+        if (document.getElementById('neg-marks')) document.getElementById('neg-marks').value = saved.negMarks || "1";
+        if (document.getElementById('timer-mins')) document.getElementById('timer-mins').value = saved.timer || "15";
+        if (document.getElementById('lang')) document.getElementById('lang').value = saved.lang || "English";
+        if (document.getElementById('exam-mode')) document.getElementById('exam-mode').value = saved.examMode || "strict";
+        if (isAdmin && document.getElementById('admin-prompt')) document.getElementById('admin-prompt').value = saved.adminPrompt || "";
+        
+        window.enforceLanguageConstraints();
+    } catch (e) {
+        console.warn("Could not load previous config", e);
     }
-}
+};
 
-function updateModelDropdown() {
+window.updateModelDropdown = function() {
     const orgSelect = document.getElementById('org-select');
     const modelSelect = document.getElementById('model-select');
     if (!orgSelect || !modelSelect) return;
@@ -399,10 +206,7 @@ function updateModelDropdown() {
     modelSelect.innerHTML = "";
     
     let list = PROVIDER_MODELS[org] || [];
-
-    if (!isAdmin) {
-        list = (PROVIDER_MODELS['gemini'] || []).slice(0, 2);
-    }
+    if (!isAdmin) list = (PROVIDER_MODELS['gemini'] || []).slice(0, 2);
 
     list.forEach(m => {
         const opt = document.createElement('option');
@@ -411,10 +215,10 @@ function updateModelDropdown() {
         modelSelect.appendChild(opt);
     });
 
-    updateQuotaDisplay();
-}
+    window.updateQuotaDisplay();
+};
 
-function updateQuotaDisplay() {
+window.updateQuotaDisplay = function() {
     const statusVal = document.getElementById('quota-status-val');
     const orgSelect = document.getElementById('org-select');
     const modelSelect = document.getElementById('model-select');
@@ -432,13 +236,12 @@ function updateQuotaDisplay() {
         else if (org === 'deepseek') statusVal.textContent = "Native API Limits";
         else statusVal.textContent = "Standard Limits";
     }
-    enforceLanguageConstraints();
-}
+    window.enforceLanguageConstraints();
+};
 
-function enforceLanguageConstraints() {
+window.enforceLanguageConstraints = function() {
     const countInput = document.getElementById('count');
     const countLabel = document.getElementById('count-label');
-    
     if (!countInput) return;
 
     if (isAdmin) {
@@ -450,9 +253,9 @@ function enforceLanguageConstraints() {
         if (countLabel) countLabel.textContent = `Questions (Max ${STRICT_LIMIT})`;
         if (parseInt(countInput.value) > STRICT_LIMIT) countInput.value = STRICT_LIMIT;
     }
-}
+};
 
-function switchTab(tab) {
+window.switchTab = function(tab) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.querySelectorAll('.sidebar-nav-item').forEach(n => n.classList.remove('active'));
@@ -463,10 +266,10 @@ function switchTab(tab) {
     if(n) n.classList.add('active');
     const s = document.getElementById('side-' + tab);
     if(s) s.classList.add('active');
-    if(tab === 'vault') renderVault();
-}
+    if(tab === 'vault') window.renderVault();
+};
 
-function exportLocalStorage() {
+window.exportLocalStorage = function() {
     const obj = {};
     for(let i=0; i<localStorage.length; i++) {
         const k = localStorage.key(i);
@@ -478,110 +281,408 @@ function exportLocalStorage() {
     a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2));
     a.download = "nexus_backup.json";
     a.click();
-}
+};
 
-let currentQuizData = [];
-let userAnswers = {};
-let userBookmarks = {};
-let currentQIndex = 0;
-let timerInterval = null;
-let secondsLeft = 0;
-let totalSecondsTaken = 0;
-let mistakeVault = [];
-let activeController = null;
-let isTimerPaused = false;
-let timeTracker = {}; 
-let posMark = 4;
-let negMark = 1;
-
-try { mistakeVault = JSON.parse(localStorage.getItem("NEXUS_VAULT")) || []; } catch(e) { mistakeVault = []; }
-
-function shuffleQuizOptions(quizData) {
-    let clonedData = JSON.parse(JSON.stringify(quizData)); 
-    clonedData.forEach(q => {
-        if (!q.options || q.options.length === 0) return;
-        let mappedOptions = q.options.map((opt, idx) => ({
-            text: opt,
-            isCorrect: idx === q.correct_option_index
-        }));
-        for (let i = mappedOptions.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [mappedOptions[i], mappedOptions[j]] = [mappedOptions[j], mappedOptions[i]];
+// ==========================================
+// API KEY MANAGER (MULTI-KEY SUPPORT)
+// ==========================================
+window.loadApiKeys = function() {
+    try {
+        let stored = JSON.parse(localStorage.getItem("NEXUS_API_KEYS"));
+        if (Array.isArray(stored) && stored.length > 0) {
+            apiKeys = stored;
+        } else {
+            apiKeys = [];
+            const g = localStorage.getItem("GEMINI_KEY");
+            const gr = localStorage.getItem("GROQ_KEY");
+            const grv = localStorage.getItem("GROQ_VERIFY_KEY");
+            const or = localStorage.getItem("OPENROUTER_KEY");
+            const ds = localStorage.getItem("DEEPSEEK_KEY");
+            
+            if(g) apiKeys.push({ id: Date.now()+1, provider: "gemini", name: "Legacy Gemini", key: g });
+            if(gr) apiKeys.push({ id: Date.now()+2, provider: "groq", name: "Legacy Groq", key: gr });
+            if(grv) apiKeys.push({ id: Date.now()+3, provider: "groq", name: "Legacy Groq Verify", key: grv });
+            if(or) apiKeys.push({ id: Date.now()+4, provider: "openrouter", name: "Legacy OpenRouter", key: or });
+            if(ds) apiKeys.push({ id: Date.now()+5, provider: "deepseek", name: "Legacy DeepSeek", key: ds });
+            
+            if (apiKeys.length > 0) localStorage.setItem("NEXUS_API_KEYS", JSON.stringify(apiKeys));
         }
-        q.options = mappedOptions.map(m => m.text);
-        q.correct_option_index = mappedOptions.findIndex(m => m.isCorrect);
+    } catch(e) { apiKeys = []; }
+    window.renderApiKeysUI();
+};
+
+window.syncKeysFromDOM = function() {
+    const container = document.getElementById('api-keys-container');
+    if (!container) return;
+    const rows = container.querySelectorAll('.api-key-row');
+    const synced = [];
+    rows.forEach((row, i) => {
+        const provider = row.querySelector('.key-provider')?.value || 'gemini';
+        const name = row.querySelector('.key-name')?.value || 'Token';
+        const key = row.querySelector('.key-input')?.value || '';
+        synced.push({
+            id: apiKeys[i]?.id || (Date.now() + i),
+            provider: provider,
+            name: name,
+            key: key
+        });
     });
-    return clonedData;
-}
-
-function clearChatHistory() {
-    const box = document.getElementById('chat-box');
-    if (box) {
-        box.innerHTML = `
-            <div class="msg-wrapper ai" style="display: flex; flex-direction: column; align-items: flex-start;">
-                <div class="msg ai">Chat history cleared. Ready for new queries.</div>
-                <span class="timestamp" style="font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-left: 4px;">Just now</span>
-            </div>`;
+    if (synced.length > 0) {
+        apiKeys = synced;
     }
-}
+};
 
-function cancelActiveRequest() {
+window.renderApiKeysUI = function() {
+    const container = document.getElementById('api-keys-container');
+    if (!container) return;
+    container.innerHTML = "";
+    
+    if (apiKeys.length === 0) {
+        container.innerHTML = "<p style='color: var(--text-muted); font-size: 12px; font-style: italic;'>No API tokens configured. Click '+ Add Token' to begin.</p>";
+        return;
+    }
+
+    apiKeys.forEach((k, index) => {
+        const row = document.createElement('div');
+        row.className = "api-key-row";
+        row.innerHTML = `
+            <select class="key-provider" style="flex: 1; min-width: 120px;" onchange="window.updateKeyData(${index}, 'provider', this.value)">
+                <option value="gemini" ${k.provider==='gemini'?'selected':''}>Gemini</option>
+                <option value="groq" ${k.provider==='groq'?'selected':''}>Groq</option>
+                <option value="openrouter" ${k.provider==='openrouter'?'selected':''}>OpenRouter</option>
+                <option value="deepseek" ${k.provider==='deepseek'?'selected':''}>DeepSeek</option>
+            </select>
+            <input type="text" class="key-name" placeholder="Identifier Name" value="${k.name \vert{}\vert{} ''}" style="flex: 1; min-width: 120px;" oninput="window.updateKeyData(${index}, 'name', this.value)">
+            <div class="key-input-wrapper">
+                <input type="password" class="key-input" id="key-input-${index}" placeholder="API Token" value="${k.key \vert{}\vert{} ''}" oninput="window.updateKeyData(${index}, 'key', this.value)">
+                <div style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display:flex; gap: 4px;">
+                    <button type="button" class="key-action-btn" onclick="window.toggleKeyVisibility(${index})" title="Toggle Visibility">👁</button>
+                    <button type="button" class="key-action-btn" onclick="window.copyKey(${index})" title="Copy Token">📋</button>
+                    <button type="button" class="key-action-btn del" onclick="window.deleteKey(${index})" title="Delete Token">❌</button>
+                </div>
+            </div>
+        `;
+        container.appendChild(row);
+    });
+};
+
+window.addEmptyKeyRow = function() {
+    window.syncKeysFromDOM();
+    apiKeys.push({ id: Date.now(), provider: "gemini", name: `Token ${apiKeys.length + 1}`, key: "" });
+    window.renderApiKeysUI();
+    const container = document.getElementById('api-keys-container');
+    if (container) container.scrollTop = container.scrollHeight;
+};
+
+window.updateKeyData = function(index, field, value) {
+    if (apiKeys[index]) apiKeys[index][field] = value;
+};
+
+window.toggleKeyVisibility = function(index) {
+    const input = document.getElementById(`key-input-${index}`);
+    if (input) input.type = input.type === "password" ? "text" : "password";
+};
+
+window.copyKey = function(index) {
+    window.syncKeysFromDOM();
+    if (apiKeys[index] && apiKeys[index].key) {
+        navigator.clipboard.writeText(apiKeys[index].key);
+        alert(`Token '${apiKeys[index].name}' copied to clipboard.`);
+    }
+};
+
+window.deleteKey = function(index) {
+    window.syncKeysFromDOM();
+    if(confirm(`Delete token '${apiKeys[index]?.name || 'Token'}'?`)) {
+        apiKeys.splice(index, 1);
+        localStorage.setItem("NEXUS_API_KEYS", JSON.stringify(apiKeys));
+        window.renderApiKeysUI();
+    }
+};
+
+window.updateTokens = function() {
+    window.syncKeysFromDOM();
+    const newMail = document.getElementById('update-mail')?.value.trim() || "";
+    try {
+        if (newMail !== "") localStorage.setItem("DEST_MAIL", newMail);
+        apiKeys = apiKeys.filter(k => k.key.trim() !== "");
+        localStorage.setItem("NEXUS_API_KEYS", JSON.stringify(apiKeys));
+        window.renderApiKeysUI();
+
+        const msgEl = document.getElementById('token-update-msg');
+        if (msgEl) {
+            msgEl.style.display = 'block';
+            setTimeout(() => { msgEl.style.display = 'none'; }, 4000);
+        } else {
+            alert("Configuration saved successfully!");
+        }
+    } catch(e) { alert("Failed to save configuration: " + e.message); }
+};
+
+window.getRandomKey = function(provider) {
+    const available = apiKeys.filter(k => k.provider === provider && (k.key || "").trim() !== "");
+    if (available.length === 0) return null;
+    const rnd = available[Math.floor(Math.random() * available.length)];
+    return rnd.key.trim();
+};
+
+window.cancellableDelay = function(ms, signal) {
+    return new Promise((resolve, reject) => {
+        if (signal?.aborted) return reject(new Error("Aborted by operator."));
+        const timer = setTimeout(resolve, ms);
+        signal?.addEventListener('abort', () => {
+            clearTimeout(timer);
+            reject(new Error("Aborted by operator."));
+        }, { once: true });
+    });
+};
+
+// ==========================================
+// EXAM & GENERATION LOGIC
+// ==========================================
+
+window.cancelActiveRequest = function() {
     if (activeController) {
         activeController.abort();
         activeController = null;
         console.log('[SYSTEM]: Request aborted by operator.');
     }
-    resetExamUI();
-}
+    window.resetExamUI();
+};
 
-function toggleTimerPause() {
-    if (!isAdmin) return;
-    isTimerPaused = !isTimerPaused;
-    const btn = document.getElementById('pause-timer-btn');
-    if (btn) {
-        if (isTimerPaused) {
-            btn.innerHTML = '▶ Resume';
-            btn.style.color = 'var(--neon-yellow)';
-            btn.style.borderColor = 'var(--neon-yellow)';
+window.startNewQuiz = function() {
+    if (window.location.search.includes('mode=exam')) {
+        window.close(); 
+    } else {
+        window.resetExamUI();
+    }
+};
+
+window.confirmExitExam = function() {
+    if (confirm("Are you sure you want to exit the examination? Current progress will be lost.")) {
+        if (window.location.search.includes('mode=exam')) {
+            window.close(); 
         } else {
-            btn.innerHTML = '⏸ Pause';
-            btn.style.color = ''; 
-            btn.style.borderColor = '';
+            if (typeof window.cancelActiveRequest === 'function') window.cancelActiveRequest();
+            window.resetExamUI();
         }
     }
-}
+};
 
-// ==========================================
-// PHASE 2: 2-TIER QA VERIFICATION
-// ==========================================
-async function verifyAndCorrectQuizData(quizData, signal, usedGenKeys = []) {
-    const terminal = document.getElementById('terminal');
+window.startExam = async function() {
+    const org = document.getElementById('org-select').value;
+    const availableKeys = apiKeys.filter(k => k.provider === org && (k.key || "").trim() !== "").map(k => k.key.trim());
     
-    const allGroqKeys = apiKeys.filter(k => k.provider === "groq" && k.key.trim() !== "").map(k => k.key.trim());
+    if (availableKeys.length === 0) {
+        alert(`No valid API Key found for ${org.toUpperCase()}! Please add one in the Config tab.`);
+        window.switchTab('settings');
+        return;
+    }
+
+    const exam = document.getElementById('exam').value.trim();
+    const subject = document.getElementById('subject').value.trim();
+    const topic = document.getElementById('topic').value.trim();
+    const difficulty = isAdmin ? document.getElementById('difficulty').value : "2";
+
+    if (!exam || !subject || !topic) {
+        alert("Please fill in the Target Exam Name, Subject Name, and Syllabus Topic.");
+        return;
+    }
+
+    try {
+        localStorage.setItem("NEXUS_LAST_CONFIG", JSON.stringify({
+            org: document.getElementById('org-select').value,
+            model: document.getElementById('model-select').value,
+            exam: exam,
+            subject: subject,
+            topic: topic,
+            difficulty: difficulty,
+            count: document.getElementById('count').value,
+            posMarks: document.getElementById('pos-marks').value,
+            negMarks: document.getElementById('neg-marks').value,
+            timer: document.getElementById('timer-mins').value,
+            lang: document.getElementById('lang').value,
+            examMode: document.getElementById('exam-mode').value,
+            adminPrompt: isAdmin && document.getElementById('admin-prompt') ? document.getElementById('admin-prompt').value : ""
+        }));
+    } catch(e) { console.warn("Failed to cache config", e); }
+
+    document.getElementById('exam-setup').style.display = 'none';
+    const terminalScreen = document.getElementById('terminal-screen');
+    terminalScreen.style.display = 'block';
+    
+    const terminal = document.getElementById('terminal');
+    terminal.style.display = 'block';
+    terminal.innerHTML = "<span style='color: var(--neon-cyan);'>[PHASE 1]: Synthesizing base neural parameters...</span><br>";
+
+    let cancelWrapper = document.getElementById('terminal-cancel-btn');
+    if (!cancelWrapper) {
+        cancelWrapper = document.createElement('button');
+        cancelWrapper.id = 'terminal-cancel-btn';
+        cancelWrapper.className = 'cyber-btn danger';
+        cancelWrapper.style.cssText = 'margin-top: 16px; padding: 10px; font-size: 12px;';
+        cancelWrapper.textContent = '❌ Cancel Generation';
+        cancelWrapper.onclick = () => window.cancelActiveRequest();
+        terminalScreen.querySelector('.quantum-loader-wrapper').appendChild(cancelWrapper);
+    }
+    cancelWrapper.style.display = 'inline-flex';
+
+    const rawModel = document.getElementById('model-select').value;
+    const totalCount = parseInt(document.getElementById('count').value);
+    const lang = document.getElementById('lang').value;
+    const mins = parseInt(document.getElementById('timer-mins').value) || 15;
+    const posM = parseFloat(document.getElementById('pos-marks').value) || 1;
+    const negM = parseFloat(document.getElementById('neg-marks').value) || 0;
+    const adminPromptTxt = isAdmin ? (document.getElementById('admin-prompt').value || "").trim() : "";
+
+    let chunks = [];
+    let remaining = totalCount;
+    while (remaining > 0) {
+        let chunkSize = Math.min(remaining, 25);
+        chunks.push(chunkSize);
+        remaining -= chunkSize;
+    }
+
+    if (activeController) activeController.abort();
+    activeController = new AbortController();
+    const signal = activeController.signal;
+
+    let allGeneratedQuestions = [];
+    let previouslyGeneratedConcepts = [];
+    let usedGenKeys = []; 
+
+    try {
+        for (let i = 0; i < chunks.length; i++) {
+            let currentChunkSize = chunks[i];
+            
+            let currentApiKey = availableKeys[i % availableKeys.length];
+            if (!usedGenKeys.includes(currentApiKey)) usedGenKeys.push(currentApiKey);
+
+            terminal.innerHTML += `<span style='color: var(--text-muted);'>[BATCH ${i+1}/${chunks.length}]: Requesting${currentChunkSize} questions...</span><br>`;
+            terminal.scrollTop = terminal.scrollHeight;
+
+            let prompt = `You are an expert Question Paper Setter for competitive examinations like ${exam}. 
+Generate EXACTLY ${currentChunkSize} high-standard questions for the Subject: "${subject}", focusing on the Topic: "${topic}". 
+Output language must strictly be ${lang}.
+DIFFICULTY LEVEL: Level ${difficulty} out of 5.
+
+CRITICAL INSTRUCTIONS:
+1. NO EXPLANATIONS inside the options or question text.
+2. The FIRST option in the array (index 0) MUST ALWAYS BE THE CORRECT ANSWER. The system will randomize them later.
+3. Formulate highly plausible distractor traps for options 2, 3, and 4.
+4. CRITICAL: Do NOT use LaTeX formatting or dollar signs ($) for mathematical symbols. Write all variables and formulas in plain text (e.g., F1 = F2 = sigma * q / 2 * epsilon_0).
+5. Set "correct_option_index" strictly to 0 for every single question.`;
+
+            if (previouslyGeneratedConcepts.length > 0) {
+                prompt += `\n\nANTI-DUPLICATION RULE:\nYou have already generated the following questions. DO NOT REPEAT THESE CONCEPTS:\n`;
+                previouslyGeneratedConcepts.forEach((q, idx) => { prompt += `${idx+1}.${q.substring(0, 100)}...\n`; });
+            }
+
+            prompt += `\n\nOutput ONLY a valid JSON array matching this exact format:
+[
+  {
+    "question": "Question text...",
+    "options": ["Correct Option", "Distractor 1", "Distractor 2", "Distractor 3"],
+    "correct_option_index": 0
+  }
+]
+${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
+
+            let fullResponse = "";
+
+            if (org === 'groq' || org === 'openrouter' || org === 'deepseek') {
+                let apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+                if (org === 'openrouter') apiUrl = "https://openrouter.ai/api/v1/chat/completions";
+                if (org === 'deepseek') apiUrl = "https://api.deepseek.com/chat/completions";
+
+                const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentApiKey}` };
+                if (org === 'openrouter') { headers['HTTP-Referer'] = window.location.href; headers['X-Title'] = 'NEXUS OS CBT Suite'; }
+
+                const payload = { model: rawModel, messages: [{ role: "user", content: prompt }], temperature: 0.2, max_tokens: 8192 };
+                if (org === 'groq' || org === 'deepseek') payload.response_format = { type: "json_object" };
+
+                const res = await fetch(apiUrl, { method: 'POST', headers: headers, body: JSON.stringify(payload), signal: signal });
+                
+                if (res.status === 429) {
+                    terminal.innerHTML += `<span style='color: var(--neon-yellow);'>[RATE LIMIT]: Pausing for 60s before retrying batch...</span><br>`;
+                    await window.cancellableDelay(60000, signal);
+                    i--; 
+                    continue;
+                }
+
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error?.message || `${org.toUpperCase()} HTTP error${res.status}`);
+                fullResponse = data.choices[0].message.content;
+
+            } else {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${rawModel}:streamGenerateContent?key=${currentApiKey}`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 65536, temperature: 0.2 } }),
+                    signal: signal
+                });
+                
+                if (!res.ok) {
+                    const errJson = await res.json();
+                    throw new Error(errJson.error?.message || `HTTP error ${res.status}`);
+                }
+                
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value, { stream: true });
+                    const matches = [...chunk.matchAll(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/g)];
+                    for (const m of matches) fullResponse += m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+                }
+            }
+
+            const match = fullResponse.match(/\[[\s\S]*\]/);
+            let parsedChunk = match ? JSON.parse(match[0]) : JSON.parse(fullResponse);
+            
+            allGeneratedQuestions = allGeneratedQuestions.concat(parsedChunk);
+            parsedChunk.forEach(q => previouslyGeneratedConcepts.push(q.question)); 
+        }
+
+        currentQuizData = allGeneratedQuestions;
+        
+        if (typeof isAdmin !== 'undefined' && isAdmin) {
+            currentQuizData = await window.verifyAndCorrectQuizData(currentQuizData, signal, usedGenKeys);
+        } else {
+            terminal.innerHTML += `<br><span style='color: var(--text-muted);'>[SYSTEM]: Neural QA Phase skipped (Standard Operator License). Assessment locked.</span><br>`;
+        }
+        
+        window.prepareExamPortalLaunch(mins, posM, negM);
+        
+    } catch (err) {
+        if (err.name === 'AbortError' || err.message === 'Aborted by operator.') return;
+        terminal.style.color = "var(--neon-red)";
+        terminal.innerHTML += `<br><br>[CRITICAL FAILURE]: Generation failed. ${err.message}`;
+        setTimeout(() => window.resetExamUI(), 6000);
+    }
+};
+
+window.verifyAndCorrectQuizData = async function(quizData, signal, usedGenKeys = []) {
+    const terminal = document.getElementById('terminal');
+    const allGroqKeys = apiKeys.filter(k => k.provider === "groq" && (k.key || "").trim() !== "").map(k => k.key.trim());
     
     if (allGroqKeys.length === 0) {
         terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[WARNING]: Groq API Key required for 2-Tier QA. Skipping QA phase.</span><br>`;
         return quizData; 
     }
 
-    // Smart Key Rotation: Separate Generation from Verification
     let groqVerifyKey = allGroqKeys[0];
     let groqPrimaryKey = allGroqKeys[0];
 
     if (allGroqKeys.length >= 2) {
         let freshKeys = allGroqKeys.filter(k => !usedGenKeys.includes(k));
-        
         if (freshKeys.length >= 2) {
-            // Plenty of unused keys (e.g., Phase 1 used OpenRouter)
             groqVerifyKey = freshKeys[0];
             groqPrimaryKey = freshKeys[1];
         } else if (freshKeys.length === 1) {
-            // Dedicate the fresh key to the high-volume Tier 1 validation node
             groqVerifyKey = freshKeys[0];
-            // Reuse an older key for the lower-volume Tier 2 escalation node
             groqPrimaryKey = allGroqKeys.find(k => k !== groqVerifyKey); 
         } else {
-            // All keys were used in Phase 1, spread Tier 1 and Tier 2 across distinct keys
             groqVerifyKey = allGroqKeys[0];
             groqPrimaryKey = allGroqKeys[1];
         }
@@ -652,7 +753,7 @@ Flagged items to review:\n${JSON.stringify(flaggedItems)}`;
         });
         if (res.status === 429) {
             terminal.innerHTML += `<span style='color: var(--neon-red);'>[RATE LIMIT]: 120B node throttled. Retrying escalation in 30s...</span><br>`;
-            await cancellableDelay(30000, signal);
+            await window.cancellableDelay(30000, signal);
             return await sendTier2ExpertReview(flaggedItems, apiKey); 
         }
         if (!res.ok) throw new Error(`Tier 2 HTTP ${res.status}`);
@@ -668,8 +769,8 @@ Flagged items to review:\n${JSON.stringify(flaggedItems)}`;
         
         if (t1Res.status === 429) {
             terminal.innerHTML += `<span style='color: var(--neon-yellow);'>[QA WARNING]: Rate limit hit on 20B node. Pausing for 60s...</span><br>`;
-            await cancellableDelay(60000, signal);
-            i--; // Retry this chunk
+            await window.cancellableDelay(60000, signal);
+            i--; 
             continue;
         }
 
@@ -705,9 +806,9 @@ Flagged items to review:\n${JSON.stringify(flaggedItems)}`;
     }
 
     return quizData;
-}
+};
 
-function prepareExamPortalLaunch(mins, posM, negM) {
+window.prepareExamPortalLaunch = function(mins, posM, negM) {
     localStorage.setItem("NEXUS_PENDING_EXAM", JSON.stringify({
         quizData: currentQuizData, mins: mins, posMark: posM, negMark: negM
     }));
@@ -723,11 +824,11 @@ function prepareExamPortalLaunch(mins, posM, negM) {
 
     document.getElementById(launchBtnId).addEventListener('click', () => {
         window.open(window.location.pathname + "?mode=exam", "_blank");
-        resetExamUI();
+        window.resetExamUI();
     });
-}
+};
 
-function initStandaloneExam() {
+window.initStandaloneExam = function() {
     const data = JSON.parse(localStorage.getItem("NEXUS_PENDING_EXAM"));
     if (!data) {
         alert("No active exam data found. Returning to dashboard.");
@@ -747,7 +848,7 @@ function initStandaloneExam() {
         mainContent.style.paddingBottom = '20px';
     }
 
-    currentQuizData = shuffleQuizOptions(data.quizData);
+    currentQuizData = window.shuffleQuizOptions(data.quizData);
     secondsLeft = data.mins * 60;
     posMark = data.posMark || 1;
     negMark = data.negMark || 0;
@@ -774,217 +875,40 @@ function initStandaloneExam() {
     const pBtn = document.getElementById('pause-timer-btn');
     if(pBtn) { pBtn.innerHTML = '⏸ Pause'; pBtn.style.color = ''; pBtn.style.borderColor = ''; }
 
-    buildPalette();
-    renderQuestion(currentQIndex);
-    startTimer();
-}
+    window.buildPalette();
+    window.renderQuestion(currentQIndex);
+    window.startTimer();
+};
 
-async function startExam() {
-    const org = document.getElementById('org-select').value;
-    const availableKeys = apiKeys.filter(k => k.provider === org && k.key.trim() !== "").map(k => k.key.trim());
-    
-    if (availableKeys.length === 0) {
-        alert(`No valid API Key found for ${org.toUpperCase()}! Please add one in the Config tab.`);
-        switchTab('settings');
-        return;
-    }
-
-    const exam = document.getElementById('exam').value.trim();
-    const subject = document.getElementById('subject').value.trim();
-    const topic = document.getElementById('topic').value.trim();
-    const difficulty = isAdmin ? document.getElementById('difficulty').value : "2";
-
-    if (!exam || !subject || !topic) {
-        alert("Please fill in the Target Exam Name, Subject Name, and Syllabus Topic.");
-        return;
-    }
-
-    try {
-        localStorage.setItem("NEXUS_LAST_CONFIG", JSON.stringify({
-            org: document.getElementById('org-select').value,
-            model: document.getElementById('model-select').value,
-            exam: exam,
-            subject: subject,
-            topic: topic,
-            difficulty: difficulty,
-            count: document.getElementById('count').value,
-            posMarks: document.getElementById('pos-marks').value,
-            negMarks: document.getElementById('neg-marks').value,
-            timer: document.getElementById('timer-mins').value,
-            lang: document.getElementById('lang').value,
-            examMode: document.getElementById('exam-mode').value,
-            adminPrompt: isAdmin && document.getElementById('admin-prompt') ? document.getElementById('admin-prompt').value : ""
+window.shuffleQuizOptions = function(quizData) {
+    let clonedData = JSON.parse(JSON.stringify(quizData)); 
+    clonedData.forEach(q => {
+        if (!q.options || q.options.length === 0) return;
+        let mappedOptions = q.options.map((opt, idx) => ({
+            text: opt,
+            isCorrect: idx === q.correct_option_index
         }));
-    } catch(e) { console.warn("Failed to cache config", e); }
-
-    document.getElementById('exam-setup').style.display = 'none';
-    const terminalScreen = document.getElementById('terminal-screen');
-    terminalScreen.style.display = 'block';
-    
-    const terminal = document.getElementById('terminal');
-    terminal.style.display = 'block';
-    terminal.innerHTML = "<span style='color: var(--neon-cyan);'>[PHASE 1]: Synthesizing base neural parameters...</span><br>";
-
-    let cancelWrapper = document.getElementById('terminal-cancel-btn');
-    if (!cancelWrapper) {
-        cancelWrapper = document.createElement('button');
-        cancelWrapper.id = 'terminal-cancel-btn';
-        cancelWrapper.className = 'cyber-btn danger';
-        cancelWrapper.style.cssText = 'margin-top: 16px; padding: 10px; font-size: 12px;';
-        cancelWrapper.textContent = '❌ Cancel Generation';
-        cancelWrapper.onclick = () => cancelActiveRequest();
-        terminalScreen.querySelector('.quantum-loader-wrapper').appendChild(cancelWrapper);
-    }
-    cancelWrapper.style.display = 'inline-flex';
-
-    const rawModel = document.getElementById('model-select').value;
-    const totalCount = parseInt(document.getElementById('count').value);
-    const lang = document.getElementById('lang').value;
-    const mins = parseInt(document.getElementById('timer-mins').value) || 15;
-    const posM = parseFloat(document.getElementById('pos-marks').value) || 1;
-    const negM = parseFloat(document.getElementById('neg-marks').value) || 0;
-    const adminPromptTxt = isAdmin ? (document.getElementById('admin-prompt').value || "").trim() : "";
-
-    let chunks = [];
-    let remaining = totalCount;
-    while (remaining > 0) {
-        let chunkSize = Math.min(remaining, 25);
-        chunks.push(chunkSize);
-        remaining -= chunkSize;
-    }
-
-    if (activeController) activeController.abort();
-    activeController = new AbortController();
-    const signal = activeController.signal;
-
-    let allGeneratedQuestions = [];
-    let previouslyGeneratedConcepts = [];
-    let usedGenKeys = []; // Tracks which keys are burned out by Phase 1
-
-    try {
-        for (let i = 0; i < chunks.length; i++) {
-            let currentChunkSize = chunks[i];
-            
-            // Deterministically rotate across all available keys for this org batch-by-batch
-            let currentApiKey = availableKeys[i % availableKeys.length];
-            if (!usedGenKeys.includes(currentApiKey)) usedGenKeys.push(currentApiKey);
-
-            terminal.innerHTML += `<span style='color: var(--text-muted);'>[BATCH ${i+1}/${chunks.length}]: Requesting${currentChunkSize} questions...</span><br>`;
-            terminal.scrollTop = terminal.scrollHeight;
-
-            let prompt = `You are an expert Question Paper Setter for competitive examinations like ${exam}. 
-Generate EXACTLY ${currentChunkSize} high-standard questions for the Subject: "${subject}", focusing on the Topic: "${topic}". 
-Output language must strictly be ${lang}.
-DIFFICULTY LEVEL: Level ${difficulty} out of 5.
-
-CRITICAL INSTRUCTIONS:
-1. NO EXPLANATIONS inside the options or question text.
-2. The FIRST option in the array (index 0) MUST ALWAYS BE THE CORRECT ANSWER. The system will randomize them later.
-3. Formulate highly plausible distractor traps for options 2, 3, and 4.
-4. CRITICAL: Do NOT use LaTeX formatting or dollar signs ($) for mathematical symbols. Write all variables and formulas in plain text (e.g., F1 = F2 = sigma * q / 2 * epsilon_0).
-5. Set "correct_option_index" strictly to 0 for every single question.`;
-
-            if (previouslyGeneratedConcepts.length > 0) {
-                prompt += `\n\nANTI-DUPLICATION RULE:\nYou have already generated the following questions. DO NOT REPEAT THESE CONCEPTS:\n`;
-                previouslyGeneratedConcepts.forEach((q, idx) => { prompt += `${idx+1}.${q.substring(0, 100)}...\n`; });
-            }
-
-            prompt += `\n\nOutput ONLY a valid JSON array matching this exact format:
-[
-  {
-    "question": "Question text...",
-    "options": ["Correct Option", "Distractor 1", "Distractor 2", "Distractor 3"],
-    "correct_option_index": 0
-  }
-]
-${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
-
-            let fullResponse = "";
-
-            if (org === 'groq' || org === 'openrouter' || org === 'deepseek') {
-                let apiUrl = "https://api.groq.com/openai/v1/chat/completions";
-                if (org === 'openrouter') apiUrl = "https://openrouter.ai/api/v1/chat/completions";
-                if (org === 'deepseek') apiUrl = "https://api.deepseek.com/chat/completions";
-
-                const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentApiKey}` };
-                if (org === 'openrouter') { headers['HTTP-Referer'] = window.location.href; headers['X-Title'] = 'NEXUS OS CBT Suite'; }
-
-                const payload = { model: rawModel, messages: [{ role: "user", content: prompt }], temperature: 0.2, max_tokens: 8192 };
-                if (org === 'groq' || org === 'deepseek') payload.response_format = { type: "json_object" };
-
-                const res = await fetch(apiUrl, { method: 'POST', headers: headers, body: JSON.stringify(payload), signal: signal });
-                
-                if (res.status === 429) {
-                    terminal.innerHTML += `<span style='color: var(--neon-yellow);'>[RATE LIMIT]: Pausing for 60s before retrying batch...</span><br>`;
-                    await cancellableDelay(60000, signal);
-                    i--; 
-                    continue;
-                }
-
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error?.message || `${org.toUpperCase()} HTTP error${res.status}`);
-                fullResponse = data.choices[0].message.content;
-
-            } else {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${rawModel}:streamGenerateContent?key=${currentApiKey}`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 65536, temperature: 0.2 } }),
-                    signal: signal
-                });
-                
-                if (!res.ok) {
-                    const errJson = await res.json();
-                    throw new Error(errJson.error?.message || `HTTP error ${res.status}`);
-                }
-                
-                const reader = res.body.getReader();
-                const decoder = new TextDecoder();
-                while (true) {
-                    const { value, done } = await reader.read();
-                    if (done) break;
-                    const chunk = decoder.decode(value, { stream: true });
-                    const matches = [...chunk.matchAll(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/g)];
-                    for (const m of matches) fullResponse += m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
-                }
-            }
-
-            const match = fullResponse.match(/\[[\s\S]*\]/);
-            let parsedChunk = match ? JSON.parse(match[0]) : JSON.parse(fullResponse);
-            
-            allGeneratedQuestions = allGeneratedQuestions.concat(parsedChunk);
-            parsedChunk.forEach(q => previouslyGeneratedConcepts.push(q.question)); 
+        for (let i = mappedOptions.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [mappedOptions[i], mappedOptions[j]] = [mappedOptions[j], mappedOptions[i]];
         }
+        q.options = mappedOptions.map(m => m.text);
+        q.correct_option_index = mappedOptions.findIndex(m => m.isCorrect);
+    });
+    return clonedData;
+};
 
-        currentQuizData = allGeneratedQuestions;
-        
-        if (typeof isAdmin !== 'undefined' && isAdmin) {
-            // Pass the usedGenKeys array into the QA function so it can route around them
-            currentQuizData = await verifyAndCorrectQuizData(currentQuizData, signal, usedGenKeys);
-        } else {
-            terminal.innerHTML += `<br><span style='color: var(--text-muted);'>[SYSTEM]: Neural QA Phase skipped (Standard Operator License). Assessment locked.</span><br>`;
-        }
-        
-        prepareExamPortalLaunch(mins, posM, negM);
-        
-    } catch (err) {
-        if (err.name === 'AbortError' || err.message === 'Aborted by operator.') return;
-        terminal.style.color = "var(--neon-red)";
-        terminal.innerHTML += `<br><br>[CRITICAL FAILURE]: Generation failed. ${err.message}`;
-        setTimeout(() => resetExamUI(), 6000);
-    }
-}
-
-function buildPalette() {
+window.buildPalette = function() {
     const palette = document.getElementById('q-palette');
     if (!palette) return;
     palette.innerHTML = "";
     currentQuizData.forEach((q, i) => {
-        palette.innerHTML += `<button class="pal-btn" id="pal-${i}" onclick="jumpToQuestion(${i})">${i + 1}</button>`;
+        palette.innerHTML += `<button type="button" class="pal-btn" id="pal-${i}" onclick="window.jumpToQuestion(${i})">${i + 1}</button>`;
     });
-    updatePaletteStates();
-}
+    window.updatePaletteStates();
+};
 
-function updatePaletteStates() {
+window.updatePaletteStates = function() {
     currentQuizData.forEach((q, i) => {
         const btn = document.getElementById(`pal-${i}`);
         if (!btn) return;
@@ -993,9 +917,9 @@ function updatePaletteStates() {
         if (userBookmarks[i]) btn.classList.add('bookmarked');
         else if (userAnswers[i] !== undefined) btn.classList.add('answered');
     });
-}
+};
 
-function filterPalette(filterType) {
+window.filterPalette = function(filterType) {
     currentQuizData.forEach((q, i) => {
         const btn = document.getElementById(`pal-${i}`);
         if (!btn) return;
@@ -1005,10 +929,9 @@ function filterPalette(filterType) {
         else if (filterType === 'review') btn.style.display = isBookmarked ? 'flex' : 'none';
         else if (filterType === 'unanswered') btn.style.display = (!isAnswered && !isBookmarked) ? 'flex' : 'none';
     });
-}
-window.filterPalette = filterPalette; 
+};
 
-function renderQuestion(index) {
+window.renderQuestion = function(index) {
     currentQIndex = index;
     const q = currentQuizData[index];
     document.getElementById('q-counter').innerText = `Question ${index + 1} of${currentQuizData.length}`;
@@ -1027,38 +950,38 @@ function renderQuestion(index) {
     q.options.forEach((opt, oIdx) => {
         const isSelected = userAnswers[index] === oIdx ? "selected" : "";
         optContainer.innerHTML += `
-            <div class="option-card ${isSelected}" onclick="selectOption(${index},${oIdx})">
+            <div class="option-card ${isSelected}" onclick="window.selectOption(${index},${oIdx})">
                 <input type="radio" style="margin-right:12px;" ${isSelected ? "checked" : ""}> 
                 <span>${opt}</span>
             </div>`;
     });
-    updatePaletteStates();
-}
+    window.updatePaletteStates();
+};
 
-function selectOption(qIdx, oIdx) { 
+window.selectOption = function(qIdx, oIdx) { 
     userAnswers[qIdx] = oIdx; 
     try {
         localStorage.setItem("NEXUS_ACTIVE_PROGRESS", JSON.stringify({
             quizData: currentQuizData, answers: userAnswers, currentIndex: qIdx, secondsLeft: secondsLeft
         }));
     } catch(e) {}
-    renderQuestion(qIdx); 
-}
+    window.renderQuestion(qIdx); 
+};
 
-function clearAnswer() { delete userAnswers[currentQIndex]; renderQuestion(currentQIndex); }
-function skipQ() { navigateQ(1); }
-function toggleBookmark() { userBookmarks[currentQIndex] = !userBookmarks[currentQIndex]; renderQuestion(currentQIndex); }
-function navigateQ(dir) { if (currentQIndex + dir >= 0 && currentQIndex + dir < currentQuizData.length) renderQuestion(currentQIndex + dir); }
-function jumpToQuestion(idx) { renderQuestion(idx); }
+window.clearAnswer = function() { delete userAnswers[currentQIndex]; window.renderQuestion(currentQIndex); };
+window.skipQ = function() { window.navigateQ(1); };
+window.toggleBookmark = function() { userBookmarks[currentQIndex] = !userBookmarks[currentQIndex]; window.renderQuestion(currentQIndex); };
+window.navigateQ = function(dir) { if (currentQIndex + dir >= 0 && currentQIndex + dir < currentQuizData.length) window.renderQuestion(currentQIndex + dir); };
+window.jumpToQuestion = function(idx) { window.renderQuestion(idx); };
 
-function startTimer() {
+window.startTimer = function() {
     if (timerInterval) clearInterval(timerInterval);
     const timerDisplay = document.getElementById('timer-display');
     timerDisplay.classList.remove('timer-critical');
 
     timerInterval = setInterval(() => {
         if (isTimerPaused) return; 
-        if (secondsLeft <= 0) { clearInterval(timerInterval); submitExam(); return; }
+        if (secondsLeft <= 0) { clearInterval(timerInterval); window.submitExam(); return; }
         
         secondsLeft--; 
         totalSecondsTaken++;
@@ -1068,16 +991,33 @@ function startTimer() {
 
         timerDisplay.innerText = `${Math.floor(secondsLeft/60).toString().padStart(2,'0')}:${(secondsLeft%60).toString().padStart(2,'0')}`;
     }, 1000);
-}
+};
 
-function toggleFullscreen() {
+window.toggleTimerPause = function() {
+    if (!isAdmin) return;
+    isTimerPaused = !isTimerPaused;
+    const btn = document.getElementById('pause-timer-btn');
+    if (btn) {
+        if (isTimerPaused) {
+            btn.innerHTML = '▶ Resume';
+            btn.style.color = 'var(--neon-yellow)';
+            btn.style.borderColor = 'var(--neon-yellow)';
+        } else {
+            btn.innerHTML = '⏸ Pause';
+            btn.style.color = ''; 
+            btn.style.borderColor = '';
+        }
+    }
+};
+
+window.toggleFullscreen = function() {
     if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
     else if (document.exitFullscreen) document.exitFullscreen();
-}
+};
 
-function confirmSubmit() { if (confirm("Submit examination?")) submitExam(); }
+window.confirmSubmit = function() { if (confirm("Submit examination?")) window.submitExam(); };
 
-function submitExam() {
+window.submitExam = function() {
     if (timerInterval) clearInterval(timerInterval);
     
     let correct = 0, wrong = 0, skipped = 0;
@@ -1086,7 +1026,7 @@ function submitExam() {
         const sel = userAnswers[i];
         if (sel === undefined) { skipped++; }
         else if (sel === q.correct_option_index) { correct++; }
-        else { wrong++; addToVault(q); }
+        else { wrong++; window.addToVault(q); }
     });
 
     const maxMarks = currentQuizData.length * posMark;
@@ -1107,13 +1047,13 @@ function submitExam() {
             <div>⏭ Skipped: <strong>${skipped}</strong> <span style="color:var(--text-muted);">(0)</span></div>
         </div>`;
         
-    renderReviewList('all');
+    window.renderReviewList('all');
     window.scrollTo({ top: 0, behavior: 'smooth' });
-}
+};
 
-function filterReview(mode) { renderReviewList(mode); }
+window.filterReview = function(mode) { window.renderReviewList(mode); };
 
-function renderReviewList(mode) {
+window.renderReviewList = function(mode) {
     const container = document.getElementById('review-container');
     container.innerHTML = "";
     
@@ -1144,9 +1084,9 @@ function renderReviewList(mode) {
         
         container.innerHTML += html + `</div>`;
     });
-}
+};
 
-function generateReportHTML() {
+window.generateReportHTML = function() {
     const filter = document.getElementById('export-filter').value;
     let htmlContent = `<html><head><style>body{font-family:sans-serif;padding:20px;background:#f8fafc;color:#0f172a;} .card{background:#fff;border:1px solid #cbd5e1;padding:16px;border-radius:12px;margin-bottom:12px;} .correct{color:#10b981;font-weight:bold;} .wrong{color:#ef4444;font-weight:bold;} .skipped{color:#f59e0b;font-weight:bold;}</style></head><body>`;
     htmlContent += `<h2>NEXUS OS - Assessment Report</h2><hr>`;
@@ -1171,11 +1111,11 @@ function generateReportHTML() {
         htmlContent += `</ul></div>`;
     });
     return htmlContent + `</body></html>`;
-}
+};
 
-function downloadAssessmentReport() {
+window.downloadAssessmentReport = function() {
     const format = document.getElementById('export-format').value;
-    const html = generateReportHTML();
+    const html = window.generateReportHTML();
     if (format === 'pdf') {
         const win = window.open('', '_blank'); win.document.write(html); win.document.close(); win.print();
     } else {
@@ -1183,32 +1123,44 @@ function downloadAssessmentReport() {
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
         a.download = `nexus_exam_report_${Date.now()}.html`; a.click();
     }
-}
+};
 
-function emailAssessmentReport() {
+window.emailAssessmentReport = function() {
     const mailId = localStorage.getItem("DEST_MAIL") || "";
     if (!mailId) return alert("Destination Mail ID is not set!");
-    downloadAssessmentReport();
+    window.downloadAssessmentReport();
     setTimeout(() => { window.location.href = `mailto:${mailId}?subject=CBT Report&body=Please find the attached report.`; }, 1500);
-}
+};
 
-function restartSameQuiz() { userAnswers = {}; initStandaloneExam(); }
+window.restartSameQuiz = function() { userAnswers = {}; window.initStandaloneExam(); };
+window.resetExamUI = function() {
+    if(timerInterval) clearInterval(timerInterval);
+    document.getElementById('terminal-screen').style.display = 'none';
+    document.getElementById('exam-results').style.display = 'none';
+    document.getElementById('exam-active').style.display = 'none';
+    document.getElementById('exam-setup').style.display = 'block';
+
+    if (typeof isAdmin !== 'undefined' && !isAdmin) {
+        const diffSelect = document.getElementById('difficulty');
+        if (diffSelect) diffSelect.value = "2";
+    }
+};
 
 // ==========================================
-// SPACED REPETITION SYSTEM (SRS)
+// VAULT LOGIC
 // ==========================================
-function addToVault(q) {
+window.addToVault = function(q) {
     let existingItem = mistakeVault.find(v => v.question === q.question);
     if (!existingItem) {
         q.user_failed_at = new Date().toLocaleDateString();
         q.srs_stage = 0; 
-        q.next_review_date = Date.now() + 86400000; // Due in 1 Day
+        q.next_review_date = Date.now() + 86400000;
         mistakeVault.push(q);
         try { localStorage.setItem("NEXUS_VAULT", JSON.stringify(mistakeVault)); } catch(e){}
     }
-}
+};
 
-function renderVault() {
+window.renderVault = function() {
     const c = document.getElementById('vault-container');
     if (!c) return;
     c.innerHTML = "";
@@ -1228,7 +1180,7 @@ function renderVault() {
             : `<span style="color:var(--text-muted);">Next Review: ${new Date(q.next_review_date).toLocaleDateString()}</span>`;
         
         let btnHtml = isDue 
-            ? `<button class="cyber-btn" style="padding: 6px 14px; font-size: 11px; margin-top: 14px; width: auto;" onclick="startVaultReview(${idx})">🧠 Review Now</button>`
+            ? `<button type="button" class="cyber-btn" style="padding: 6px 14px; font-size: 11px; margin-top: 14px; width: auto;" onclick="window.startVaultReview(${idx})">🧠 Review Now</button>`
             : ``;
 
         c.innerHTML += `<div class="glass-card" id="vault-card-${idx}" style="border-left:4px solid var(--neon-red); padding:16px;">
@@ -1241,9 +1193,9 @@ function renderVault() {
             ${btnHtml}
         </div>`;
     });
-}
+};
 
-function startVaultReview(idx) {
+window.startVaultReview = function(idx) {
     const c = document.getElementById(`vault-card-${idx}`);
     const q = mistakeVault[idx];
     
@@ -1252,18 +1204,18 @@ function startVaultReview(idx) {
     
     let optsHtml = "";
     reviewOptions.forEach((opt) => {
-        optsHtml += `<div class="option-card" onclick="submitVaultReview(${idx}, ${opt.originalIndex})" style="padding:10px 14px; font-size:14px; margin:6px 0;">${opt.text}</div>`;
+        optsHtml += `<div class="option-card" onclick="window.submitVaultReview(${idx}, ${opt.originalIndex})" style="padding:10px 14px; font-size:14px; margin:6px 0;">${opt.text}</div>`;
     });
 
     c.innerHTML = `
         <p style="color:var(--neon-cyan); font-weight:bold; font-size:12px; margin-top:0;">[ ACTIVE SRS RECALL ]</p>
         <p class="q-text" style="font-size:15px; margin-bottom:12px;">${q.question}</p>
         ${optsHtml}
-        <button class="cyber-btn secondary" style="margin-top:10px; padding: 6px 12px; font-size:11px; width:auto;" onclick="renderVault()">Cancel</button>
+        <button type="button" class="cyber-btn secondary" style="margin-top:10px; padding: 6px 12px; font-size:11px; width:auto;" onclick="window.renderVault()">Cancel</button>
     `;
-}
+};
 
-function submitVaultReview(idx, selectedOriginalIdx) {
+window.submitVaultReview = function(idx, selectedOriginalIdx) {
     const q = mistakeVault[idx];
     if (selectedOriginalIdx === q.correct_option_index) {
         q.srs_stage = (q.srs_stage || 0) + 1;
@@ -1277,12 +1229,33 @@ function submitVaultReview(idx, selectedOriginalIdx) {
         alert(`Incorrect. The right answer was:\n\n${q.options[q.correct_option_index]}\n\nSRS Level reset to 0. Try again tomorrow.`);
     }
     localStorage.setItem("NEXUS_VAULT", JSON.stringify(mistakeVault));
-    renderVault();
-}
+    window.renderVault();
+};
 
-function clearVault() { if(confirm("Purge vault?")) { mistakeVault = []; localStorage.removeItem("NEXUS_VAULT"); renderVault(); } }
+window.clearVault = function() { if(confirm("Purge vault?")) { mistakeVault = []; localStorage.removeItem("NEXUS_VAULT"); window.renderVault(); } };
+window.saveVaultJson = function() {
+    try {
+        mistakeVault = JSON.parse(document.getElementById('vault-json-textarea').value);
+        localStorage.setItem("NEXUS_VAULT", JSON.stringify(mistakeVault));
+        window.renderVault();
+        alert("Vault JSON Updated Successfully.");
+    } catch(e) {
+        alert("Invalid JSON format! Please correct errors.");
+    }
+};
 
-async function sendChat() {
+window.clearChatHistory = function() {
+    const box = document.getElementById('chat-box');
+    if (box) {
+        box.innerHTML = `
+            <div class="msg-wrapper ai" style="display: flex; flex-direction: column; align-items: flex-start;">
+                <div class="msg ai">Chat history cleared. Ready for new queries.</div>
+                <span class="timestamp" style="font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-left: 4px;">Just now</span>
+            </div>`;
+    }
+};
+
+window.sendChat = async function() {
     const chatModelSelect = document.getElementById('chat-model-select');
     const rawModel = chatModelSelect ? chatModelSelect.value : "gemini-3.8-flash";
     
@@ -1291,10 +1264,10 @@ async function sendChat() {
     else if (rawModel.includes("openai/") || rawModel.includes("qwen/") || rawModel.includes("groq/")) org = "groq";
     else if (rawModel.includes("deepseek-v4")) org = "deepseek";
 
-    let activeKey = getRandomKey(org);
+    let activeKey = window.getRandomKey(org);
     if (!activeKey) {
         alert(`No valid API Key found for ${org.toUpperCase()}! Please add it in the Config tab.`);
-        switchTab('settings');
+        window.switchTab('settings');
         return;
     }
 
@@ -1376,17 +1349,4 @@ async function sendChat() {
         }
     }
     box.scrollTop = box.scrollHeight;
-}
-
-function resetExamUI() {
-    if(timerInterval) clearInterval(timerInterval);
-    document.getElementById('terminal-screen').style.display = 'none';
-    document.getElementById('exam-results').style.display = 'none';
-    document.getElementById('exam-active').style.display = 'none';
-    document.getElementById('exam-setup').style.display = 'block';
-
-    if (typeof isAdmin !== 'undefined' && !isAdmin) {
-        const diffSelect = document.getElementById('difficulty');
-        if (diffSelect) diffSelect.value = "2";
-    }
-}
+};
