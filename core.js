@@ -1,8 +1,6 @@
 // ==========================================
 // NEXUS OS - CORE SYSTEM LOGIC
 // ==========================================
-
-// ⚠️ REPLACE THIS WITH YOUR GOOGLE APPS SCRIPT WEB APP URL
 var BACKEND_URL = "https://script.google.com/macros/s/AKfycbxH1sO305xVSNlE35JwSLiW2XOwNfiotoVWjxza8SbTzeCxEs8pVq1PYJlrKYqSkn6J_A/exec";
 
 var currentUser = "";
