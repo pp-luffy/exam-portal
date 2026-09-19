@@ -1,25 +1,26 @@
-let currentUser = "";
-let isAdmin = false;
-const ADMIN_USERS = ["thegodsk", "saikiran"];
+// Using 'var' prevents fatal SyntaxErrors if aspirant.js or notifier.js use the same variable names
+var currentUser = "";
+var isAdmin = false;
+var ADMIN_USERS = ["thegodsk", "saikiran"];
 
-let apiKeys = [];
-let currentQuizData = [];
-let userAnswers = {};
-let userBookmarks = {};
-let currentQIndex = 0;
-let timerInterval = null;
-let secondsLeft = 0;
-let totalSecondsTaken = 0;
-let mistakeVault = [];
-let activeController = null;
-let isTimerPaused = false;
-let timeTracker = {}; 
-let posMark = 4;
-let negMark = 1;
+var apiKeys = [];
+var currentQuizData = [];
+var userAnswers = {};
+var userBookmarks = {};
+var currentQIndex = 0;
+var timerInterval = null;
+var secondsLeft = 0;
+var totalSecondsTaken = 0;
+var mistakeVault = [];
+var activeController = null;
+var isTimerPaused = false;
+var timeTracker = {}; 
+var posMark = 4;
+var negMark = 1;
 
 try { mistakeVault = JSON.parse(localStorage.getItem("NEXUS_VAULT")) || []; } catch(e) { mistakeVault = []; }
 
-const PROVIDER_MODELS = {
+var PROVIDER_MODELS = {
     gemini: [
         { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash", maxLimit: 75 },
         { id: "gemini-3.7-flash", name: "Gemini 3.7 Flash", maxLimit: 75 },
@@ -44,27 +45,45 @@ const PROVIDER_MODELS = {
 };
 
 window.addEventListener('load', () => {
-    if (window.location.search.includes('mode=exam')) {
-        const splash = document.getElementById('boot-splash');
-        if (splash) splash.style.display = 'none';
-        window.checkAuth();
-        return;
-    }
-
+    // FAILSAFE: Force the splash screen to hide after 3 seconds no matter what happens
     setTimeout(() => {
-        const splash = document.getElementById('boot-splash');
-        if (splash) {
-            splash.style.opacity = '0';
-            splash.style.transform = 'scale(1.05)';
-            setTimeout(() => { 
-                splash.style.display = 'none'; 
-                window.checkAuth();
-            }, 600);
+        const s = document.getElementById('boot-splash');
+        if (s && s.style.display !== 'none') {
+            s.style.display = 'none';
+            window.checkAuth();
         }
-    }, 1600);
+    }, 3000);
+
+    try {
+        if (window.location.search.includes('mode=exam')) {
+            const splash = document.getElementById('boot-splash');
+            if (splash) splash.style.display = 'none';
+            window.checkAuth();
+        } else {
+            setTimeout(() => {
+                const splash = document.getElementById('boot-splash');
+                if (splash) {
+                    splash.style.opacity = '0';
+                    splash.style.transform = 'scale(1.05)';
+                    setTimeout(() => { 
+                        splash.style.display = 'none'; 
+                        window.checkAuth();
+                    }, 600);
+                } else {
+                    window.checkAuth();
+                }
+            }, 1600);
+        }
+    } catch(err) {
+        console.error("Boot Error:", err);
+        const s = document.getElementById('boot-splash');
+        if (s) s.style.display = 'none';
+        const login = document.getElementById('login-screen');
+        if (login) login.style.display = 'flex';
+    }
     
     // Core Initializations
-    window.loadApiKeys();
+    try { window.loadApiKeys(); } catch(e) { console.error("Key Load Error:", e); }
     
     const mailId = localStorage.getItem("DEST_MAIL") || "";
     if (document.getElementById('update-mail') && mailId) document.getElementById('update-mail').value = mailId;
@@ -80,7 +99,7 @@ window.addEventListener('load', () => {
         });
     }
 
-    window.renderVault();
+    try { window.renderVault(); } catch(e) { console.error("Vault Render Error:", e); }
 });
 
 // ==========================================
@@ -92,12 +111,15 @@ window.checkAuth = function() {
     if (savedUser) {
         window.processLogin(savedUser);
     } else {
-        document.getElementById('login-screen').style.display = 'flex';
+        const login = document.getElementById('login-screen');
+        if (login) login.style.display = 'flex';
     }
 };
 
 window.handleLogin = function() {
-    const user = document.getElementById('login-username').value.trim().toLowerCase();
+    const loginInput = document.getElementById('login-username');
+    if (!loginInput) return;
+    const user = loginInput.value.trim().toLowerCase();
     if (!user) {
         alert("Operator ID required.");
         return;
@@ -110,8 +132,11 @@ window.processLogin = function(user) {
     isAdmin = ADMIN_USERS.includes(currentUser);
     localStorage.setItem("NEXUS_USER", currentUser);
     
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('main-app').style.display = 'flex';
+    const login = document.getElementById('login-screen');
+    if (login) login.style.display = 'none';
+    
+    const mainApp = document.getElementById('main-app');
+    if (mainApp) mainApp.style.display = 'flex';
     
     const operatorSpan = document.getElementById('active-operator-name');
     if (operatorSpan) operatorSpan.textContent = currentUser;
@@ -405,7 +430,7 @@ window.updateTokens = function() {
     const newMail = document.getElementById('update-mail')?.value.trim() || "";
     try {
         if (newMail !== "") localStorage.setItem("DEST_MAIL", newMail);
-        apiKeys = apiKeys.filter(k => k.key.trim() !== "");
+        apiKeys = apiKeys.filter(k => (k.key || "").trim() !== "");
         localStorage.setItem("NEXUS_API_KEYS", JSON.stringify(apiKeys));
         window.renderApiKeysUI();
 
