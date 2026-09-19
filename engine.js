@@ -50,7 +50,6 @@ document.addEventListener("DOMContentLoaded", function() {
         var s = document.getElementById('boot-splash');
         if (s) s.style.display = 'none';
         window.checkAuth();
-        console.warn("[SYSTEM] Failsafe triggered: Boot timeout bypassed.");
     }, 2500);
 
     try {
@@ -108,19 +107,19 @@ document.addEventListener("DOMContentLoaded", function() {
 // ==========================================
 
 window.checkAuth = function() {
-    const savedUser = localStorage.getItem("NEXUS_USER");
+    var savedUser = localStorage.getItem("NEXUS_USER");
     if (savedUser) {
         window.processLogin(savedUser);
     } else {
-        const login = document.getElementById('login-screen');
+        var login = document.getElementById('login-screen');
         if (login) login.style.display = 'flex';
     }
 };
 
 window.handleLogin = function() {
-    const loginInput = document.getElementById('login-username');
+    var loginInput = document.getElementById('login-username');
     if (!loginInput) return;
-    const user = loginInput.value.trim().toLowerCase();
+    var user = loginInput.value.trim().toLowerCase();
     if (!user) {
         alert("Operator ID required.");
         return;
@@ -133,13 +132,13 @@ window.processLogin = function(user) {
     isAdmin = ADMIN_USERS.includes(currentUser);
     localStorage.setItem("NEXUS_USER", currentUser);
     
-    const login = document.getElementById('login-screen');
+    var login = document.getElementById('login-screen');
     if (login) login.style.display = 'none';
     
-    const mainApp = document.getElementById('main-app');
+    var mainApp = document.getElementById('main-app');
     if (mainApp) mainApp.style.display = 'flex';
     
-    const operatorSpan = document.getElementById('active-operator-name');
+    var operatorSpan = document.getElementById('active-operator-name');
     if (operatorSpan) operatorSpan.textContent = currentUser;
 
     window.applySessionEnvironment();
@@ -157,11 +156,11 @@ window.logout = function() {
 };
 
 window.applySessionEnvironment = function() {
-    const orgSelect = document.getElementById('org-select');
-    const diffContainer = document.getElementById('difficulty-container');
-    const adminPrompt = document.getElementById('admin-prompt');
-    const adminVault = document.getElementById('admin-vault-editor');
-    const pauseTimerBtn = document.getElementById('pause-timer-btn');
+    var orgSelect = document.getElementById('org-select');
+    var diffContainer = document.getElementById('difficulty-container');
+    var adminPrompt = document.getElementById('admin-prompt');
+    var adminVault = document.getElementById('admin-vault-editor');
+    var pauseTimerBtn = document.getElementById('pause-timer-btn');
 
     if (!isAdmin) {
         if (diffContainer) diffContainer.style.display = 'none';
@@ -169,7 +168,7 @@ window.applySessionEnvironment = function() {
         if (adminVault) adminVault.style.display = 'none';
         if (pauseTimerBtn) pauseTimerBtn.style.display = 'none';
         if (orgSelect) {
-            Array.from(orgSelect.options).forEach(opt => {
+            Array.from(orgSelect.options).forEach(function(opt) {
                 opt.style.display = (opt.value === 'gemini') ? 'block' : 'none';
             });
             orgSelect.value = 'gemini';
@@ -182,7 +181,7 @@ window.applySessionEnvironment = function() {
         if (pauseTimerBtn) pauseTimerBtn.style.display = 'inline-block';
         if (orgSelect) {
             orgSelect.disabled = false;
-            Array.from(orgSelect.options).forEach(opt => {
+            Array.from(orgSelect.options).forEach(function(opt) {
                 opt.style.display = 'block';
             });
         }
@@ -194,7 +193,7 @@ window.applySessionEnvironment = function() {
 
 window.loadExamConfig = function() {
     try {
-        const saved = JSON.parse(localStorage.getItem("NEXUS_LAST_CONFIG"));
+        var saved = JSON.parse(localStorage.getItem("NEXUS_LAST_CONFIG"));
         if (!saved) return;
         
         if (isAdmin && document.getElementById('org-select')) {
@@ -224,18 +223,18 @@ window.loadExamConfig = function() {
 };
 
 window.updateModelDropdown = function() {
-    const orgSelect = document.getElementById('org-select');
-    const modelSelect = document.getElementById('model-select');
+    var orgSelect = document.getElementById('org-select');
+    var modelSelect = document.getElementById('model-select');
     if (!orgSelect || !modelSelect) return;
 
-    const org = orgSelect.value;
+    var org = orgSelect.value;
     modelSelect.innerHTML = "";
     
-    let list = PROVIDER_MODELS[org] || [];
+    var list = PROVIDER_MODELS[org] || [];
     if (!isAdmin) list = (PROVIDER_MODELS['gemini'] || []).slice(0, 2);
 
-    list.forEach(m => {
-        const opt = document.createElement('option');
+    list.forEach(function(m) {
+        var opt = document.createElement('option');
         opt.value = m.id;
         opt.textContent = m.name;
         modelSelect.appendChild(opt);
@@ -245,14 +244,14 @@ window.updateModelDropdown = function() {
 };
 
 window.updateQuotaDisplay = function() {
-    const statusVal = document.getElementById('quota-status-val');
-    const orgSelect = document.getElementById('org-select');
-    const modelSelect = document.getElementById('model-select');
+    var statusVal = document.getElementById('quota-status-val');
+    var orgSelect = document.getElementById('org-select');
+    var modelSelect = document.getElementById('model-select');
     if (!statusVal || !orgSelect || !modelSelect) return;
 
-    const modelId = modelSelect.value;
-    const org = orgSelect.value;
-    const cachedQuota = localStorage.getItem(`QUOTA_${modelId}`);
+    var modelId = modelSelect.value;
+    var org = orgSelect.value;
+    var cachedQuota = localStorage.getItem("QUOTA_" + modelId);
 
     if (cachedQuota) {
         statusVal.textContent = cachedQuota;
@@ -266,44 +265,44 @@ window.updateQuotaDisplay = function() {
 };
 
 window.enforceLanguageConstraints = function() {
-    const countInput = document.getElementById('count');
-    const countLabel = document.getElementById('count-label');
+    var countInput = document.getElementById('count');
+    var countLabel = document.getElementById('count-label');
     if (!countInput) return;
 
     if (isAdmin) {
         countInput.removeAttribute('max');
-        if (countLabel) countLabel.textContent = `Questions (Admin Unlocked)`;
+        if (countLabel) countLabel.textContent = "Questions (Admin Unlocked)";
     } else {
-        const STRICT_LIMIT = 10;
+        var STRICT_LIMIT = 10;
         countInput.max = STRICT_LIMIT;
-        if (countLabel) countLabel.textContent = `Questions (Max ${STRICT_LIMIT})`;
+        if (countLabel) countLabel.textContent = "Questions (Max " + STRICT_LIMIT + ")";
         if (parseInt(countInput.value) > STRICT_LIMIT) countInput.value = STRICT_LIMIT;
     }
 };
 
 window.switchTab = function(tab) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.querySelectorAll('.sidebar-nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+    document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+    document.querySelectorAll('.sidebar-nav-item').forEach(function(n) { n.classList.remove('active'); });
     
-    const p = document.getElementById('page-' + tab);
+    var p = document.getElementById('page-' + tab);
     if(p) p.classList.add('active');
-    const n = document.getElementById('nav-' + tab);
+    var n = document.getElementById('nav-' + tab);
     if(n) n.classList.add('active');
-    const s = document.getElementById('side-' + tab);
+    var s = document.getElementById('side-' + tab);
     if(s) s.classList.add('active');
     if(tab === 'vault') window.renderVault();
 };
 
 window.exportLocalStorage = function() {
-    const obj = {};
-    for(let i=0; i<localStorage.length; i++) {
-        const k = localStorage.key(i);
+    var obj = {};
+    for(var i=0; i<localStorage.length; i++) {
+        var k = localStorage.key(i);
         if(!["NEXUS_API_KEYS", "GEMINI_KEY", "GROQ_KEY", "OPENROUTER_KEY", "DEEPSEEK_KEY", "GROQ_VERIFY_KEY"].includes(k)) {
             obj[k] = localStorage.getItem(k);
         }
     }
-    const a = document.createElement('a');
+    var a = document.createElement('a');
     a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2));
     a.download = "nexus_backup.json";
     a.click();
@@ -314,16 +313,16 @@ window.exportLocalStorage = function() {
 // ==========================================
 window.loadApiKeys = function() {
     try {
-        let stored = JSON.parse(localStorage.getItem("NEXUS_API_KEYS"));
+        var stored = JSON.parse(localStorage.getItem("NEXUS_API_KEYS"));
         if (Array.isArray(stored) && stored.length > 0) {
             apiKeys = stored;
         } else {
             apiKeys = [];
-            const g = localStorage.getItem("GEMINI_KEY");
-            const gr = localStorage.getItem("GROQ_KEY");
-            const grv = localStorage.getItem("GROQ_VERIFY_KEY");
-            const or = localStorage.getItem("OPENROUTER_KEY");
-            const ds = localStorage.getItem("DEEPSEEK_KEY");
+            var g = localStorage.getItem("GEMINI_KEY");
+            var gr = localStorage.getItem("GROQ_KEY");
+            var grv = localStorage.getItem("GROQ_VERIFY_KEY");
+            var or = localStorage.getItem("OPENROUTER_KEY");
+            var ds = localStorage.getItem("DEEPSEEK_KEY");
             
             if(g) apiKeys.push({ id: Date.now()+1, provider: "gemini", name: "Legacy Gemini", key: g });
             if(gr) apiKeys.push({ id: Date.now()+2, provider: "groq", name: "Legacy Groq", key: gr });
@@ -338,16 +337,21 @@ window.loadApiKeys = function() {
 };
 
 window.syncKeysFromDOM = function() {
-    const container = document.getElementById('api-keys-container');
+    var container = document.getElementById('api-keys-container');
     if (!container) return;
-    const rows = container.querySelectorAll('.api-key-row');
-    const synced = [];
-    rows.forEach((row, i) => {
-        const provider = row.querySelector('.key-provider')?.value || 'gemini';
-        const name = row.querySelector('.key-name')?.value || 'Token';
-        const key = row.querySelector('.key-input')?.value || '';
+    var rows = container.querySelectorAll('.api-key-row');
+    var synced = [];
+    rows.forEach(function(row, i) {
+        var providerNode = row.querySelector('.key-provider');
+        var nameNode = row.querySelector('.key-name');
+        var keyNode = row.querySelector('.key-input');
+        
+        var provider = providerNode ? providerNode.value : 'gemini';
+        var name = nameNode ? nameNode.value : 'Token';
+        var key = keyNode ? keyNode.value : '';
+        
         synced.push({
-            id: apiKeys[i]?.id || (Date.now() + i),
+            id: apiKeys[i] ? apiKeys[i].id : (Date.now() + i),
             provider: provider,
             name: name,
             key: key
@@ -359,7 +363,7 @@ window.syncKeysFromDOM = function() {
 };
 
 window.renderApiKeysUI = function() {
-    const container = document.getElementById('api-keys-container');
+    var container = document.getElementById('api-keys-container');
     if (!container) return;
     container.innerHTML = "";
     
@@ -368,35 +372,43 @@ window.renderApiKeysUI = function() {
         return;
     }
 
-    apiKeys.forEach((k, index) => {
-        const row = document.createElement('div');
+    apiKeys.forEach(function(k, index) {
+        var row = document.createElement('div');
         row.className = "api-key-row";
-        row.innerHTML = `
-            <select class="key-provider" style="flex: 1; min-width: 120px;" onchange="window.updateKeyData(${index}, 'provider', this.value)">
-                <option value="gemini" ${k.provider==='gemini'?'selected':''}>Gemini</option>
-                <option value="groq" ${k.provider==='groq'?'selected':''}>Groq</option>
-                <option value="openrouter" ${k.provider==='openrouter'?'selected':''}>OpenRouter</option>
-                <option value="deepseek" ${k.provider==='deepseek'?'selected':''}>DeepSeek</option>
-            </select>
-            <input type="text" class="key-name" placeholder="Identifier Name" value="${k.name \vert{}\vert{} ''}" style="flex: 1; min-width: 120px;" oninput="window.updateKeyData(${index}, 'name', this.value)">
-            <div class="key-input-wrapper">
-                <input type="password" class="key-input" id="key-input-${index}" placeholder="API Token" value="${k.key \vert{}\vert{} ''}" oninput="window.updateKeyData(${index}, 'key', this.value)">
-                <div style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display:flex; gap: 4px;">
-                    <button type="button" class="key-action-btn" onclick="window.toggleKeyVisibility(${index})" title="Toggle Visibility">👁</button>
-                    <button type="button" class="key-action-btn" onclick="window.copyKey(${index})" title="Copy Token">📋</button>
-                    <button type="button" class="key-action-btn del" onclick="window.deleteKey(${index})" title="Delete Token">❌</button>
-                </div>
-            </div>
-        `;
+        
+        var selGemini = k.provider === 'gemini' ? 'selected' : '';
+        var selGroq = k.provider === 'groq' ? 'selected' : '';
+        var selOpenRouter = k.provider === 'openrouter' ? 'selected' : '';
+        var selDeepSeek = k.provider === 'deepseek' ? 'selected' : '';
+        
+        var keyName = k.name || '';
+        var keyValue = k.key || '';
+        
+        row.innerHTML = 
+            '<select class="key-provider" style="flex: 1; min-width: 120px;" onchange="window.updateKeyData(' + index + ', \'provider\', this.value)">' +
+                '<option value="gemini" ' + selGemini + '>Gemini</option>' +
+                '<option value="groq" ' + selGroq + '>Groq</option>' +
+                '<option value="openrouter" ' + selOpenRouter + '>OpenRouter</option>' +
+                '<option value="deepseek" ' + selDeepSeek + '>DeepSeek</option>' +
+            '</select>' +
+            '<input type="text" class="key-name" placeholder="Identifier Name" value="' + keyName + '" style="flex: 1; min-width: 120px;" oninput="window.updateKeyData(' + index + ', \'name\', this.value)">' +
+            '<div class="key-input-wrapper">' +
+                '<input type="password" class="key-input" id="key-input-' + index + '" placeholder="API Token" value="' + keyValue + '" oninput="window.updateKeyData(' + index + ', \'key\', this.value)">' +
+                '<div style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display:flex; gap: 4px;">' +
+                    '<button type="button" class="key-action-btn" onclick="window.toggleKeyVisibility(' + index + ')" title="Toggle Visibility">👁</button>' +
+                    '<button type="button" class="key-action-btn" onclick="window.copyKey(' + index + ')" title="Copy Token">📋</button>' +
+                    '<button type="button" class="key-action-btn del" onclick="window.deleteKey(' + index + ')" title="Delete Token">❌</button>' +
+                '</div>' +
+            '</div>';
         container.appendChild(row);
     });
 };
 
 window.addEmptyKeyRow = function() {
     window.syncKeysFromDOM();
-    apiKeys.push({ id: Date.now(), provider: "gemini", name: `Token ${apiKeys.length + 1}`, key: "" });
+    apiKeys.push({ id: Date.now(), provider: "gemini", name: "Token " + (apiKeys.length + 1), key: "" });
     window.renderApiKeysUI();
-    const container = document.getElementById('api-keys-container');
+    var container = document.getElementById('api-keys-container');
     if (container) container.scrollTop = container.scrollHeight;
 };
 
@@ -405,7 +417,7 @@ window.updateKeyData = function(index, field, value) {
 };
 
 window.toggleKeyVisibility = function(index) {
-    const input = document.getElementById(`key-input-${index}`);
+    var input = document.getElementById("key-input-" + index);
     if (input) input.type = input.type === "password" ? "text" : "password";
 };
 
@@ -413,13 +425,14 @@ window.copyKey = function(index) {
     window.syncKeysFromDOM();
     if (apiKeys[index] && apiKeys[index].key) {
         navigator.clipboard.writeText(apiKeys[index].key);
-        alert(`Token '${apiKeys[index].name}' copied to clipboard.`);
+        alert("Token '" + apiKeys[index].name + "' copied to clipboard.");
     }
 };
 
 window.deleteKey = function(index) {
     window.syncKeysFromDOM();
-    if(confirm(`Delete token '${apiKeys[index]?.name || 'Token'}'?`)) {
+    var nameToDel = apiKeys[index] ? apiKeys[index].name : 'Token';
+    if(confirm("Delete token '" + nameToDel + "'?")) {
         apiKeys.splice(index, 1);
         localStorage.setItem("NEXUS_API_KEYS", JSON.stringify(apiKeys));
         window.renderApiKeysUI();
@@ -428,17 +441,18 @@ window.deleteKey = function(index) {
 
 window.updateTokens = function() {
     window.syncKeysFromDOM();
-    const newMail = document.getElementById('update-mail')?.value.trim() || "";
+    var mailInput = document.getElementById('update-mail');
+    var newMail = mailInput ? mailInput.value.trim() : "";
     try {
         if (newMail !== "") localStorage.setItem("DEST_MAIL", newMail);
-        apiKeys = apiKeys.filter(k => (k.key || "").trim() !== "");
+        apiKeys = apiKeys.filter(function(k) { return (k.key || "").trim() !== ""; });
         localStorage.setItem("NEXUS_API_KEYS", JSON.stringify(apiKeys));
         window.renderApiKeysUI();
 
-        const msgEl = document.getElementById('token-update-msg');
+        var msgEl = document.getElementById('token-update-msg');
         if (msgEl) {
             msgEl.style.display = 'block';
-            setTimeout(() => { msgEl.style.display = 'none'; }, 4000);
+            setTimeout(function() { msgEl.style.display = 'none'; }, 4000);
         } else {
             alert("Configuration saved successfully!");
         }
@@ -446,20 +460,22 @@ window.updateTokens = function() {
 };
 
 window.getRandomKey = function(provider) {
-    const available = apiKeys.filter(k => k.provider === provider && (k.key || "").trim() !== "");
+    var available = apiKeys.filter(function(k) { return k.provider === provider && (k.key || "").trim() !== ""; });
     if (available.length === 0) return null;
-    const rnd = available[Math.floor(Math.random() * available.length)];
+    var rnd = available[Math.floor(Math.random() * available.length)];
     return rnd.key.trim();
 };
 
 window.cancellableDelay = function(ms, signal) {
-    return new Promise((resolve, reject) => {
-        if (signal?.aborted) return reject(new Error("Aborted by operator."));
-        const timer = setTimeout(resolve, ms);
-        signal?.addEventListener('abort', () => {
-            clearTimeout(timer);
-            reject(new Error("Aborted by operator."));
-        }, { once: true });
+    return new Promise(function(resolve, reject) {
+        if (signal && signal.aborted) return reject(new Error("Aborted by operator."));
+        var timer = setTimeout(resolve, ms);
+        if(signal) {
+            signal.addEventListener('abort', function() {
+                clearTimeout(timer);
+                reject(new Error("Aborted by operator."));
+            }, { once: true });
+        }
     });
 };
 
@@ -496,19 +512,20 @@ window.confirmExitExam = function() {
 };
 
 window.startExam = async function() {
-    const org = document.getElementById('org-select').value;
-    const availableKeys = apiKeys.filter(k => k.provider === org && (k.key || "").trim() !== "").map(k => k.key.trim());
+    var org = document.getElementById('org-select').value;
+    var availableKeys = apiKeys.filter(function(k) { return k.provider === org && (k.key || "").trim() !== ""; }).map(function(k) { return k.key.trim(); });
     
     if (availableKeys.length === 0) {
-        alert(`No valid API Key found for ${org.toUpperCase()}! Please add one in the Config tab.`);
+        alert("No valid API Key found for " + org.toUpperCase() + "! Please add one in the Config tab.");
         window.switchTab('settings');
         return;
     }
 
-    const exam = document.getElementById('exam').value.trim();
-    const subject = document.getElementById('subject').value.trim();
-    const topic = document.getElementById('topic').value.trim();
-    const difficulty = isAdmin ? document.getElementById('difficulty').value : "2";
+    var exam = document.getElementById('exam').value.trim();
+    var subject = document.getElementById('subject').value.trim();
+    var topic = document.getElementById('topic').value.trim();
+    var diffNode = document.getElementById('difficulty');
+    var difficulty = isAdmin && diffNode ? diffNode.value : "2";
 
     if (!exam || !subject || !topic) {
         alert("Please fill in the Target Exam Name, Subject Name, and Syllabus Topic.");
@@ -534,140 +551,143 @@ window.startExam = async function() {
     } catch(e) { console.warn("Failed to cache config", e); }
 
     document.getElementById('exam-setup').style.display = 'none';
-    const terminalScreen = document.getElementById('terminal-screen');
+    var terminalScreen = document.getElementById('terminal-screen');
     terminalScreen.style.display = 'block';
     
-    const terminal = document.getElementById('terminal');
+    var terminal = document.getElementById('terminal');
     terminal.style.display = 'block';
     terminal.innerHTML = "<span style='color: var(--neon-cyan);'>[PHASE 1]: Synthesizing base neural parameters...</span><br>";
 
-    let cancelWrapper = document.getElementById('terminal-cancel-btn');
+    var cancelWrapper = document.getElementById('terminal-cancel-btn');
     if (!cancelWrapper) {
         cancelWrapper = document.createElement('button');
         cancelWrapper.id = 'terminal-cancel-btn';
         cancelWrapper.className = 'cyber-btn danger';
         cancelWrapper.style.cssText = 'margin-top: 16px; padding: 10px; font-size: 12px;';
         cancelWrapper.textContent = '❌ Cancel Generation';
-        cancelWrapper.onclick = () => window.cancelActiveRequest();
+        cancelWrapper.onclick = function() { window.cancelActiveRequest(); };
         terminalScreen.querySelector('.quantum-loader-wrapper').appendChild(cancelWrapper);
     }
     cancelWrapper.style.display = 'inline-flex';
 
-    const rawModel = document.getElementById('model-select').value;
-    const totalCount = parseInt(document.getElementById('count').value);
-    const lang = document.getElementById('lang').value;
-    const mins = parseInt(document.getElementById('timer-mins').value) || 15;
-    const posM = parseFloat(document.getElementById('pos-marks').value) || 1;
-    const negM = parseFloat(document.getElementById('neg-marks').value) || 0;
-    const adminPromptTxt = isAdmin ? (document.getElementById('admin-prompt').value || "").trim() : "";
+    var rawModel = document.getElementById('model-select').value;
+    var totalCount = parseInt(document.getElementById('count').value);
+    var lang = document.getElementById('lang').value;
+    var mins = parseInt(document.getElementById('timer-mins').value) || 15;
+    var posM = parseFloat(document.getElementById('pos-marks').value) || 1;
+    var negM = parseFloat(document.getElementById('neg-marks').value) || 0;
+    var adminPromptNode = document.getElementById('admin-prompt');
+    var adminPromptTxt = (isAdmin && adminPromptNode) ? (adminPromptNode.value || "").trim() : "";
 
-    let chunks = [];
-    let remaining = totalCount;
+    var chunks = [];
+    var remaining = totalCount;
     while (remaining > 0) {
-        let chunkSize = Math.min(remaining, 25);
+        var chunkSize = Math.min(remaining, 25);
         chunks.push(chunkSize);
         remaining -= chunkSize;
     }
 
     if (activeController) activeController.abort();
     activeController = new AbortController();
-    const signal = activeController.signal;
+    var signal = activeController.signal;
 
-    let allGeneratedQuestions = [];
-    let previouslyGeneratedConcepts = [];
-    let usedGenKeys = []; 
+    var allGeneratedQuestions = [];
+    var previouslyGeneratedConcepts = [];
+    var usedGenKeys = []; 
 
     try {
-        for (let i = 0; i < chunks.length; i++) {
-            let currentChunkSize = chunks[i];
+        for (var i = 0; i < chunks.length; i++) {
+            var currentChunkSize = chunks[i];
             
-            let currentApiKey = availableKeys[i % availableKeys.length];
+            var currentApiKey = availableKeys[i % availableKeys.length];
             if (!usedGenKeys.includes(currentApiKey)) usedGenKeys.push(currentApiKey);
 
-            terminal.innerHTML += `<span style='color: var(--text-muted);'>[BATCH ${i+1}/${chunks.length}]: Requesting${currentChunkSize} questions...</span><br>`;
+            terminal.innerHTML += "<span style='color: var(--text-muted);'>[BATCH " + (i+1) + "/" + chunks.length + "]: Requesting " + currentChunkSize + " questions...</span><br>";
             terminal.scrollTop = terminal.scrollHeight;
 
-            let prompt = `You are an expert Question Paper Setter for competitive examinations like ${exam}. 
-Generate EXACTLY ${currentChunkSize} high-standard questions for the Subject: "${subject}", focusing on the Topic: "${topic}". 
-Output language must strictly be ${lang}.
-DIFFICULTY LEVEL: Level ${difficulty} out of 5.
-
-CRITICAL INSTRUCTIONS:
-1. NO EXPLANATIONS inside the options or question text.
-2. The FIRST option in the array (index 0) MUST ALWAYS BE THE CORRECT ANSWER. The system will randomize them later.
-3. Formulate highly plausible distractor traps for options 2, 3, and 4.
-4. CRITICAL: Do NOT use LaTeX formatting or dollar signs ($) for mathematical symbols. Write all variables and formulas in plain text (e.g., F1 = F2 = sigma * q / 2 * epsilon_0).
-5. Set "correct_option_index" strictly to 0 for every single question.`;
+            var basePrompt = "You are an expert Question Paper Setter for competitive examinations like " + exam + ".\n" +
+                             "Generate EXACTLY " + currentChunkSize + " high-standard questions for the Subject: \"" + subject + "\", focusing on the Topic: \"" + topic + "\".\n" +
+                             "Output language must strictly be " + lang + ".\n" +
+                             "DIFFICULTY LEVEL: Level " + difficulty + " out of 5.\n\n" +
+                             "CRITICAL INSTRUCTIONS:\n" +
+                             "1. NO EXPLANATIONS inside the options or question text.\n" +
+                             "2. The FIRST option in the array (index 0) MUST ALWAYS BE THE CORRECT ANSWER. The system will randomize them later.\n" +
+                             "3. Formulate highly plausible distractor traps for options 2, 3, and 4.\n" +
+                             "4. CRITICAL: Do NOT use LaTeX formatting or dollar signs ($) for mathematical symbols. Write all variables and formulas in plain text (e.g., F1 = F2 = sigma * q / 2 * epsilon_0).\n" +
+                             "5. Set \"correct_option_index\" strictly to 0 for every single question.";
 
             if (previouslyGeneratedConcepts.length > 0) {
-                prompt += `\n\nANTI-DUPLICATION RULE:\nYou have already generated the following questions. DO NOT REPEAT THESE CONCEPTS:\n`;
-                previouslyGeneratedConcepts.forEach((q, idx) => { prompt += `${idx+1}.${q.substring(0, 100)}...\n`; });
+                basePrompt += "\n\nANTI-DUPLICATION RULE:\nYou have already generated the following questions. DO NOT REPEAT THESE CONCEPTS:\n";
+                previouslyGeneratedConcepts.forEach(function(q, idx) { 
+                    basePrompt += (idx+1) + ". " + q.substring(0, 100) + "...\n"; 
+                });
             }
 
-            prompt += `\n\nOutput ONLY a valid JSON array matching this exact format:
-[
-  {
-    "question": "Question text...",
-    "options": ["Correct Option", "Distractor 1", "Distractor 2", "Distractor 3"],
-    "correct_option_index": 0
-  }
-]
-${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
+            basePrompt += "\n\nOutput ONLY a valid JSON array matching this exact format:\n";
+            basePrompt += "[\n  {\n    \"question\": \"Question text...\",\n    \"options\": [\"Correct Option\", \"Distractor 1\", \"Distractor 2\", \"Distractor 3\"],\n    \"correct_option_index\": 0\n  }\n]\n";
+            
+            if (adminPromptTxt) {
+                basePrompt += "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt;
+            }
 
-            let fullResponse = "";
+            var promptPayload = basePrompt;
+            var fullResponse = "";
 
             if (org === 'groq' || org === 'openrouter' || org === 'deepseek') {
-                let apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+                var apiUrl = "https://api.groq.com/openai/v1/chat/completions";
                 if (org === 'openrouter') apiUrl = "https://openrouter.ai/api/v1/chat/completions";
                 if (org === 'deepseek') apiUrl = "https://api.deepseek.com/chat/completions";
 
-                const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentApiKey}` };
+                var headers = { 'Content-Type': 'application/json', 'Authorization': "Bearer " + currentApiKey };
                 if (org === 'openrouter') { headers['HTTP-Referer'] = window.location.href; headers['X-Title'] = 'NEXUS OS CBT Suite'; }
 
-                const payload = { model: rawModel, messages: [{ role: "user", content: prompt }], temperature: 0.2, max_tokens: 8192 };
+                var payload = { model: rawModel, messages: [{ role: "user", content: promptPayload }], temperature: 0.2, max_tokens: 8192 };
                 if (org === 'groq' || org === 'deepseek') payload.response_format = { type: "json_object" };
 
-                const res = await fetch(apiUrl, { method: 'POST', headers: headers, body: JSON.stringify(payload), signal: signal });
+                var res = await fetch(apiUrl, { method: 'POST', headers: headers, body: JSON.stringify(payload), signal: signal });
                 
                 if (res.status === 429) {
-                    terminal.innerHTML += `<span style='color: var(--neon-yellow);'>[RATE LIMIT]: Pausing for 60s before retrying batch...</span><br>`;
+                    terminal.innerHTML += "<span style='color: var(--neon-yellow);'>[RATE LIMIT]: Pausing for 60s before retrying batch...</span><br>";
                     await window.cancellableDelay(60000, signal);
                     i--; 
                     continue;
                 }
 
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error?.message || `${org.toUpperCase()} HTTP error${res.status}`);
+                var data = await res.json();
+                if (!res.ok) throw new Error((data.error && data.error.message) || (org.toUpperCase() + " HTTP error " + res.status));
                 fullResponse = data.choices[0].message.content;
 
             } else {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${rawModel}:streamGenerateContent?key=${currentApiKey}`, {
+                var geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/" + rawModel + ":streamGenerateContent?key=" + currentApiKey;
+                var geminiRes = await fetch(geminiUrl, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 65536, temperature: 0.2 } }),
+                    body: JSON.stringify({ contents: [{ parts: [{ text: promptPayload }] }], generationConfig: { maxOutputTokens: 65536, temperature: 0.2 } }),
                     signal: signal
                 });
                 
-                if (!res.ok) {
-                    const errJson = await res.json();
-                    throw new Error(errJson.error?.message || `HTTP error ${res.status}`);
+                if (!geminiRes.ok) {
+                    var errJson = await geminiRes.json();
+                    throw new Error((errJson.error && errJson.error.message) || ("HTTP error " + geminiRes.status));
                 }
                 
-                const reader = res.body.getReader();
-                const decoder = new TextDecoder();
+                var reader = geminiRes.body.getReader();
+                var decoder = new TextDecoder();
                 while (true) {
-                    const { value, done } = await reader.read();
-                    if (done) break;
-                    const chunk = decoder.decode(value, { stream: true });
-                    const matches = [...chunk.matchAll(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/g)];
-                    for (const m of matches) fullResponse += m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+                    var readResult = await reader.read();
+                    if (readResult.done) break;
+                    var chunkText = decoder.decode(readResult.value, { stream: true });
+                    var matches = [...chunkText.matchAll(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/g)];
+                    for (var mIdx = 0; mIdx < matches.length; mIdx++) {
+                        fullResponse += matches[mIdx][1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+                    }
                 }
             }
 
-            const match = fullResponse.match(/\[[\s\S]*\]/);
-            let parsedChunk = match ? JSON.parse(match[0]) : JSON.parse(fullResponse);
+            var match = fullResponse.match(/\[[\s\S]*\]/);
+            var parsedChunk = match ? JSON.parse(match[0]) : JSON.parse(fullResponse);
             
             allGeneratedQuestions = allGeneratedQuestions.concat(parsedChunk);
-            parsedChunk.forEach(q => previouslyGeneratedConcepts.push(q.question)); 
+            parsedChunk.forEach(function(q) { previouslyGeneratedConcepts.push(q.question); }); 
         }
 
         currentQuizData = allGeneratedQuestions;
@@ -675,7 +695,7 @@ ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
         if (typeof isAdmin !== 'undefined' && isAdmin) {
             currentQuizData = await window.verifyAndCorrectQuizData(currentQuizData, signal, usedGenKeys);
         } else {
-            terminal.innerHTML += `<br><span style='color: var(--text-muted);'>[SYSTEM]: Neural QA Phase skipped (Standard Operator License). Assessment locked.</span><br>`;
+            terminal.innerHTML += "<br><span style='color: var(--text-muted);'>[SYSTEM]: Neural QA Phase skipped (Standard Operator License). Assessment locked.</span><br>";
         }
         
         window.prepareExamPortalLaunch(mins, posM, negM);
@@ -683,126 +703,130 @@ ${adminPromptTxt ? "\n[ADMIN OVERRIDE RULES]:\n" + adminPromptTxt : ""}`;
     } catch (err) {
         if (err.name === 'AbortError' || err.message === 'Aborted by operator.') return;
         terminal.style.color = "var(--neon-red)";
-        terminal.innerHTML += `<br><br>[CRITICAL FAILURE]: Generation failed. ${err.message}`;
-        setTimeout(() => window.resetExamUI(), 6000);
+        terminal.innerHTML += "<br><br>[CRITICAL FAILURE]: Generation failed. " + err.message;
+        setTimeout(function() { window.resetExamUI(); }, 6000);
     }
 };
 
-window.verifyAndCorrectQuizData = async function(quizData, signal, usedGenKeys = []) {
-    const terminal = document.getElementById('terminal');
-    const allGroqKeys = apiKeys.filter(k => k.provider === "groq" && (k.key || "").trim() !== "").map(k => k.key.trim());
+window.verifyAndCorrectQuizData = async function(quizData, signal, usedGenKeys) {
+    if (!usedGenKeys) usedGenKeys = [];
+    var terminal = document.getElementById('terminal');
+    var allGroqKeys = apiKeys.filter(function(k) { return k.provider === "groq" && (k.key || "").trim() !== ""; }).map(function(k) { return k.key.trim(); });
     
     if (allGroqKeys.length === 0) {
-        terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[WARNING]: Groq API Key required for 2-Tier QA. Skipping QA phase.</span><br>`;
+        terminal.innerHTML += "<br><span style='color: var(--neon-yellow);'>[WARNING]: Groq API Key required for 2-Tier QA. Skipping QA phase.</span><br>";
         return quizData; 
     }
 
-    let groqVerifyKey = allGroqKeys[0];
-    let groqPrimaryKey = allGroqKeys[0];
+    var groqVerifyKey = allGroqKeys[0];
+    var groqPrimaryKey = allGroqKeys[0];
 
     if (allGroqKeys.length >= 2) {
-        let freshKeys = allGroqKeys.filter(k => !usedGenKeys.includes(k));
+        var freshKeys = allGroqKeys.filter(function(k) { return !usedGenKeys.includes(k); });
         if (freshKeys.length >= 2) {
             groqVerifyKey = freshKeys[0];
             groqPrimaryKey = freshKeys[1];
         } else if (freshKeys.length === 1) {
             groqVerifyKey = freshKeys[0];
-            groqPrimaryKey = allGroqKeys.find(k => k !== groqVerifyKey); 
+            groqPrimaryKey = allGroqKeys.find(function(k) { return k !== groqVerifyKey; }); 
         } else {
             groqVerifyKey = allGroqKeys[0];
             groqPrimaryKey = allGroqKeys[1];
         }
     }
 
-    const lang = document.getElementById('lang') ? document.getElementById('lang').value : "English";
-    const BATCH_SIZE = (lang === 'Odia') ? 10 : 25;
+    var langNode = document.getElementById('lang');
+    var langVal = langNode ? langNode.value : "English";
+    var BATCH_SIZE = (langVal === 'Odia') ? 10 : 25;
 
-    terminal.innerHTML += `<br><span style='color: var(--neon-cyan);'>[PHASE 2]: Initiating 2-Tier Neural Quality Assurance...</span><br>`;
+    terminal.innerHTML += "<br><span style='color: var(--neon-cyan);'>[PHASE 2]: Initiating 2-Tier Neural Quality Assurance...</span><br>";
 
-    let totalCorrections = 0;
-    const batches = [];
-    for (let i = 0; i < quizData.length; i += BATCH_SIZE) {
-        batches.push(quizData.slice(i, i + BATCH_SIZE).map((q, idx) => ({ index: i + idx, ...q })));
+    var totalCorrections = 0;
+    var batches = [];
+    for (var j = 0; j < quizData.length; j += BATCH_SIZE) {
+        var batchSlice = quizData.slice(j, j + BATCH_SIZE).map(function(q, idx) {
+            return Object.assign({ index: j + idx }, q);
+        });
+        batches.push(batchSlice);
     }
 
-    async function sendTier1Verify(chunk, apiKey) {
-        const verifyPrompt = `You are a strict QA Audit System for a competitive exam engine. 
-Review the following JSON array of multiple-choice questions. Check for factual errors, illogical distractors, or an incorrect 'correct_option_index'.
-If ALL questions are 100% accurate, return EXACTLY: {"corrections": []}
-If ANY questions are flawed, return a JSON object with a "corrections" array containing the flawed questions and your suggested fixes.
-Schema: {"corrections": [{"index": 0, "question": "...", "options": ["...", "..."], "correct_option_index": 0}]}
-Array to Audit:\n${JSON.stringify(chunk)}`;
+    async function sendTier1Verify(chunkArr, apiKey) {
+        var verifyPromptText = "You are a strict QA Audit System for a competitive exam engine.\n" +
+            "Review the following JSON array of multiple-choice questions. Check for factual errors, illogical distractors, or an incorrect 'correct_option_index'.\n" +
+            "If ALL questions are 100% accurate, return EXACTLY: {\"corrections\": []}\n" +
+            "If ANY questions are flawed, return a JSON object with a \"corrections\" array containing the flawed questions and your suggested fixes.\n" +
+            "Schema: {\"corrections\": [{\"index\": 0, \"question\": \"...\", \"options\": [\"...\", \"...\"], \"correct_option_index\": 0}]}\n" +
+            "Array to Audit:\n" + JSON.stringify(chunkArr);
 
-        const payload = { 
+        var verifyPayload = { 
             model: "openai/gpt-oss-20b", 
-            messages: [{ role: "user", content: verifyPrompt }], 
+            messages: [{ role: "user", content: verifyPromptText }], 
             temperature: 0.1, 
             max_tokens: 4096,
             response_format: { type: "json_object" }
         };
 
-        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-            body: JSON.stringify(payload), signal: signal
+        var verifyRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': "Bearer " + apiKey },
+            body: JSON.stringify(verifyPayload), signal: signal
         });
-        if (res.status === 429) return { status: 429 };
-        if (!res.ok) throw new Error(`Tier 1 HTTP ${res.status}`);
-        const data = await res.json();
-        return { status: 200, data: JSON.parse(data.choices[0].message.content) };
+        if (verifyRes.status === 429) return { status: 429 };
+        if (!verifyRes.ok) throw new Error("Tier 1 HTTP " + verifyRes.status);
+        var verifyData = await verifyRes.json();
+        return { status: 200, data: JSON.parse(verifyData.choices[0].message.content) };
     }
 
-    async function sendTier2ExpertReview(flaggedItems, apiKey) {
-        terminal.innerHTML += `<span style='color: var(--neon-yellow);'>[EXPERT QA]: ${flaggedItems.length} anomaly(s) flagged. Escalating to 120B node...</span><br>`;
+    async function sendTier2ExpertReview(flaggedItemsArr, apiKey) {
+        terminal.innerHTML += "<span style='color: var(--neon-yellow);'>[EXPERT QA]: " + flaggedItemsArr.length + " anomaly(s) flagged. Escalating to 120B node...</span><br>";
         terminal.scrollTop = terminal.scrollHeight;
 
-        const reviewPrompt = `You are an Expert Chief QA Reviewer (120B parameter model).
-A preliminary fast QA system flagged the following multiple-choice questions for potential errors.
-Review each flagged item carefully. 
-- If the original question HAS an issue, FIX IT and return the corrected version.
-- If the original question IS PERFECTLY FINE and the fast QA was hallucinating, KEEP the original version intact.
-Return ONLY a JSON object with a "corrections" array in this exact schema:
-{"corrections": [{"index": <int>, "question": "...", "options": ["..."], "correct_option_index": <int>}]}
+        var expertPromptText = "You are an Expert Chief QA Reviewer (120B parameter model).\n" +
+            "A preliminary fast QA system flagged the following multiple-choice questions for potential errors.\n" +
+            "Review each flagged item carefully.\n" +
+            "- If the original question HAS an issue, FIX IT and return the corrected version.\n" +
+            "- If the original question IS PERFECTLY FINE and the fast QA was hallucinating, KEEP the original version intact.\n" +
+            "Return ONLY a JSON object with a \"corrections\" array in this exact schema:\n" +
+            "{\"corrections\": [{\"index\": 0, \"question\": \"...\", \"options\": [\"...\"], \"correct_option_index\": 0}]}\n\n" +
+            "Flagged items to review:\n" + JSON.stringify(flaggedItemsArr);
 
-Flagged items to review:\n${JSON.stringify(flaggedItems)}`;
-
-        const payload = { 
+        var expertPayload = { 
             model: "openai/gpt-oss-120b", 
-            messages: [{ role: "user", content: reviewPrompt }], 
+            messages: [{ role: "user", content: expertPromptText }], 
             temperature: 0.1, 
             max_tokens: 4096,
             response_format: { type: "json_object" }
         };
 
-        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-            body: JSON.stringify(payload), signal: signal
+        var expertRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': "Bearer " + apiKey },
+            body: JSON.stringify(expertPayload), signal: signal
         });
-        if (res.status === 429) {
-            terminal.innerHTML += `<span style='color: var(--neon-red);'>[RATE LIMIT]: 120B node throttled. Retrying escalation in 30s...</span><br>`;
+        if (expertRes.status === 429) {
+            terminal.innerHTML += "<span style='color: var(--neon-red);'>[RATE LIMIT]: 120B node throttled. Retrying escalation in 30s...</span><br>";
             await window.cancellableDelay(30000, signal);
-            return await sendTier2ExpertReview(flaggedItems, apiKey); 
+            return await sendTier2ExpertReview(flaggedItemsArr, apiKey); 
         }
-        if (!res.ok) throw new Error(`Tier 2 HTTP ${res.status}`);
-        const data = await res.json();
-        return { status: 200, data: JSON.parse(data.choices[0].message.content) };
+        if (!expertRes.ok) throw new Error("Tier 2 HTTP " + expertRes.status);
+        var expertData = await expertRes.json();
+        return { status: 200, data: JSON.parse(expertData.choices[0].message.content) };
     }
 
-    for (let i = 0; i < batches.length; i++) {
-        terminal.innerHTML += `<span style='color: var(--text-muted);'>[QA]: Scanning Batch ${i+1}/${batches.length} (20B Fast Node)...</span><br>`;
+    for (var b = 0; b < batches.length; b++) {
+        terminal.innerHTML += "<span style='color: var(--text-muted);'>[QA]: Scanning Batch " + (b+1) + "/" + batches.length + " (20B Fast Node)...</span><br>";
         terminal.scrollTop = terminal.scrollHeight;
         
-        let t1Res = await sendTier1Verify(batches[i], groqVerifyKey);
+        var t1Res = await sendTier1Verify(batches[b], groqVerifyKey);
         
         if (t1Res.status === 429) {
-            terminal.innerHTML += `<span style='color: var(--neon-yellow);'>[QA WARNING]: Rate limit hit on 20B node. Pausing for 60s...</span><br>`;
+            terminal.innerHTML += "<span style='color: var(--neon-yellow);'>[QA WARNING]: Rate limit hit on 20B node. Pausing for 60s...</span><br>";
             await window.cancellableDelay(60000, signal);
-            i--; 
+            b--; 
             continue;
         }
 
         if (t1Res.data && t1Res.data.corrections && t1Res.data.corrections.length > 0) {
-            let flaggedPayload = t1Res.data.corrections.map(c => {
-                let original = batches[i].find(orig => orig.index === c.index);
+            var flaggedPayloadObj = t1Res.data.corrections.map(function(c) {
+                var original = batches[b].find(function(orig) { return orig.index === c.index; });
                 return {
                     index: c.index,
                     original_question: original,
@@ -810,10 +834,10 @@ Flagged items to review:\n${JSON.stringify(flaggedItems)}`;
                 };
             });
 
-            let t2Res = await sendTier2ExpertReview(flaggedPayload, groqPrimaryKey);
+            var t2Res = await sendTier2ExpertReview(flaggedPayloadObj, groqPrimaryKey);
             
             if (t2Res.data && t2Res.data.corrections) {
-                t2Res.data.corrections.forEach(finalFix => {
+                t2Res.data.corrections.forEach(function(finalFix) {
                     if (finalFix.index !== undefined && finalFix.index >= 0 && finalFix.index < quizData.length) {
                         quizData[finalFix.index].question = finalFix.question;
                         quizData[finalFix.index].options = finalFix.options;
@@ -826,9 +850,9 @@ Flagged items to review:\n${JSON.stringify(flaggedItems)}`;
     }
 
     if (totalCorrections > 0) {
-        terminal.innerHTML += `<br><span style='color: var(--neon-yellow);'>[QA RESOLVED]: Expert 120B node finalized ${totalCorrections} correction(s).</span><br>`;
+        terminal.innerHTML += "<br><span style='color: var(--neon-yellow);'>[QA RESOLVED]: Expert 120B node finalized " + totalCorrections + " correction(s).</span><br>";
     } else {
-        terminal.innerHTML += `<br><span style='color: var(--neon-green);'>[QA CLEAR]: 0 anomalies confirmed. Assessment locked.</span><br>`;
+        terminal.innerHTML += "<br><span style='color: var(--neon-green);'>[QA CLEAR]: 0 anomalies confirmed. Assessment locked.</span><br>";
     }
 
     return quizData;
@@ -839,35 +863,31 @@ window.prepareExamPortalLaunch = function(mins, posM, negM) {
         quizData: currentQuizData, mins: mins, posMark: posM, negMark: negM
     }));
     
-    const terminal = document.getElementById('terminal');
-    terminal.innerHTML += `<br><span style='color: var(--neon-green);'>[SYSTEM]: Assessment successfully compiled.</span><br>`;
+    var terminal = document.getElementById('terminal');
+    terminal.innerHTML += "<br><span style='color: var(--neon-green);'>[SYSTEM]: Assessment successfully compiled.</span><br>";
     
-    const launchBtnId = 'launch-portal-btn-' + Date.now();
-    terminal.innerHTML += `<br><button id="${launchBtnId}" class="cyber-btn" style="margin-top: 10px; width: 100%;">🚀 ENTER EXAM PORTAL</button>`;
+    var launchBtnId = 'launch-portal-btn-' + Date.now();
+    terminal.innerHTML += "<br><button type=\"button\" id=\"" + launchBtnId + "\" class=\"cyber-btn\" style=\"margin-top: 10px; width: 100%;\" onclick=\"window.open(window.location.pathname + '?mode=exam', '_blank'); window.resetExamUI();\">🚀 ENTER EXAM PORTAL</button>";
     
-    const cancelBtn = document.getElementById('terminal-cancel-btn');
+    var cancelBtn = document.getElementById('terminal-cancel-btn');
     if (cancelBtn) cancelBtn.style.display = 'none';
-
-    document.getElementById(launchBtnId).addEventListener('click', () => {
-        window.open(window.location.pathname + "?mode=exam", "_blank");
-        window.resetExamUI();
-    });
 };
 
 window.initStandaloneExam = function() {
-    const data = JSON.parse(localStorage.getItem("NEXUS_PENDING_EXAM"));
-    if (!data) {
+    var dataStr = localStorage.getItem("NEXUS_PENDING_EXAM");
+    if (!dataStr) {
         alert("No active exam data found. Returning to dashboard.");
         window.location.href = window.location.pathname;
         return;
     }
+    var data = JSON.parse(dataStr);
 
-    const sidebar = document.querySelector('.sidebar');
+    var sidebar = document.querySelector('.sidebar');
     if (sidebar) sidebar.style.display = 'none';
-    const bottomNav = document.querySelector('.bottom-nav');
+    var bottomNav = document.querySelector('.bottom-nav');
     if (bottomNav) bottomNav.style.display = 'none';
     
-    const mainContent = document.querySelector('.main-content');
+    var mainContent = document.querySelector('.main-content');
     if (mainContent) {
         mainContent.style.marginLeft = '0';
         mainContent.style.maxWidth = '1400px'; 
@@ -885,8 +905,8 @@ window.initStandaloneExam = function() {
     currentQIndex = 0;
     timeTracker = {}; 
     
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    const pageExam = document.getElementById('page-exam');
+    document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+    var pageExam = document.getElementById('page-exam');
     if (pageExam) pageExam.classList.add('active');
     
     document.getElementById('exam-setup').style.display = 'none';
@@ -894,11 +914,11 @@ window.initStandaloneExam = function() {
     document.getElementById('exam-results').style.display = 'none';
     document.getElementById('exam-active').style.display = 'block';
     
-    const headerTitle = document.querySelector('#page-exam .header-title');
+    var headerTitle = document.querySelector('#page-exam .header-title');
     if (headerTitle) headerTitle.style.display = 'none';
 
     isTimerPaused = false;
-    const pBtn = document.getElementById('pause-timer-btn');
+    var pBtn = document.getElementById('pause-timer-btn');
     if(pBtn) { pBtn.innerHTML = '⏸ Pause'; pBtn.style.color = ''; pBtn.style.borderColor = ''; }
 
     window.buildPalette();
@@ -907,36 +927,40 @@ window.initStandaloneExam = function() {
 };
 
 window.shuffleQuizOptions = function(quizData) {
-    let clonedData = JSON.parse(JSON.stringify(quizData)); 
-    clonedData.forEach(q => {
+    var clonedData = JSON.parse(JSON.stringify(quizData)); 
+    clonedData.forEach(function(q) {
         if (!q.options || q.options.length === 0) return;
-        let mappedOptions = q.options.map((opt, idx) => ({
-            text: opt,
-            isCorrect: idx === q.correct_option_index
-        }));
-        for (let i = mappedOptions.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [mappedOptions[i], mappedOptions[j]] = [mappedOptions[j], mappedOptions[i]];
+        var mappedOptions = q.options.map(function(opt, idx) {
+            return {
+                text: opt,
+                isCorrect: idx === q.correct_option_index
+            };
+        });
+        for (var i = mappedOptions.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var temp = mappedOptions[i];
+            mappedOptions[i] = mappedOptions[j];
+            mappedOptions[j] = temp;
         }
-        q.options = mappedOptions.map(m => m.text);
-        q.correct_option_index = mappedOptions.findIndex(m => m.isCorrect);
+        q.options = mappedOptions.map(function(m) { return m.text; });
+        q.correct_option_index = mappedOptions.findIndex(function(m) { return m.isCorrect; });
     });
     return clonedData;
 };
 
 window.buildPalette = function() {
-    const palette = document.getElementById('q-palette');
+    var palette = document.getElementById('q-palette');
     if (!palette) return;
     palette.innerHTML = "";
-    currentQuizData.forEach((q, i) => {
-        palette.innerHTML += `<button type="button" class="pal-btn" id="pal-${i}" onclick="window.jumpToQuestion(${i})">${i + 1}</button>`;
+    currentQuizData.forEach(function(q, i) {
+        palette.innerHTML += "<button type=\"button\" class=\"pal-btn\" id=\"pal-" + i + "\" onclick=\"window.jumpToQuestion(" + i + ")\">" + (i + 1) + "</button>";
     });
     window.updatePaletteStates();
 };
 
 window.updatePaletteStates = function() {
-    currentQuizData.forEach((q, i) => {
-        const btn = document.getElementById(`pal-${i}`);
+    currentQuizData.forEach(function(q, i) {
+        var btn = document.getElementById("pal-" + i);
         if (!btn) return;
         btn.className = "pal-btn";
         if (i === currentQIndex) btn.classList.add('current');
@@ -946,11 +970,11 @@ window.updatePaletteStates = function() {
 };
 
 window.filterPalette = function(filterType) {
-    currentQuizData.forEach((q, i) => {
-        const btn = document.getElementById(`pal-${i}`);
+    currentQuizData.forEach(function(q, i) {
+        var btn = document.getElementById("pal-" + i);
         if (!btn) return;
-        const isAnswered = userAnswers[i] !== undefined;
-        const isBookmarked = userBookmarks[i] === true;
+        var isAnswered = userAnswers[i] !== undefined;
+        var isBookmarked = userBookmarks[i] === true;
         if (filterType === 'all') btn.style.display = 'flex';
         else if (filterType === 'review') btn.style.display = isBookmarked ? 'flex' : 'none';
         else if (filterType === 'unanswered') btn.style.display = (!isAnswered && !isBookmarked) ? 'flex' : 'none';
@@ -959,27 +983,28 @@ window.filterPalette = function(filterType) {
 
 window.renderQuestion = function(index) {
     currentQIndex = index;
-    const q = currentQuizData[index];
-    document.getElementById('q-counter').innerText = `Question ${index + 1} of${currentQuizData.length}`;
-    document.getElementById('progress-fill').style.width = `${((index + 1) / currentQuizData.length) * 100}%`;
+    var q = currentQuizData[index];
+    document.getElementById('q-counter').innerText = "Question " + (index + 1) + " of " + currentQuizData.length;
+    document.getElementById('progress-fill').style.width = (((index + 1) / currentQuizData.length) * 100) + "%";
     document.getElementById('bookmark-badge').innerText = userBookmarks[index] ? "★ Marked for Review" : "";
     
-    const qCard = document.getElementById('active-q-text').parentElement;
+    var qCard = document.getElementById('active-q-text').parentElement;
     qCard.classList.remove('q-transition');
     void qCard.offsetWidth; 
     qCard.classList.add('q-transition');
 
-    document.getElementById('active-q-text').innerText = `${index + 1}.${q.question}`;
+    document.getElementById('active-q-text').innerText = (index + 1) + ". " + q.question;
     
-    const optContainer = document.getElementById('active-options-container');
+    var optContainer = document.getElementById('active-options-container');
     optContainer.innerHTML = "";
-    q.options.forEach((opt, oIdx) => {
-        const isSelected = userAnswers[index] === oIdx ? "selected" : "";
-        optContainer.innerHTML += `
-            <div class="option-card ${isSelected}" onclick="window.selectOption(${index},${oIdx})">
-                <input type="radio" style="margin-right:12px;" ${isSelected ? "checked" : ""}> 
-                <span>${opt}</span>
-            </div>`;
+    q.options.forEach(function(opt, oIdx) {
+        var isSelected = userAnswers[index] === oIdx ? "selected" : "";
+        var checkedAttr = isSelected ? "checked" : "";
+        optContainer.innerHTML += 
+            "<div class=\"option-card " + isSelected + "\" onclick=\"window.selectOption(" + index + "," + oIdx + ")\">" +
+                "<input type=\"radio\" style=\"margin-right:12px;\" " + checkedAttr + ">" +
+                "<span>" + opt + "</span>" +
+            "</div>";
     });
     window.updatePaletteStates();
 };
@@ -1002,10 +1027,10 @@ window.jumpToQuestion = function(idx) { window.renderQuestion(idx); };
 
 window.startTimer = function() {
     if (timerInterval) clearInterval(timerInterval);
-    const timerDisplay = document.getElementById('timer-display');
+    var timerDisplay = document.getElementById('timer-display');
     timerDisplay.classList.remove('timer-critical');
 
-    timerInterval = setInterval(() => {
+    timerInterval = setInterval(function() {
         if (isTimerPaused) return; 
         if (secondsLeft <= 0) { clearInterval(timerInterval); window.submitExam(); return; }
         
@@ -1015,14 +1040,14 @@ window.startTimer = function() {
 
         if (secondsLeft <= 60) timerDisplay.classList.add('timer-critical');
 
-        timerDisplay.innerText = `${Math.floor(secondsLeft/60).toString().padStart(2,'0')}:${(secondsLeft%60).toString().padStart(2,'0')}`;
+        timerDisplay.innerText = Math.floor(secondsLeft/60).toString().padStart(2,'0') + ":" + (secondsLeft%60).toString().padStart(2,'0');
     }, 1000);
 };
 
 window.toggleTimerPause = function() {
     if (!isAdmin) return;
     isTimerPaused = !isTimerPaused;
-    const btn = document.getElementById('pause-timer-btn');
+    var btn = document.getElementById('pause-timer-btn');
     if (btn) {
         if (isTimerPaused) {
             btn.innerHTML = '▶ Resume';
@@ -1037,7 +1062,7 @@ window.toggleTimerPause = function() {
 };
 
 window.toggleFullscreen = function() {
-    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(function(){});
     else if (document.exitFullscreen) document.exitFullscreen();
 };
 
@@ -1046,32 +1071,32 @@ window.confirmSubmit = function() { if (confirm("Submit examination?")) window.s
 window.submitExam = function() {
     if (timerInterval) clearInterval(timerInterval);
     
-    let correct = 0, wrong = 0, skipped = 0;
+    var correct = 0, wrong = 0, skipped = 0;
     
-    currentQuizData.forEach((q, i) => {
-        const sel = userAnswers[i];
+    currentQuizData.forEach(function(q, i) {
+        var sel = userAnswers[i];
         if (sel === undefined) { skipped++; }
         else if (sel === q.correct_option_index) { correct++; }
         else { wrong++; window.addToVault(q); }
     });
 
-    const maxMarks = currentQuizData.length * posMark;
-    const totalMarks = (correct * posMark) - (wrong * negMark);
-    const acc = Math.round((correct / currentQuizData.length) * 100);
+    var maxMarks = currentQuizData.length * posMark;
+    var totalMarks = (correct * posMark) - (wrong * negMark);
+    var acc = Math.round((correct / currentQuizData.length) * 100);
     
-    const formattedTotal = Number.isInteger(totalMarks) ? totalMarks : totalMarks.toFixed(2);
-    const penaltyApplied = Number.isInteger(wrong * negMark) ? (wrong * negMark) : (wrong * negMark).toFixed(2);
+    var formattedTotal = Number.isInteger(totalMarks) ? totalMarks : totalMarks.toFixed(2);
+    var penaltyApplied = Number.isInteger(wrong * negMark) ? (wrong * negMark) : (wrong * negMark).toFixed(2);
 
     document.getElementById('exam-active').style.display = 'none';
     document.getElementById('exam-results').style.display = 'block';
     
-    document.getElementById('score-summary-banner').innerHTML = `
-        <div class="score-banner">SCORE: ${formattedTotal} /${maxMarks} <br><span style="font-size: 16px; color: var(--text-muted);">(${acc}% Accuracy)</span></div>
-        <div style="display:flex; justify-content:space-around; color:var(--text-muted); font-size:14px; flex-wrap: wrap; gap: 10px;">
-            <div>✅ Correct: <strong>${correct}</strong> <span style="color:var(--neon-green);">(+${correct * posMark})</span></div>
-            <div>❌ Wrong: <strong>${wrong}</strong> <span style="color:var(--neon-red);">(-${penaltyApplied})</span></div>
-            <div>⏭ Skipped: <strong>${skipped}</strong> <span style="color:var(--text-muted);">(0)</span></div>
-        </div>`;
+    document.getElementById('score-summary-banner').innerHTML = 
+        "<div class=\"score-banner\">SCORE: " + formattedTotal + " / " + maxMarks + " <br><span style=\"font-size: 16px; color: var(--text-muted);\">(" + acc + "% Accuracy)</span></div>" +
+        "<div style=\"display:flex; justify-content:space-around; color:var(--text-muted); font-size:14px; flex-wrap: wrap; gap: 10px;\">" +
+            "<div>✅ Correct: <strong>" + correct + "</strong> <span style=\"color:var(--neon-green);\">(+" + (correct * posMark) + ")</span></div>" +
+            "<div>❌ Wrong: <strong>" + wrong + "</strong> <span style=\"color:var(--neon-red);\">(-" + penaltyApplied + ")</span></div>" +
+            "<div>⏭ Skipped: <strong>" + skipped + "</strong> <span style=\"color:var(--text-muted);\">(0)</span></div>" +
+        "</div>";
         
     window.renderReviewList('all');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1080,85 +1105,87 @@ window.submitExam = function() {
 window.filterReview = function(mode) { window.renderReviewList(mode); };
 
 window.renderReviewList = function(mode) {
-    const container = document.getElementById('review-container');
+    var container = document.getElementById('review-container');
     container.innerHTML = "";
     
-    currentQuizData.forEach((q, i) => {
-        const sel = userAnswers[i];
-        const isSkipped = sel === undefined;
-        const corr = sel === q.correct_option_index;
+    currentQuizData.forEach(function(q, i) {
+        var sel = userAnswers[i];
+        var isSkipped = sel === undefined;
+        var corr = sel === q.correct_option_index;
         
         if (mode === 'wrong' && corr) return;
         
-        let statusText = corr ? 'CORRECT' : (isSkipped ? 'SKIPPED' : 'INCORRECT');
-        let statusColor = corr ? 'var(--neon-green)' : (isSkipped ? 'var(--neon-yellow)' : 'var(--neon-red)');
+        var statusText = corr ? 'CORRECT' : (isSkipped ? 'SKIPPED' : 'INCORRECT');
+        var statusColor = corr ? 'var(--neon-green)' : (isSkipped ? 'var(--neon-yellow)' : 'var(--neon-red)');
 
-        let timeSpent = timeTracker[i] || 0;
-        let timeStr = `${Math.floor(timeSpent/60)}m${timeSpent%60}s`;
-        let timeTrapHtml = timeSpent >= 120 
-            ? `<span style="color: var(--neon-red); font-size: 12px; margin-left: 10px; font-weight:bold;">⚠️ Time Trap (${timeStr})</span>` 
-            : `<span style="color: var(--text-muted); font-size: 12px; margin-left: 10px;">⏱ ${timeStr}</span>`;
+        var timeSpent = timeTracker[i] || 0;
+        var timeStr = Math.floor(timeSpent/60) + "m" + (timeSpent%60) + "s";
+        var timeTrapHtml = timeSpent >= 120 
+            ? "<span style=\"color: var(--neon-red); font-size: 12px; margin-left: 10px; font-weight:bold;\">⚠️ Time Trap (" + timeStr + ")</span>" 
+            : "<span style=\"color: var(--text-muted); font-size: 12px; margin-left: 10px;\">⏱ " + timeStr + "</span>";
 
-        let html = `<div class="glass-card" style="border-left: 4px solid ${statusColor}; padding: 18px;">
-            <p style="font-weight:700; color:${statusColor}; margin-top:0; display:flex; align-items:center;">Q${i+1}. ${statusText}${timeTrapHtml}</p>
-            <p class="q-text" style="font-size:15px;">${q.question}</p>`;
+        var html = "<div class=\"glass-card\" style=\"border-left: 4px solid " + statusColor + "; padding: 18px;\">" +
+            "<p style=\"font-weight:700; color:" + statusColor + "; margin-top:0; display:flex; align-items:center;\">Q" + (i+1) + ". " + statusText + timeTrapHtml + "</p>" +
+            "<p class=\"q-text\" style=\"font-size:15px;\">" + q.question + "</p>";
             
-        q.options.forEach((opt, oIdx) => {
-            let cls = oIdx === q.correct_option_index ? "correct" : (oIdx === sel ? "wrong" : "");
-            html += `<div class="option-card ${cls}" style="padding:10px 14px; margin:4px 0; font-size:14px;"><span>${opt}</span></div>`;
+        q.options.forEach(function(opt, oIdx) {
+            var cls = oIdx === q.correct_option_index ? "correct" : (oIdx === sel ? "wrong" : "");
+            html += "<div class=\"option-card " + cls + "\" style=\"padding:10px 14px; margin:4px 0; font-size:14px;\"><span>" + opt + "</span></div>";
         });
         
-        container.innerHTML += html + `</div>`;
+        container.innerHTML += html + "</div>";
     });
 };
 
 window.generateReportHTML = function() {
-    const filter = document.getElementById('export-filter').value;
-    let htmlContent = `<html><head><style>body{font-family:sans-serif;padding:20px;background:#f8fafc;color:#0f172a;} .card{background:#fff;border:1px solid #cbd5e1;padding:16px;border-radius:12px;margin-bottom:12px;} .correct{color:#10b981;font-weight:bold;} .wrong{color:#ef4444;font-weight:bold;} .skipped{color:#f59e0b;font-weight:bold;}</style></head><body>`;
-    htmlContent += `<h2>NEXUS OS - Assessment Report</h2><hr>`;
+    var filterNode = document.getElementById('export-filter');
+    var filter = filterNode ? filterNode.value : 'all';
+    var htmlContent = "<html><head><style>body{font-family:sans-serif;padding:20px;background:#f8fafc;color:#0f172a;} .card{background:#fff;border:1px solid #cbd5e1;padding:16px;border-radius:12px;margin-bottom:12px;} .correct{color:#10b981;font-weight:bold;} .wrong{color:#ef4444;font-weight:bold;} .skipped{color:#f59e0b;font-weight:bold;}</style></head><body>";
+    htmlContent += "<h2>NEXUS OS - Assessment Report</h2><hr>";
     
-    currentQuizData.forEach((q, i) => {
-        const sel = userAnswers[i];
-        const corr = sel === q.correct_option_index;
+    currentQuizData.forEach(function(q, i) {
+        var sel = userAnswers[i];
+        var corr = sel === q.correct_option_index;
         if (filter === 'correct' && !corr) return;
         if (filter === 'wrong' && corr) return;
 
-        let statusText = (sel === undefined) ? " [Skipped]" : "";
-        let timeSpent = timeTracker[i] || 0;
-        let timeStr = ` (Time: ${Math.floor(timeSpent/60)}m${timeSpent%60}s)`;
+        var statusText = (sel === undefined) ? " [Skipped]" : "";
+        var timeSpent = timeTracker[i] || 0;
+        var timeStr = " (Time: " + Math.floor(timeSpent/60) + "m" + (timeSpent%60) + "s)";
 
-        htmlContent += `<div class="card">
-            <p><strong>Q${i+1}.</strong>${q.question} <span class="skipped">${statusText}</span> <span style="font-size:12px; color:#64748b;">${timeStr}</span></p>
-            <ul>`;
-        q.options.forEach((opt, oIdx) => {
-            let tag = oIdx === q.correct_option_index ? " ✔ [Correct]" : (oIdx === sel ? " ❌ [Your Answer]" : "");
-            htmlContent += `<li>${opt}${tag}</li>`;
+        htmlContent += "<div class=\"card\">" +
+            "<p><strong>Q" + (i+1) + ".</strong>" + q.question + " <span class=\"skipped\">" + statusText + "</span> <span style=\"font-size:12px; color:#64748b;\">" + timeStr + "</span></p>" +
+            "<ul>";
+        q.options.forEach(function(opt, oIdx) {
+            var tag = oIdx === q.correct_option_index ? " ✔ [Correct]" : (oIdx === sel ? " ❌ [Your Answer]" : "");
+            htmlContent += "<li>" + opt + tag + "</li>";
         });
-        htmlContent += `</ul></div>`;
+        htmlContent += "</ul></div>";
     });
-    return htmlContent + `</body></html>`;
+    return htmlContent + "</body></html>";
 };
 
 window.downloadAssessmentReport = function() {
-    const format = document.getElementById('export-format').value;
-    const html = window.generateReportHTML();
+    var format = document.getElementById('export-format').value;
+    var html = window.generateReportHTML();
     if (format === 'pdf') {
-        const win = window.open('', '_blank'); win.document.write(html); win.document.close(); win.print();
+        var win = window.open('', '_blank'); win.document.write(html); win.document.close(); win.print();
     } else {
-        const blob = new Blob([html], { type: 'text/html' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-        a.download = `nexus_exam_report_${Date.now()}.html`; a.click();
+        var blob = new Blob([html], { type: 'text/html' });
+        var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = "nexus_exam_report_" + Date.now() + ".html"; a.click();
     }
 };
 
 window.emailAssessmentReport = function() {
-    const mailId = localStorage.getItem("DEST_MAIL") || "";
+    var mailId = localStorage.getItem("DEST_MAIL") || "";
     if (!mailId) return alert("Destination Mail ID is not set!");
     window.downloadAssessmentReport();
-    setTimeout(() => { window.location.href = `mailto:${mailId}?subject=CBT Report&body=Please find the attached report.`; }, 1500);
+    setTimeout(function() { window.location.href = "mailto:" + mailId + "?subject=CBT Report&body=Please find the attached report."; }, 1500);
 };
 
 window.restartSameQuiz = function() { userAnswers = {}; window.initStandaloneExam(); };
+
 window.resetExamUI = function() {
     if(timerInterval) clearInterval(timerInterval);
     document.getElementById('terminal-screen').style.display = 'none';
@@ -1167,7 +1194,7 @@ window.resetExamUI = function() {
     document.getElementById('exam-setup').style.display = 'block';
 
     if (typeof isAdmin !== 'undefined' && !isAdmin) {
-        const diffSelect = document.getElementById('difficulty');
+        var diffSelect = document.getElementById('difficulty');
         if (diffSelect) diffSelect.value = "2";
     }
 };
@@ -1176,7 +1203,7 @@ window.resetExamUI = function() {
 // VAULT LOGIC
 // ==========================================
 window.addToVault = function(q) {
-    let existingItem = mistakeVault.find(v => v.question === q.question);
+    var existingItem = mistakeVault.find(function(v) { return v.question === q.question; });
     if (!existingItem) {
         q.user_failed_at = new Date().toLocaleDateString();
         q.srs_stage = 0; 
@@ -1187,78 +1214,80 @@ window.addToVault = function(q) {
 };
 
 window.renderVault = function() {
-    const c = document.getElementById('vault-container');
+    var c = document.getElementById('vault-container');
     if (!c) return;
     c.innerHTML = "";
     
-    const adminJsonBox = document.getElementById('vault-json-textarea');
+    var adminJsonBox = document.getElementById('vault-json-textarea');
     if (adminJsonBox) adminJsonBox.value = JSON.stringify(mistakeVault, null, 2);
 
-    if (mistakeVault.length === 0) { c.innerHTML = `<p style="color:var(--neon-green); text-align:center;">Vault is empty.</p>`; return; }
+    if (mistakeVault.length === 0) { c.innerHTML = "<p style=\"color:var(--neon-green); text-align:center;\">Vault is empty.</p>"; return; }
     
-    const now = Date.now();
-    mistakeVault.sort((a, b) => (a.next_review_date || 0) - (b.next_review_date || 0));
+    var now = Date.now();
+    mistakeVault.sort(function(a, b) { return (a.next_review_date || 0) - (b.next_review_date || 0); });
 
-    mistakeVault.forEach((q, idx) => {
-        const isDue = now >= (q.next_review_date || 0);
-        let dueText = isDue 
-            ? `<span style="color:var(--neon-yellow); font-weight:bold;">⚠️ Review Due</span>` 
-            : `<span style="color:var(--text-muted);">Next Review: ${new Date(q.next_review_date).toLocaleDateString()}</span>`;
+    mistakeVault.forEach(function(q, idx) {
+        var isDue = now >= (q.next_review_date || 0);
+        var dueText = isDue 
+            ? "<span style=\"color:var(--neon-yellow); font-weight:bold;\">⚠️ Review Due</span>" 
+            : "<span style=\"color:var(--text-muted);\">Next Review: " + new Date(q.next_review_date).toLocaleDateString() + "</span>";
         
-        let btnHtml = isDue 
-            ? `<button type="button" class="cyber-btn" style="padding: 6px 14px; font-size: 11px; margin-top: 14px; width: auto;" onclick="window.startVaultReview(${idx})">🧠 Review Now</button>`
-            : ``;
+        var btnHtml = isDue 
+            ? "<button type=\"button\" class=\"cyber-btn\" style=\"padding: 6px 14px; font-size: 11px; margin-top: 14px; width: auto;\" onclick=\"window.startVaultReview(" + idx + ")\">🧠 Review Now</button>"
+            : "";
 
-        c.innerHTML += `<div class="glass-card" id="vault-card-${idx}" style="border-left:4px solid var(--neon-red); padding:16px;">
-            <div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-bottom:10px;">
-                <p style="font-size:11px; color:var(--neon-red); margin:0; font-weight:bold;">Failed: ${q.user_failed_at} | Level: ${q.srs_stage || 0}</p>
-                <p style="font-size:11px; margin:0;">${dueText}</p>
-            </div>
-            <p class="q-text" style="font-size:15px; margin-bottom:8px;">${q.question}</p>
-            ${!isDue ? `<p style="color:var(--neon-green); font-size:14px; margin:0;">✔ ${q.options[q.correct_option_index]}</p>` : ''}
-            ${btnHtml}
-        </div>`;
+        var answerHtml = !isDue 
+            ? "<p style=\"color:var(--neon-green); font-size:14px; margin:0;\">✔ " + q.options[q.correct_option_index] + "</p>"
+            : "";
+
+        c.innerHTML += "<div class=\"glass-card\" id=\"vault-card-" + idx + "\" style=\"border-left:4px solid var(--neon-red); padding:16px;\">" +
+            "<div style=\"display:flex; justify-content:space-between; flex-wrap:wrap; margin-bottom:10px;\">" +
+                "<p style=\"font-size:11px; color:var(--neon-red); margin:0; font-weight:bold;\">Failed: " + q.user_failed_at + " | Level: " + (q.srs_stage || 0) + "</p>" +
+                "<p style=\"font-size:11px; margin:0;\">" + dueText + "</p>" +
+            "</div>" +
+            "<p class=\"q-text\" style=\"font-size:15px; margin-bottom:8px;\">" + q.question + "</p>" +
+            answerHtml + btnHtml +
+        "</div>";
     });
 };
 
 window.startVaultReview = function(idx) {
-    const c = document.getElementById(`vault-card-${idx}`);
-    const q = mistakeVault[idx];
+    var c = document.getElementById("vault-card-" + idx);
+    var q = mistakeVault[idx];
     
-    let reviewOptions = q.options.map((opt, i) => ({ text: opt, originalIndex: i }));
-    reviewOptions.sort(() => Math.random() - 0.5);
+    var reviewOptions = q.options.map(function(opt, i) { return { text: opt, originalIndex: i }; });
+    reviewOptions.sort(function() { return Math.random() - 0.5; });
     
-    let optsHtml = "";
-    reviewOptions.forEach((opt) => {
-        optsHtml += `<div class="option-card" onclick="window.submitVaultReview(${idx}, ${opt.originalIndex})" style="padding:10px 14px; font-size:14px; margin:6px 0;">${opt.text}</div>`;
+    var optsHtml = "";
+    reviewOptions.forEach(function(opt) {
+        optsHtml += "<div class=\"option-card\" onclick=\"window.submitVaultReview(" + idx + ", " + opt.originalIndex + ")\" style=\"padding:10px 14px; font-size:14px; margin:6px 0;\">" + opt.text + "</div>";
     });
 
-    c.innerHTML = `
-        <p style="color:var(--neon-cyan); font-weight:bold; font-size:12px; margin-top:0;">[ ACTIVE SRS RECALL ]</p>
-        <p class="q-text" style="font-size:15px; margin-bottom:12px;">${q.question}</p>
-        ${optsHtml}
-        <button type="button" class="cyber-btn secondary" style="margin-top:10px; padding: 6px 12px; font-size:11px; width:auto;" onclick="window.renderVault()">Cancel</button>
-    `;
+    c.innerHTML = "<p style=\"color:var(--neon-cyan); font-weight:bold; font-size:12px; margin-top:0;\">[ ACTIVE SRS RECALL ]</p>" +
+        "<p class=\"q-text\" style=\"font-size:15px; margin-bottom:12px;\">" + q.question + "</p>" +
+        optsHtml +
+        "<button type=\"button\" class=\"cyber-btn secondary\" style=\"margin-top:10px; padding: 6px 12px; font-size:11px; width:auto;\" onclick=\"window.renderVault()\">Cancel</button>";
 };
 
 window.submitVaultReview = function(idx, selectedOriginalIdx) {
-    const q = mistakeVault[idx];
+    var q = mistakeVault[idx];
     if (selectedOriginalIdx === q.correct_option_index) {
         q.srs_stage = (q.srs_stage || 0) + 1;
-        const intervals = [1, 3, 7, 14, 30, 90]; 
-        const addDays = intervals[Math.min(q.srs_stage, intervals.length - 1)];
+        var intervals = [1, 3, 7, 14, 30, 90]; 
+        var addDays = intervals[Math.min(q.srs_stage, intervals.length - 1)];
         q.next_review_date = Date.now() + (addDays * 86400000);
-        alert(`Correct! Moving to SRS Level ${q.srs_stage}. Next review in ${addDays} days.`);
+        alert("Correct! Moving to SRS Level " + q.srs_stage + ". Next review in " + addDays + " days.");
     } else {
         q.srs_stage = 0;
         q.next_review_date = Date.now() + 86400000;
-        alert(`Incorrect. The right answer was:\n\n${q.options[q.correct_option_index]}\n\nSRS Level reset to 0. Try again tomorrow.`);
+        alert("Incorrect. The right answer was:\n\n" + q.options[q.correct_option_index] + "\n\nSRS Level reset to 0. Try again tomorrow.");
     }
     localStorage.setItem("NEXUS_VAULT", JSON.stringify(mistakeVault));
     window.renderVault();
 };
 
 window.clearVault = function() { if(confirm("Purge vault?")) { mistakeVault = []; localStorage.removeItem("NEXUS_VAULT"); window.renderVault(); } };
+
 window.saveVaultJson = function() {
     try {
         mistakeVault = JSON.parse(document.getElementById('vault-json-textarea').value);
@@ -1271,68 +1300,65 @@ window.saveVaultJson = function() {
 };
 
 window.clearChatHistory = function() {
-    const box = document.getElementById('chat-box');
+    var box = document.getElementById('chat-box');
     if (box) {
-        box.innerHTML = `
-            <div class="msg-wrapper ai" style="display: flex; flex-direction: column; align-items: flex-start;">
-                <div class="msg ai">Chat history cleared. Ready for new queries.</div>
-                <span class="timestamp" style="font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-left: 4px;">Just now</span>
-            </div>`;
+        box.innerHTML = "<div class=\"msg-wrapper ai\" style=\"display: flex; flex-direction: column; align-items: flex-start;\">" +
+            "<div class=\"msg ai\">Chat history cleared. Ready for new queries.</div>" +
+            "<span class=\"timestamp\" style=\"font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-left: 4px;\">Just now</span>" +
+        "</div>";
     }
 };
 
 window.sendChat = async function() {
-    const chatModelSelect = document.getElementById('chat-model-select');
-    const rawModel = chatModelSelect ? chatModelSelect.value : "gemini-3.8-flash";
+    var chatModelSelect = document.getElementById('chat-model-select');
+    var rawModel = chatModelSelect ? chatModelSelect.value : "gemini-3.8-flash";
     
-    let org = "gemini";
+    var org = "gemini";
     if (rawModel.includes(":free")) org = "openrouter";
     else if (rawModel.includes("openai/") || rawModel.includes("qwen/") || rawModel.includes("groq/")) org = "groq";
     else if (rawModel.includes("deepseek-v4")) org = "deepseek";
 
-    let activeKey = window.getRandomKey(org);
+    var activeKey = window.getRandomKey(org);
     if (!activeKey) {
-        alert(`No valid API Key found for ${org.toUpperCase()}! Please add it in the Config tab.`);
+        alert("No valid API Key found for " + org.toUpperCase() + "! Please add it in the Config tab.");
         window.switchTab('settings');
         return;
     }
 
-    const inp = document.getElementById('chat-input');
+    var inp = document.getElementById('chat-input');
     if (!inp) return;
-    const msg = inp.value.trim();
+    var msg = inp.value.trim();
     if (!msg) return;
 
-    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const box = document.getElementById('chat-box');
+    var currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    var box = document.getElementById('chat-box');
 
-    box.innerHTML += `
-        <div class="msg-wrapper user" style="display: flex; flex-direction: column; align-items: flex-end;">
-            <div class="msg user">${msg}</div>
-            <span class="timestamp" style="font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-right: 4px;">${currentTime}</span>
-        </div>`;
+    box.innerHTML += "<div class=\"msg-wrapper user\" style=\"display: flex; flex-direction: column; align-items: flex-end;\">" +
+        "<div class=\"msg user\">" + msg + "</div>" +
+        "<span class=\"timestamp\" style=\"font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-right: 4px;\">" + currentTime + "</span>" +
+    "</div>";
     
     inp.value = "";
     box.scrollTop = box.scrollHeight;
 
-    const aiWrapperId = 'ai-msg-' + Date.now();
-    box.innerHTML += `
-        <div id="${aiWrapperId}" class="msg-wrapper ai" style="display: flex; flex-direction: column; align-items: flex-start;">
-            <div class="msg ai">Analyzing with ${rawModel}...</div>
-            <span class="timestamp" style="font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-left: 4px;">${currentTime}</span>
-        </div>`;
+    var aiWrapperId = 'ai-msg-' + Date.now();
+    box.innerHTML += "<div id=\"" + aiWrapperId + "\" class=\"msg-wrapper ai\" style=\"display: flex; flex-direction: column; align-items: flex-start;\">" +
+        "<div class=\"msg ai\">Analyzing with " + rawModel + "...</div>" +
+        "<span class=\"timestamp\" style=\"font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-left: 4px;\">" + currentTime + "</span>" +
+    "</div>";
     box.scrollTop = box.scrollHeight;
     
     try {
-        let resText = "";
+        var resText = "";
         if (org === 'groq' || org === 'openrouter' || org === 'deepseek') {
-            let apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+            var apiUrl = "https://api.groq.com/openai/v1/chat/completions";
             if (org === 'openrouter') apiUrl = "https://openrouter.ai/api/v1/chat/completions";
             if (org === 'deepseek') apiUrl = "https://api.deepseek.com/chat/completions";
 
-            const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeKey}` };
+            var headers = { 'Content-Type': 'application/json', 'Authorization': "Bearer " + activeKey };
             if (org === 'openrouter') { headers['HTTP-Referer'] = window.location.href; headers['X-Title'] = 'NEXUS OS CBT Suite'; }
 
-            const res = await fetch(apiUrl, {
+            var res = await fetch(apiUrl, {
                 method: 'POST',
                 headers: headers,
                 body: JSON.stringify({ 
@@ -1342,11 +1368,12 @@ window.sendChat = async function() {
                 })
             });
             
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error?.message || `${org.toUpperCase()} HTTP ${res.status} error`);
+            var data = await res.json();
+            if (!res.ok) throw new Error((data.error && data.error.message) || (org.toUpperCase() + " HTTP " + res.status + " error"));
             resText = data.choices[0].message.content;
         } else {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${rawModel}:generateContent?key=${activeKey}`, {
+            var geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/" + rawModel + ":generateContent?key=" + activeKey;
+            var geminiRes = await fetch(geminiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -1354,24 +1381,22 @@ window.sendChat = async function() {
                     generationConfig: { maxOutputTokens: 4096 }
                 })
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status} error`);
-            resText = data.candidates[0].content.parts[0].text;
+            var geminiData = await geminiRes.json();
+            if (!geminiRes.ok) throw new Error((geminiData.error && geminiData.error.message) || ("HTTP " + geminiRes.status + " error"));
+            resText = geminiData.candidates[0].content.parts[0].text;
         }
 
-        const wrapper = document.getElementById(aiWrapperId);
+        var wrapper = document.getElementById(aiWrapperId);
         if (wrapper) {
-            const finalTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            wrapper.innerHTML = `
-                <div class="msg ai">${resText}</div>
-                <span class="timestamp" style="font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-left: 4px;">${finalTime}</span>`;
+            var finalTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            wrapper.innerHTML = "<div class=\"msg ai\">" + resText + "</div>" +
+                "<span class=\"timestamp\" style=\"font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-left: 4px;\">" + finalTime + "</span>";
         }
     } catch(e) { 
-        const wrapper = document.getElementById(aiWrapperId);
-        if (wrapper) {
-            wrapper.innerHTML = `
-                <div class="msg ai" style="color: var(--neon-red);">[Error]: ${e.message}</div>
-                <span class="timestamp" style="font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-left: 4px;">Failed</span>`;
+        var errWrapper = document.getElementById(aiWrapperId);
+        if (errWrapper) {
+            errWrapper.innerHTML = "<div class=\"msg ai\" style=\"color: var(--neon-red);\">[Error]: " + e.message + "</div>" +
+                "<span class=\"timestamp\" style=\"font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-left: 4px;\">Failed</span>";
         }
     }
     box.scrollTop = box.scrollHeight;
