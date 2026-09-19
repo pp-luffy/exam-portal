@@ -44,62 +44,63 @@ var PROVIDER_MODELS = {
     deepseek: []
 };
 
-window.addEventListener('load', () => {
-    // FAILSAFE: Force the splash screen to hide after 3 seconds no matter what happens
-    setTimeout(() => {
-        const s = document.getElementById('boot-splash');
-        if (s && s.style.display !== 'none') {
-            s.style.display = 'none';
-            window.checkAuth();
-        }
-    }, 3000);
+document.addEventListener("DOMContentLoaded", function() {
+    // 🛡️ AGGRESSIVE FAILSAFE: Force the splash screen to hide after 2.5s no matter what
+    var bootFailsafe = setTimeout(function() {
+        var s = document.getElementById('boot-splash');
+        if (s) s.style.display = 'none';
+        window.checkAuth();
+        console.warn("[SYSTEM] Failsafe triggered: Boot timeout bypassed.");
+    }, 2500);
 
     try {
         if (window.location.search.includes('mode=exam')) {
-            const splash = document.getElementById('boot-splash');
+            clearTimeout(bootFailsafe);
+            var splash = document.getElementById('boot-splash');
             if (splash) splash.style.display = 'none';
             window.checkAuth();
         } else {
-            setTimeout(() => {
-                const splash = document.getElementById('boot-splash');
+            setTimeout(function() {
+                clearTimeout(bootFailsafe);
+                var splash = document.getElementById('boot-splash');
                 if (splash) {
                     splash.style.opacity = '0';
                     splash.style.transform = 'scale(1.05)';
-                    setTimeout(() => { 
+                    setTimeout(function() { 
                         splash.style.display = 'none'; 
                         window.checkAuth();
                     }, 600);
                 } else {
                     window.checkAuth();
                 }
-            }, 1600);
+            }, 1200);
         }
     } catch(err) {
-        console.error("Boot Error:", err);
-        const s = document.getElementById('boot-splash');
+        console.error("Boot sequence error:", err);
+        var s = document.getElementById('boot-splash');
         if (s) s.style.display = 'none';
-        const login = document.getElementById('login-screen');
-        if (login) login.style.display = 'flex';
+        window.checkAuth();
     }
     
     // Core Initializations
     try { window.loadApiKeys(); } catch(e) { console.error("Key Load Error:", e); }
     
-    const mailId = localStorage.getItem("DEST_MAIL") || "";
-    if (document.getElementById('update-mail') && mailId) document.getElementById('update-mail').value = mailId;
+    var mailId = localStorage.getItem("DEST_MAIL") || "";
+    var updateMailEl = document.getElementById('update-mail');
+    if (updateMailEl && mailId) updateMailEl.value = mailId;
 
-    const countInput = document.getElementById('count');
+    var countInput = document.getElementById('count');
     if (countInput) {
         countInput.addEventListener('input', function() {
             if (!isAdmin) {
-                const STRICT_LIMIT = 10;
+                var STRICT_LIMIT = 10;
                 if (parseInt(this.value) > STRICT_LIMIT) this.value = STRICT_LIMIT;
             }
             if (parseInt(this.value) < 1 && this.value !== "") this.value = 1;
         });
     }
 
-    try { window.renderVault(); } catch(e) { console.error("Vault Render Error:", e); }
+    try { window.renderVault(); } catch(e) { console.error("Vault Load Error:", e); }
 });
 
 // ==========================================
