@@ -1,6 +1,8 @@
 // ==========================================
 // NEXUS OS - CORE SYSTEM LOGIC
 // ==========================================
+
+// ⚠️ REPLACE THIS WITH YOUR GOOGLE APPS SCRIPT WEB APP URL
 var BACKEND_URL = "https://script.google.com/macros/s/AKfycbxH1sO305xVSNlE35JwSLiW2XOwNfiotoVWjxza8SbTzeCxEs8pVq1PYJlrKYqSkn6J_A/exec";
 
 var currentUser = "";
@@ -19,6 +21,20 @@ var isTimerPaused = false;
 var timeTracker = {}; 
 var posMark = 4;
 var negMark = 1;
+
+// XSS Protection Helper
+window.escapeHTML = function(str) {
+    if (!str) return "";
+    return str.replace(/[&<>'"]/g, function(tag) {
+        return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag];
+    });
+};
 
 try { mistakeVault = JSON.parse(localStorage.getItem("NEXUS_VAULT")) || []; } catch(e) { mistakeVault = []; }
 
@@ -109,7 +125,7 @@ document.addEventListener("DOMContentLoaded", function() {
 window.checkAuth = function() {
     var savedUser = localStorage.getItem("NEXUS_USER");
     if (savedUser) {
-        window.processLogin(savedUser); // Will use stored role
+        window.processLogin(savedUser); // Uses stored role
     } else {
         var login = document.getElementById('login-screen');
         if (login) login.style.display = 'flex';
@@ -182,7 +198,6 @@ window.handleLogin = async function() {
 window.processLogin = function(user, role) {
     currentUser = user.toLowerCase();
     
-    // Store role dynamically based on auth response
     if (role) {
         isAdmin = (role === 'admin');
         localStorage.setItem("NEXUS_ROLE", role);
@@ -224,6 +239,8 @@ window.applySessionEnvironment = function() {
     var adminVault = document.getElementById('admin-vault-editor');
     var pauseTimerBtn = document.getElementById('pause-timer-btn');
     var addKeyBtn = document.getElementById('add-api-key-btn');
+    var importKeyBtn = document.getElementById('import-keys-btn'); 
+    var exportKeyBtn = document.getElementById('export-keys-btn'); 
     var chatModelSelect = document.getElementById('chat-model-select');
 
     if (!isAdmin) {
@@ -233,6 +250,8 @@ window.applySessionEnvironment = function() {
         if (adminVault) adminVault.style.display = 'none';
         if (pauseTimerBtn) pauseTimerBtn.style.display = 'none';
         if (addKeyBtn) addKeyBtn.style.display = 'none';
+        if (importKeyBtn) importKeyBtn.style.display = 'none';
+        if (exportKeyBtn) exportKeyBtn.style.display = 'none';
         
         if (orgSelect) {
             Array.from(orgSelect.options).forEach(function(opt) {
@@ -255,6 +274,8 @@ window.applySessionEnvironment = function() {
         if (adminVault) adminVault.style.display = 'block';
         if (pauseTimerBtn) pauseTimerBtn.style.display = 'inline-block';
         if (addKeyBtn) addKeyBtn.style.display = 'inline-block';
+        if (importKeyBtn) importKeyBtn.style.display = 'inline-block'; 
+        if (exportKeyBtn) exportKeyBtn.style.display = 'inline-block'; 
         
         if (orgSelect) {
             orgSelect.disabled = false;
@@ -290,7 +311,6 @@ window.loadExamConfig = function() {
         
         if (document.getElementById('model-select') && saved.model) {
             if (!isAdmin) {
-                // Non-admin can only load 3.8 or 3.7
                 if (saved.model === "gemini-3.7-flash" || saved.model === "gemini-3.8-flash") {
                     document.getElementById('model-select').value = saved.model;
                 } else {
@@ -330,7 +350,6 @@ window.updateModelDropdown = function() {
     
     var list = [];
     if (!isAdmin) {
-        // Non-admins are restricted strictly to Gemini 3.8 Flash & Gemini 3.7 Flash
         list = [
             { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash", maxLimit: 75 },
             { id: "gemini-3.7-flash", name: "Gemini 3.7 Flash", maxLimit: 75 }
@@ -474,7 +493,6 @@ window.renderApiKeysUI = function() {
     if (!container) return;
     container.innerHTML = "";
     
-    // Non-admins: Only 1 Gemini Key is permitted
     if (!isAdmin) {
         var geminiKeyObj = apiKeys.find(function(k) { return k.provider === 'gemini'; }) || { id: Date.now(), provider: "gemini", name: "Gemini Key", key: "" };
         var row = document.createElement('div');
@@ -485,7 +503,7 @@ window.renderApiKeysUI = function() {
             '</select>' +
             '<input type="text" class="key-name" value="Gemini API Key" style="flex: 1; min-width: 120px;" disabled>' +
             '<div class="key-input-wrapper">' +
-                '<input type="password" class="key-input" id="key-input-0" placeholder="Paste Gemini API Key..." value="' + (geminiKeyObj.key || '') + '" oninput="window.updateNonAdminGeminiKey(this.value)">' +
+                '<input type="password" class="key-input" id="key-input-0" placeholder="Paste Gemini API Key..." value="' + window.escapeHTML(geminiKeyObj.key || '') + '" oninput="window.updateNonAdminGeminiKey(this.value)">' +
                 '<div style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display:flex; gap: 4px;">' +
                     '<button type="button" class="key-action-btn" onclick="window.toggleKeyVisibility(0)" title="Toggle Visibility">👁</button>' +
                     '<button type="button" class="key-action-btn" onclick="window.copyKey(0)" title="Copy Token">📋</button>' +
@@ -495,7 +513,6 @@ window.renderApiKeysUI = function() {
         return;
     }
 
-    // Admin: Full Multi-Key Manager
     if (apiKeys.length === 0) {
         container.innerHTML = "<p style='color: var(--text-muted); font-size: 12px; font-style: italic;'>No API tokens configured. Click '+ Add Token' to begin.</p>";
         return;
@@ -517,9 +534,9 @@ window.renderApiKeysUI = function() {
                 '<option value="openrouter" ' + selOpenRouter + '>OpenRouter</option>' +
                 '<option value="deepseek" ' + selDeepSeek + '>DeepSeek</option>' +
             '</select>' +
-            '<input type="text" class="key-name" placeholder="Identifier Name" value="' + (k.name || '') + '" style="flex: 1; min-width: 120px;" oninput="window.updateKeyData(' + index + ', \'name\', this.value)">' +
+            '<input type="text" class="key-name" placeholder="Identifier Name" value="' + window.escapeHTML(k.name || '') + '" style="flex: 1; min-width: 120px;" oninput="window.updateKeyData(' + index + ', \'name\', this.value)">' +
             '<div class="key-input-wrapper">' +
-                '<input type="password" class="key-input" id="key-input-' + index + '" placeholder="API Token" value="' + (k.key || '') + '" oninput="window.updateKeyData(' + index + ', \'key\', this.value)">' +
+                '<input type="password" class="key-input" id="key-input-' + index + '" placeholder="API Token" value="' + window.escapeHTML(k.key || '') + '" oninput="window.updateKeyData(' + index + ', \'key\', this.value)">' +
                 '<div style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display:flex; gap: 4px;">' +
                     '<button type="button" class="key-action-btn" onclick="window.toggleKeyVisibility(' + index + ')" title="Toggle Visibility">👁</button>' +
                     '<button type="button" class="key-action-btn" onclick="window.copyKey(' + index + ')" title="Copy Token">📋</button>' +
@@ -528,6 +545,44 @@ window.renderApiKeysUI = function() {
             '</div>';
         container.appendChild(row);
     });
+};
+
+window.exportApiKeys = function() {
+    window.syncKeysFromDOM();
+    if (apiKeys.length === 0) {
+        alert("No API tokens configured to export.");
+        return;
+    }
+    var a = document.createElement('a');
+    a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(apiKeys, null, 2));
+    a.download = "nexus_api_keys.json";
+    a.click();
+};
+
+window.importApiKeys = function(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            var parsed = JSON.parse(e.target.result);
+            if (Array.isArray(parsed)) {
+                if (confirm("This will overwrite your existing API tokens. Proceed?")) {
+                    apiKeys = parsed;
+                    localStorage.setItem("NEXUS_API_KEYS", JSON.stringify(apiKeys));
+                    window.renderApiKeysUI();
+                    alert("Tokens imported successfully!");
+                }
+            } else {
+                alert("Invalid format. Expected a JSON array of keys.");
+            }
+        } catch (err) {
+            alert("Failed to parse JSON file: " + err.message);
+        }
+        event.target.value = "";
+    };
+    reader.readAsText(file);
 };
 
 window.updateNonAdminGeminiKey = function(val) {
@@ -644,10 +699,7 @@ window.confirmExitExam = function() {
 window.startExam = async function() {
     var org = document.getElementById('org-select').value;
     
-    // Strict enforcement: Non-admins can only use Gemini
-    if (!isAdmin) {
-        org = 'gemini';
-    }
+    if (!isAdmin) org = 'gemini';
 
     var availableKeys = apiKeys.filter(function(k) { return k.provider === org && (k.key || "").trim() !== ""; }).map(function(k) { return k.key.trim(); });
     
@@ -669,7 +721,6 @@ window.startExam = async function() {
     }
 
     var rawModel = document.getElementById('model-select').value;
-    // Strict enforcement: Non-admins can only run gemini-3.8-flash or gemini-3.7-flash
     if (!isAdmin) {
         if (rawModel !== 'gemini-3.8-flash' && rawModel !== 'gemini-3.7-flash') {
             rawModel = 'gemini-3.8-flash';
@@ -700,7 +751,7 @@ window.startExam = async function() {
     
     var terminal = document.getElementById('terminal');
     terminal.style.display = 'block';
-    terminal.innerHTML = "<span style='color: var(--neon-cyan);'>[PHASE 1]: Synthesizing base neural parameters (" + rawModel + ")...</span><br>";
+    terminal.innerHTML = "<span style='color: var(--neon-cyan);'>[PHASE 1]: Synthesizing base neural parameters (" + window.escapeHTML(rawModel) + ")...</span><br>";
 
     var cancelWrapper = document.getElementById('terminal-cancel-btn');
     if (!cancelWrapper) {
@@ -744,7 +795,6 @@ window.startExam = async function() {
         for (var i = 0; i < chunks.length; i++) {
             var currentChunkSize = chunks[i];
             
-            // KEY ROTATION: Admins rotate across keys; Non-admins strictly stick to the first key
             var currentApiKey = isAdmin ? availableKeys[i % availableKeys.length] : availableKeys[0];
             if (!usedGenKeys.includes(currentApiKey)) usedGenKeys.push(currentApiKey);
 
@@ -838,7 +888,6 @@ window.startExam = async function() {
 
         currentQuizData = allGeneratedQuestions;
         
-        // VERIFICATION: Admins run Phase 2 Neural QA; Non-admins skip it completely
         if (isAdmin) {
             currentQuizData = await window.verifyAndCorrectQuizData(currentQuizData, signal, usedGenKeys);
         } else {
@@ -1141,6 +1190,7 @@ window.renderQuestion = function(index) {
     void qCard.offsetWidth; 
     qCard.classList.add('q-transition');
 
+    // innerText is safe
     document.getElementById('active-q-text').innerText = (index + 1) + ". " + q.question;
     
     var optContainer = document.getElementById('active-options-container');
@@ -1151,7 +1201,7 @@ window.renderQuestion = function(index) {
         optContainer.innerHTML += 
             "<div class=\"option-card " + isSelected + "\" onclick=\"window.selectOption(" + index + "," + oIdx + ")\">" +
                 "<input type=\"radio\" style=\"margin-right:12px;\" " + checkedAttr + ">" +
-                "<span>" + opt + "</span>" +
+                "<span>" + window.escapeHTML(opt) + "</span>" +
             "</div>";
     });
     window.updatePaletteStates();
@@ -1266,7 +1316,6 @@ window.submitExam = function() {
             }
         };
 
-        // Fire-and-forget to the backend URL. No UI indicators.
         fetch(BACKEND_URL, {
             method: "POST",
             headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -1305,11 +1354,11 @@ window.renderReviewList = function(mode) {
 
         var html = "<div class=\"glass-card\" style=\"border-left: 4px solid " + statusColor + "; padding: 18px;\">" +
             "<p style=\"font-weight:700; color:" + statusColor + "; margin-top:0; display:flex; align-items:center;\">Q" + (i+1) + ". " + statusText + timeTrapHtml + "</p>" +
-            "<p class=\"q-text\" style=\"font-size:15px;\">" + q.question + "</p>";
+            "<p class=\"q-text\" style=\"font-size:15px;\">" + window.escapeHTML(q.question) + "</p>";
             
         q.options.forEach(function(opt, oIdx) {
             var cls = oIdx === q.correct_option_index ? "correct" : (oIdx === sel ? "wrong" : "");
-            html += "<div class=\"option-card " + cls + "\" style=\"padding:10px 14px; margin:4px 0; font-size:14px;\"><span>" + opt + "</span></div>";
+            html += "<div class=\"option-card " + cls + "\" style=\"padding:10px 14px; margin:4px 0; font-size:14px;\"><span>" + window.escapeHTML(opt) + "</span></div>";
         });
         
         container.innerHTML += html + "</div>";
@@ -1333,11 +1382,11 @@ window.generateReportHTML = function() {
         var timeStr = " (Time: " + Math.floor(timeSpent/60) + "m" + (timeSpent%60) + "s)";
 
         htmlContent += "<div class=\"card\">" +
-            "<p><strong>Q" + (i+1) + ".</strong>" + q.question + " <span class=\"skipped\">" + statusText + "</span> <span style=\"font-size:12px; color:#64748b;\">" + timeStr + "</span></p>" +
+            "<p><strong>Q" + (i+1) + ".</strong>" + window.escapeHTML(q.question) + " <span class=\"skipped\">" + statusText + "</span> <span style=\"font-size:12px; color:#64748b;\">" + timeStr + "</span></p>" +
             "<ul>";
         q.options.forEach(function(opt, oIdx) {
             var tag = oIdx === q.correct_option_index ? " ✔ [Correct]" : (oIdx === sel ? " ❌ [Your Answer]" : "");
-            htmlContent += "<li>" + opt + tag + "</li>";
+            htmlContent += "<li>" + window.escapeHTML(opt) + tag + "</li>";
         });
         htmlContent += "</ul></div>";
     });
@@ -1416,15 +1465,15 @@ window.renderVault = function() {
             : "";
 
         var answerHtml = !isDue 
-            ? "<p style=\"color:var(--neon-green); font-size:14px; margin:0;\">✔ " + q.options[q.correct_option_index] + "</p>"
+            ? "<p style=\"color:var(--neon-green); font-size:14px; margin:0;\">✔ " + window.escapeHTML(q.options[q.correct_option_index]) + "</p>"
             : "";
 
         c.innerHTML += "<div class=\"glass-card\" id=\"vault-card-" + idx + "\" style=\"border-left:4px solid var(--neon-red); padding:16px;\">" +
             "<div style=\"display:flex; justify-content:space-between; flex-wrap:wrap; margin-bottom:10px;\">" +
-                "<p style=\"font-size:11px; color:var(--neon-red); margin:0; font-weight:bold;\">Failed: " + q.user_failed_at + " | Level: " + (q.srs_stage || 0) + "</p>" +
+                "<p style=\"font-size:11px; color:var(--neon-red); margin:0; font-weight:bold;\">Failed: " + window.escapeHTML(q.user_failed_at) + " | Level: " + (q.srs_stage || 0) + "</p>" +
                 "<p style=\"font-size:11px; margin:0;\">" + dueText + "</p>" +
             "</div>" +
-            "<p class=\"q-text\" style=\"font-size:15px; margin-bottom:8px;\">" + q.question + "</p>" +
+            "<p class=\"q-text\" style=\"font-size:15px; margin-bottom:8px;\">" + window.escapeHTML(q.question) + "</p>" +
             answerHtml + btnHtml +
         "</div>";
     });
@@ -1439,11 +1488,11 @@ window.startVaultReview = function(idx) {
     
     var optsHtml = "";
     reviewOptions.forEach(function(opt) {
-        optsHtml += "<div class=\"option-card\" onclick=\"window.submitVaultReview(" + idx + ", " + opt.originalIndex + ")\" style=\"padding:10px 14px; font-size:14px; margin:6px 0;\">" + opt.text + "</div>";
+        optsHtml += "<div class=\"option-card\" onclick=\"window.submitVaultReview(" + idx + ", " + opt.originalIndex + ")\" style=\"padding:10px 14px; font-size:14px; margin:6px 0;\">" + window.escapeHTML(opt.text) + "</div>";
     });
 
     c.innerHTML = "<p style=\"color:var(--neon-cyan); font-weight:bold; font-size:12px; margin-top:0;\">[ ACTIVE SRS RECALL ]</p>" +
-        "<p class=\"q-text\" style=\"font-size:15px; margin-bottom:12px;\">" + q.question + "</p>" +
+        "<p class=\"q-text\" style=\"font-size:15px; margin-bottom:12px;\">" + window.escapeHTML(q.question) + "</p>" +
         optsHtml +
         "<button type=\"button\" class=\"cyber-btn secondary\" style=\"margin-top:10px; padding: 6px 12px; font-size:11px; width:auto;\" onclick=\"window.renderVault()\">Cancel</button>";
 };
@@ -1498,7 +1547,6 @@ window.sendChat = async function() {
         else if (rawModel.includes("openai/") || rawModel.includes("qwen/") || rawModel.includes("groq/")) org = "groq";
         else if (rawModel.includes("deepseek-v4")) org = "deepseek";
     } else {
-        // Non-admin can only use Gemini 3.8 Flash or Gemini 3.7 Flash
         if (rawModel !== 'gemini-3.7-flash' && rawModel !== 'gemini-3.8-flash') {
             rawModel = 'gemini-3.8-flash';
         }
@@ -1522,7 +1570,7 @@ window.sendChat = async function() {
     var box = document.getElementById('chat-box');
 
     box.innerHTML += "<div class=\"msg-wrapper user\" style=\"display: flex; flex-direction: column; align-items: flex-end;\">" +
-        "<div class=\"msg user\">" + msg + "</div>" +
+        "<div class=\"msg user\">" + window.escapeHTML(msg) + "</div>" +
         "<span class=\"timestamp\" style=\"font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-right: 4px;\">" + currentTime + "</span>" +
     "</div>";
     
@@ -1531,7 +1579,7 @@ window.sendChat = async function() {
 
     var aiWrapperId = 'ai-msg-' + Date.now();
     box.innerHTML += "<div id=\"" + aiWrapperId + "\" class=\"msg-wrapper ai\" style=\"display: flex; flex-direction: column; align-items: flex-start;\">" +
-        "<div class=\"msg ai\">Analyzing with " + rawModel + "...</div>" +
+        "<div class=\"msg ai\">Analyzing with " + window.escapeHTML(rawModel) + "...</div>" +
         "<span class=\"timestamp\" style=\"font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-left: 4px;\">" + currentTime + "</span>" +
     "</div>";
     box.scrollTop = box.scrollHeight;
@@ -1577,13 +1625,13 @@ window.sendChat = async function() {
         var wrapper = document.getElementById(aiWrapperId);
         if (wrapper) {
             var finalTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            wrapper.innerHTML = "<div class=\"msg ai\">" + resText + "</div>" +
+            wrapper.innerHTML = "<div class=\"msg ai\">" + window.escapeHTML(resText) + "</div>" +
                 "<span class=\"timestamp\" style=\"font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-left: 4px;\">" + finalTime + "</span>";
         }
     } catch(e) { 
         var errWrapper = document.getElementById(aiWrapperId);
         if (errWrapper) {
-            errWrapper.innerHTML = "<div class=\"msg ai\" style=\"color: var(--neon-red);\">[Error]: " + e.message + "</div>" +
+            errWrapper.innerHTML = "<div class=\"msg ai\" style=\"color: var(--neon-red);\">[Error]: " + window.escapeHTML(e.message) + "</div>" +
                 "<span class=\"timestamp\" style=\"font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-left: 4px;\">Failed</span>";
         }
     }
