@@ -243,7 +243,6 @@ window.applySessionEnvironment = function() {
     var chatModelSelect = document.getElementById('chat-model-select');
 
     if (!isAdmin) {
-        // Strict UI limitations for non-admins
         if (diffContainer) diffContainer.style.display = 'none';
         if (adminPrompt) adminPrompt.style.display = 'none';
         if (adminVault) adminVault.style.display = 'none';
@@ -260,14 +259,12 @@ window.applySessionEnvironment = function() {
             orgSelect.disabled = true;
         }
 
-        // Lock Chat Model to Gemini 3.8 / 3.7
         if (chatModelSelect) {
             chatModelSelect.innerHTML = 
                 '<option value="gemini-3.8-flash">Gemini 3.8 Flash</option>' +
                 '<option value="gemini-3.7-flash">Gemini 3.7 Flash</option>';
         }
     } else {
-        // Admin full-access environment
         if (diffContainer) diffContainer.style.display = 'block';
         if (adminPrompt) adminPrompt.style.display = 'block';
         if (adminVault) adminVault.style.display = 'block';
@@ -777,7 +774,7 @@ window.startExam = async function() {
     var chunks = [];
     var remaining = totalCount;
     while (remaining > 0) {
-        var chunkSize = Math.min(remaining, 25);
+        var chunkSize = Math.min(remaining, 15);
         chunks.push(chunkSize);
         remaining -= chunkSize;
     }
@@ -789,10 +786,12 @@ window.startExam = async function() {
     var allGeneratedQuestions = [];
     var previouslyGeneratedConcepts = [];
     var usedGenKeys = []; 
+    var batchRetries = {}; 
 
     try {
         for (var i = 0; i < chunks.length; i++) {
             var currentChunkSize = chunks[i];
+            batchRetries[i] = batchRetries[i] || 0; 
             
             var currentApiKey = isAdmin ? availableKeys[i % availableKeys.length] : availableKeys[0];
             if (!usedGenKeys.includes(currentApiKey)) usedGenKeys.push(currentApiKey);
@@ -878,8 +877,25 @@ window.startExam = async function() {
                 }
             }
 
-            var match = fullResponse.match(/\[[\s\S]*\]/);
-            var parsedChunk = match ? JSON.parse(match[0]) : JSON.parse(fullResponse);
+            var parsedChunk;
+            try {
+                var cleanText = fullResponse.replace(/```json/gi, '').replace(/```/g, '').trim();
+                var match = cleanText.match(/\[[\s\S]*\]/);
+                var jsonStr = match ? match[0] : cleanText;
+                parsedChunk = JSON.parse(jsonStr);
+            } catch (parseErr) {
+                if (batchRetries[i] < 2) {
+                    batchRetries[i]++;
+                    terminal.innerHTML += "<span style='color: var(--neon-yellow);'>[WARNING]: Output truncated (" + parseErr.message + "). Retrying batch...</span><br>";
+                    terminal.scrollTop = terminal.scrollHeight;
+                    
+                    await window.cancellableDelay(3000, signal);
+                    i--; 
+                    continue;
+                } else {
+                    throw new Error("JSON Parse Error after 3 attempts: " + parseErr.message);
+                }
+            }
             
             allGeneratedQuestions = allGeneratedQuestions.concat(parsedChunk);
             parsedChunk.forEach(function(q) { previouslyGeneratedConcepts.push(q.question); }); 
@@ -908,10 +924,8 @@ window.verifyAndCorrectQuizData = async function(quizData, signal, usedGenKeys) 
     if (!usedGenKeys) usedGenKeys = [];
     var terminal = document.getElementById('terminal');
     
-    // Dynamically get the active provider used in Phase 1
     var org = document.getElementById('org-select').value;
     
-    // Fetch keys for the ACTIVE provider, rather than strictly "groq"
     var allActiveKeys = apiKeys.filter(function(k) { return k.provider === org && (k.key || "").trim() !== ""; }).map(function(k) { return k.key.trim(); });
     
     if (allActiveKeys.length === 0) {
@@ -936,7 +950,6 @@ window.verifyAndCorrectQuizData = async function(quizData, signal, usedGenKeys) 
         }
     }
 
-    // Define the dynamic API URL & Headers based on the active provider
     var verifyApiUrl = "https://api.groq.com/openai/v1/chat/completions";
     var baseHeaders = { 'Content-Type': 'application/json' };
     
@@ -978,7 +991,6 @@ window.verifyAndCorrectQuizData = async function(quizData, signal, usedGenKeys) 
             max_tokens: 4096
         };
         
-        // Re-enabled response format exclusively for providers that strictly require it
         if (org === 'deepseek') verifyPayload.response_format = { type: "json_object" };
 
         var reqHeaders = Object.assign({}, baseHeaders, { 'Authorization': "Bearer " + apiKey });
@@ -994,7 +1006,6 @@ window.verifyAndCorrectQuizData = async function(quizData, signal, usedGenKeys) 
         var verifyData = await verifyRes.json();
         var rawText = verifyData.choices[0].message.content;
         
-        // RegEx fail-safe to guarantee JSON extraction
         var match = rawText.match(/\{[\s\S]*\}/);
         var cleanJson = match ? match[0] : rawText;
         
