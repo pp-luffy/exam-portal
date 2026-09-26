@@ -2,7 +2,6 @@
 // NEXUS OS - CORE SYSTEM LOGIC
 // ==========================================
 
-// ⚠️ REPLACE THIS WITH YOUR GOOGLE APPS SCRIPT WEB APP URL
 var BACKEND_URL = "https://script.google.com/macros/s/AKfycbxH1sO305xVSNlE35JwSLiW2XOwNfiotoVWjxza8SbTzeCxEs8pVq1PYJlrKYqSkn6J_A/exec";
 
 var currentUser = "";
@@ -838,7 +837,7 @@ window.startExam = async function() {
                 if (org === 'openrouter') { headers['HTTP-Referer'] = window.location.href; headers['X-Title'] = 'NEXUS OS CBT Suite'; }
 
                 var payload = { model: rawModel, messages: [{ role: "user", content: promptPayload }], temperature: 0.2, max_tokens: 8192 };
-                if (org === 'groq' || org === 'deepseek') payload.response_format = { type: "json_object" };
+                if (org === 'deepseek') payload.response_format = { type: "json_object" };
 
                 var res = await fetch(apiUrl, { method: 'POST', headers: headers, body: JSON.stringify(payload), signal: signal });
                 
@@ -959,18 +958,25 @@ window.verifyAndCorrectQuizData = async function(quizData, signal, usedGenKeys) 
             model: "openai/gpt-oss-20b", 
             messages: [{ role: "user", content: verifyPromptText }], 
             temperature: 0.1, 
-            max_tokens: 4096,
-            response_format: { type: "json_object" }
+            max_tokens: 4096
         };
 
         var verifyRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': "Bearer " + apiKey },
             body: JSON.stringify(verifyPayload), signal: signal
         });
+        
         if (verifyRes.status === 429) return { status: 429 };
         if (!verifyRes.ok) throw new Error("Tier 1 HTTP " + verifyRes.status);
+        
         var verifyData = await verifyRes.json();
-        return { status: 200, data: JSON.parse(verifyData.choices[0].message.content) };
+        var rawText = verifyData.choices[0].message.content;
+        
+        // Safely extract JSON object from potential markdown formatting
+        var match = rawText.match(/\{[\s\S]*\}/);
+        var cleanJson = match ? match[0] : rawText;
+        
+        return { status: 200, data: JSON.parse(cleanJson) };
     }
 
     async function sendTier2ExpertReview(flaggedItemsArr, apiKey) {
@@ -990,22 +996,29 @@ window.verifyAndCorrectQuizData = async function(quizData, signal, usedGenKeys) 
             model: "openai/gpt-oss-120b", 
             messages: [{ role: "user", content: expertPromptText }], 
             temperature: 0.1, 
-            max_tokens: 4096,
-            response_format: { type: "json_object" }
+            max_tokens: 4096
         };
 
         var expertRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': "Bearer " + apiKey },
             body: JSON.stringify(expertPayload), signal: signal
         });
+        
         if (expertRes.status === 429) {
             terminal.innerHTML += "<span style='color: var(--neon-red);'>[RATE LIMIT]: 120B node throttled. Retrying escalation in 30s...</span><br>";
             await window.cancellableDelay(30000, signal);
             return await sendTier2ExpertReview(flaggedItemsArr, apiKey); 
         }
         if (!expertRes.ok) throw new Error("Tier 2 HTTP " + expertRes.status);
+        
         var expertData = await expertRes.json();
-        return { status: 200, data: JSON.parse(expertData.choices[0].message.content) };
+        var rawText = expertData.choices[0].message.content;
+        
+        // Safely extract JSON object from potential markdown formatting
+        var match = rawText.match(/\{[\s\S]*\}/);
+        var cleanJson = match ? match[0] : rawText;
+        
+        return { status: 200, data: JSON.parse(cleanJson) };
     }
 
     for (var b = 0; b < batches.length; b++) {
