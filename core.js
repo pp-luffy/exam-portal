@@ -1057,48 +1057,55 @@ window.verifyAndCorrectQuizData = async function(quizData, signal, usedGenKeys) 
         return { status: 200, data: JSON.parse(cleanJson) };
     }
 
-    for (var b = 0; b < batches.length; b++) {
-        terminal.innerHTML += "<span style='color: var(--text-muted);'>[QA]: Scanning Batch " + (b+1) + "/" + batches.length + " (20B Fast Node)...</span><br>";
-        terminal.scrollTop = terminal.scrollHeight;
-        
-        var t1Res = await sendTier1Verify(batches[b], verifyKey);
-        
-        if (t1Res.status === 429) {
-            terminal.innerHTML += "<span style='color: var(--neon-yellow);'>[QA WARNING]: Rate limit hit on 20B node. Pausing for 60s...</span><br>";
-            await window.cancellableDelay(60000, signal);
-            b--; 
-            continue;
-        }
-
-        if (t1Res.data && t1Res.data.corrections && t1Res.data.corrections.length > 0) {
-            var flaggedPayloadObj = t1Res.data.corrections.map(function(c) {
-                var original = batches[b].find(function(orig) { return orig.index === c.index; });
-                return {
-                    index: c.index,
-                    original_question: original,
-                    tier1_suggested_fix: c
-                };
-            });
-
-            var t2Res = await sendTier2ExpertReview(flaggedPayloadObj, expertKey);
+    try {
+        for (var b = 0; b < batches.length; b++) {
+            terminal.innerHTML += "<span style='color: var(--text-muted);'>[QA]: Scanning Batch " + (b+1) + "/" + batches.length + " (20B Fast Node)...</span><br>";
+            terminal.scrollTop = terminal.scrollHeight;
             
-            if (t2Res.data && t2Res.data.corrections) {
-                t2Res.data.corrections.forEach(function(finalFix) {
-                    if (finalFix.index !== undefined && finalFix.index >= 0 && finalFix.index < quizData.length) {
-                        quizData[finalFix.index].question = finalFix.question;
-                        quizData[finalFix.index].options = finalFix.options;
-                        quizData[finalFix.index].correct_option_index = finalFix.correct_option_index;
-                        totalCorrections++;
-                    }
+            var t1Res = await sendTier1Verify(batches[b], verifyKey);
+            
+            if (t1Res.status === 429) {
+                terminal.innerHTML += "<span style='color: var(--neon-yellow);'>[QA WARNING]: Rate limit hit on 20B node. Pausing for 60s...</span><br>";
+                await window.cancellableDelay(60000, signal);
+                b--; 
+                continue;
+            }
+
+            if (t1Res.data && t1Res.data.corrections && t1Res.data.corrections.length > 0) {
+                var flaggedPayloadObj = t1Res.data.corrections.map(function(c) {
+                    var original = batches[b].find(function(orig) { return orig.index === c.index; });
+                    return {
+                        index: c.index,
+                        original_question: original,
+                        tier1_suggested_fix: c
+                    };
                 });
+
+                var t2Res = await sendTier2ExpertReview(flaggedPayloadObj, expertKey);
+                
+                if (t2Res.data && t2Res.data.corrections) {
+                    t2Res.data.corrections.forEach(function(finalFix) {
+                        if (finalFix.index !== undefined && finalFix.index >= 0 && finalFix.index < quizData.length) {
+                            quizData[finalFix.index].question = finalFix.question;
+                            quizData[finalFix.index].options = finalFix.options;
+                            quizData[finalFix.index].correct_option_index = finalFix.correct_option_index;
+                            totalCorrections++;
+                        }
+                    });
+                }
             }
         }
-    }
 
-    if (totalCorrections > 0) {
-        terminal.innerHTML += "<br><span style='color: var(--neon-yellow);'>[QA RESOLVED]: Expert heavy node finalized " + totalCorrections + " correction(s).</span><br>";
-    } else {
-        terminal.innerHTML += "<br><span style='color: var(--neon-green);'>[QA CLEAR]: 0 anomalies confirmed. Assessment locked.</span><br>";
+        if (totalCorrections > 0) {
+            terminal.innerHTML += "<br><span style='color: var(--neon-yellow);'>[QA RESOLVED]: Expert heavy node finalized " + totalCorrections + " correction(s).</span><br>";
+        } else {
+            terminal.innerHTML += "<br><span style='color: var(--neon-green);'>[QA CLEAR]: 0 anomalies confirmed. Assessment locked.</span><br>";
+        }
+    } catch (qaErr) {
+        if (qaErr.message === 'Aborted by operator.') throw qaErr; 
+        
+        terminal.innerHTML += "<br><span style='color: var(--neon-yellow);'>[QA ABORTED]: " + window.escapeHTML(qaErr.message) + ". Proceeding with unverified base questions.</span><br>";
+        terminal.scrollTop = terminal.scrollHeight;
     }
 
     return quizData;
