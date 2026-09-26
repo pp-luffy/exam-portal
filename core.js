@@ -907,28 +907,45 @@ window.verifyAndCorrectQuizData = async function(quizData, signal, usedGenKeys) 
     if (!isAdmin) return quizData;
     if (!usedGenKeys) usedGenKeys = [];
     var terminal = document.getElementById('terminal');
-    var allGroqKeys = apiKeys.filter(function(k) { return k.provider === "groq" && (k.key || "").trim() !== ""; }).map(function(k) { return k.key.trim(); });
     
-    if (allGroqKeys.length === 0) {
-        terminal.innerHTML += "<br><span style='color: var(--neon-yellow);'>[WARNING]: Groq API Key required for 2-Tier QA. Skipping QA phase.</span><br>";
+    // Dynamically get the active provider used in Phase 1
+    var org = document.getElementById('org-select').value;
+    
+    // Fetch keys for the ACTIVE provider, rather than strictly "groq"
+    var allActiveKeys = apiKeys.filter(function(k) { return k.provider === org && (k.key || "").trim() !== ""; }).map(function(k) { return k.key.trim(); });
+    
+    if (allActiveKeys.length === 0) {
+        terminal.innerHTML += "<br><span style='color: var(--neon-yellow);'>[WARNING]: API Key required for 2-Tier QA. Skipping QA phase.</span><br>";
         return quizData; 
     }
 
-    var groqVerifyKey = allGroqKeys[0];
-    var groqPrimaryKey = allGroqKeys[0];
+    var verifyKey = allActiveKeys[0];
+    var expertKey = allActiveKeys[0];
 
-    if (allGroqKeys.length >= 2) {
-        var freshKeys = allGroqKeys.filter(function(k) { return !usedGenKeys.includes(k); });
+    if (allActiveKeys.length >= 2) {
+        var freshKeys = allActiveKeys.filter(function(k) { return !usedGenKeys.includes(k); });
         if (freshKeys.length >= 2) {
-            groqVerifyKey = freshKeys[0];
-            groqPrimaryKey = freshKeys[1];
+            verifyKey = freshKeys[0];
+            expertKey = freshKeys[1];
         } else if (freshKeys.length === 1) {
-            groqVerifyKey = freshKeys[0];
-            groqPrimaryKey = allGroqKeys.find(function(k) { return k !== groqVerifyKey; }); 
+            verifyKey = freshKeys[0];
+            expertKey = allActiveKeys.find(function(k) { return k !== verifyKey; }); 
         } else {
-            groqVerifyKey = allGroqKeys[0];
-            groqPrimaryKey = allGroqKeys[1];
+            verifyKey = allActiveKeys[0];
+            expertKey = allActiveKeys[1];
         }
+    }
+
+    // Define the dynamic API URL & Headers based on the active provider
+    var verifyApiUrl = "https://api.groq.com/openai/v1/chat/completions";
+    var baseHeaders = { 'Content-Type': 'application/json' };
+    
+    if (org === 'openrouter') {
+        verifyApiUrl = "https://openrouter.ai/api/v1/chat/completions";
+        baseHeaders['HTTP-Referer'] = window.location.href;
+        baseHeaders['X-Title'] = 'NEXUS OS CBT Suite';
+    } else if (org === 'deepseek') {
+        verifyApiUrl = "https://api.deepseek.com/chat/completions";
     }
 
     var langNode = document.getElementById('lang');
@@ -960,19 +977,24 @@ window.verifyAndCorrectQuizData = async function(quizData, signal, usedGenKeys) 
             temperature: 0.1, 
             max_tokens: 4096
         };
+        
+        // Re-enabled response format exclusively for providers that strictly require it
+        if (org === 'deepseek') verifyPayload.response_format = { type: "json_object" };
 
-        var verifyRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': "Bearer " + apiKey },
+        var reqHeaders = Object.assign({}, baseHeaders, { 'Authorization': "Bearer " + apiKey });
+
+        var verifyRes = await fetch(verifyApiUrl, {
+            method: 'POST', headers: reqHeaders,
             body: JSON.stringify(verifyPayload), signal: signal
         });
         
         if (verifyRes.status === 429) return { status: 429 };
-        if (!verifyRes.ok) throw new Error("Tier 1 HTTP " + verifyRes.status);
+        if (!verifyRes.ok) throw new Error("Tier 1 HTTP " + verifyRes.status + " at " + verifyApiUrl);
         
         var verifyData = await verifyRes.json();
         var rawText = verifyData.choices[0].message.content;
         
-        // Safely extract JSON object from potential markdown formatting
+        // RegEx fail-safe to guarantee JSON extraction
         var match = rawText.match(/\{[\s\S]*\}/);
         var cleanJson = match ? match[0] : rawText;
         
@@ -980,10 +1002,10 @@ window.verifyAndCorrectQuizData = async function(quizData, signal, usedGenKeys) 
     }
 
     async function sendTier2ExpertReview(flaggedItemsArr, apiKey) {
-        terminal.innerHTML += "<span style='color: var(--neon-yellow);'>[EXPERT QA]: " + flaggedItemsArr.length + " anomaly(s) flagged. Escalating to 120B node...</span><br>";
+        terminal.innerHTML += "<span style='color: var(--neon-yellow);'>[EXPERT QA]: " + flaggedItemsArr.length + " anomaly(s) flagged. Escalating to heavy node...</span><br>";
         terminal.scrollTop = terminal.scrollHeight;
 
-        var expertPromptText = "You are an Expert Chief QA Reviewer (120B parameter model).\n" +
+        var expertPromptText = "You are an Expert Chief QA Reviewer.\n" +
             "A preliminary fast QA system flagged the following multiple-choice questions for potential errors.\n" +
             "Review each flagged item carefully.\n" +
             "- If the original question HAS an issue, FIX IT and return the corrected version.\n" +
@@ -998,23 +1020,26 @@ window.verifyAndCorrectQuizData = async function(quizData, signal, usedGenKeys) 
             temperature: 0.1, 
             max_tokens: 4096
         };
+        
+        if (org === 'deepseek') expertPayload.response_format = { type: "json_object" };
 
-        var expertRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': "Bearer " + apiKey },
+        var reqHeaders = Object.assign({}, baseHeaders, { 'Authorization': "Bearer " + apiKey });
+
+        var expertRes = await fetch(verifyApiUrl, {
+            method: 'POST', headers: reqHeaders,
             body: JSON.stringify(expertPayload), signal: signal
         });
         
         if (expertRes.status === 429) {
-            terminal.innerHTML += "<span style='color: var(--neon-red);'>[RATE LIMIT]: 120B node throttled. Retrying escalation in 30s...</span><br>";
+            terminal.innerHTML += "<span style='color: var(--neon-red);'>[RATE LIMIT]: Heavy node throttled. Retrying escalation in 30s...</span><br>";
             await window.cancellableDelay(30000, signal);
             return await sendTier2ExpertReview(flaggedItemsArr, apiKey); 
         }
-        if (!expertRes.ok) throw new Error("Tier 2 HTTP " + expertRes.status);
+        if (!expertRes.ok) throw new Error("Tier 2 HTTP " + expertRes.status + " at " + verifyApiUrl);
         
         var expertData = await expertRes.json();
         var rawText = expertData.choices[0].message.content;
         
-        // Safely extract JSON object from potential markdown formatting
         var match = rawText.match(/\{[\s\S]*\}/);
         var cleanJson = match ? match[0] : rawText;
         
@@ -1025,7 +1050,7 @@ window.verifyAndCorrectQuizData = async function(quizData, signal, usedGenKeys) 
         terminal.innerHTML += "<span style='color: var(--text-muted);'>[QA]: Scanning Batch " + (b+1) + "/" + batches.length + " (20B Fast Node)...</span><br>";
         terminal.scrollTop = terminal.scrollHeight;
         
-        var t1Res = await sendTier1Verify(batches[b], groqVerifyKey);
+        var t1Res = await sendTier1Verify(batches[b], verifyKey);
         
         if (t1Res.status === 429) {
             terminal.innerHTML += "<span style='color: var(--neon-yellow);'>[QA WARNING]: Rate limit hit on 20B node. Pausing for 60s...</span><br>";
@@ -1044,7 +1069,7 @@ window.verifyAndCorrectQuizData = async function(quizData, signal, usedGenKeys) 
                 };
             });
 
-            var t2Res = await sendTier2ExpertReview(flaggedPayloadObj, groqPrimaryKey);
+            var t2Res = await sendTier2ExpertReview(flaggedPayloadObj, expertKey);
             
             if (t2Res.data && t2Res.data.corrections) {
                 t2Res.data.corrections.forEach(function(finalFix) {
@@ -1060,7 +1085,7 @@ window.verifyAndCorrectQuizData = async function(quizData, signal, usedGenKeys) 
     }
 
     if (totalCorrections > 0) {
-        terminal.innerHTML += "<br><span style='color: var(--neon-yellow);'>[QA RESOLVED]: Expert 120B node finalized " + totalCorrections + " correction(s).</span><br>";
+        terminal.innerHTML += "<br><span style='color: var(--neon-yellow);'>[QA RESOLVED]: Expert heavy node finalized " + totalCorrections + " correction(s).</span><br>";
     } else {
         terminal.innerHTML += "<br><span style='color: var(--neon-green);'>[QA CLEAR]: 0 anomalies confirmed. Assessment locked.</span><br>";
     }
