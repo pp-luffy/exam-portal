@@ -38,6 +38,11 @@ window.escapeHTML = function(str) {
 try { mistakeVault = JSON.parse(localStorage.getItem("NEXUS_VAULT")) || []; } catch(e) { mistakeVault = []; }
 
 var PROVIDER_MODELS = {
+    groq: [
+        { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B (High Reasoning)", maxLimit: 75 },
+        { id: "openai/gpt-oss-20b", name: "GPT-OSS 20B (Ultra Fast)", maxLimit: 60 },
+        { id: "qwen/qwen3.8-27b", name: "Qwen 3.8 27B (STEM / Multilingual)", maxLimit: 60 }
+    ],
     gemini: [
         { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash", maxLimit: 75 },
         { id: "gemini-3.7-flash", name: "Gemini 3.7 Flash", maxLimit: 75 },
@@ -45,11 +50,6 @@ var PROVIDER_MODELS = {
         { id: "gemini-3.5-flash", name: "Gemini 3.5 Flash", maxLimit: 75 },
         { id: "gemini-3.5-flash-lite", name: "Gemini 3.5 Flash Lite", maxLimit: 60 },
         { id: "gemini-3.1-flash-lite", name: "Gemini 3.1 Flash Lite", maxLimit: 60 }
-    ],
-    groq: [
-        { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B (High Reasoning)", maxLimit: 75 },
-        { id: "openai/gpt-oss-20b", name: "GPT-OSS 20B (Ultra Fast)", maxLimit: 60 },
-        { id: "qwen/qwen3.8-27b", name: "Qwen 3.8 27B (STEM / Multilingual)", maxLimit: 60 }
     ],
     openrouter: [
         { id: "openrouter/free", name: "Auto Router (Best for Uptime)", maxLimit: 100 },
