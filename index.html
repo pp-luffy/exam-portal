@@ -506,6 +506,110 @@
             <div class="nav-item" id="nav-settings" onclick="window.switchTab('settings')"><span class="nav-icon">⚙️</span>Config</div>
         </div>
     </div> <!-- End of app-shell -->
+
+    <!-- EMBEDDED MISTAKE VAULT LOGIC -->
+    <script>
+        // Store mistakes as a grouped session
+        window.saveToVault = function(examName, subjectName, topicName, wrongQuestionsArray) {
+            if (!wrongQuestionsArray || wrongQuestionsArray.length === 0) return;
+
+            const vaultData = JSON.parse(localStorage.getItem('nexus_vault') || '[]');
+            
+            const testSession = {
+                sessionId: 'test_' + Date.now(),
+                date: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
+                exam: examName || 'Custom Exam',
+                subject: subjectName || 'General',
+                topic: topicName || 'Mixed Topics',
+                mistakes: wrongQuestionsArray
+            };
+
+            vaultData.unshift(testSession);
+            localStorage.setItem('nexus_vault', JSON.stringify(vaultData));
+        };
+
+        // Render the grouped mistakes to the DOM
+        window.renderVault = function() {
+            const container = document.getElementById('vault-container');
+            if (!container) return;
+            
+            const vaultData = JSON.parse(localStorage.getItem('nexus_vault') || '[]');
+
+            if (vaultData.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-muted); margin-bottom: 20px;">No mistakes logged yet. Keep practicing.</p>';
+                return;
+            }
+
+            container.innerHTML = vaultData.map(session => `
+                <div class="glass-card" style="margin-bottom: 20px; padding: 20px; background: rgba(0, 0, 0, 0.4);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid var(--border-glow); padding-bottom: 12px; margin-bottom: 16px;">
+                        <div>
+                            <h3 style="color: var(--neon-cyan); margin: 0 0 6px 0; font-size: 16px;">${session.exam} - ${session.subject}</h3>
+                            <p style="color: var(--text-muted); margin: 0; font-size: 12px;">Topic: ${session.topic} | Attempted: ${session.date}</p>
+                            <p style="color: var(--neon-red); margin: 6px 0 0 0; font-size: 12px; font-weight: bold;">Mistakes: ${session.mistakes.length}</p>
+                        </div>
+                        <button type="button" class="cyber-btn secondary" style="width: auto; margin: 0; padding: 8px 14px; font-size: 11px;" onclick="window.copyMistakePrompt('${session.sessionId}')">
+                            📋 Copy as AI Prompt
+                        </button>
+                    </div>
+                    
+                    <div style="max-height: 200px; overflow-y: auto; padding-right: 8px; font-size: 13px;">
+                        ${session.mistakes.map((q, index) => `
+                            <div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed rgba(255,255,255,0.1);">
+                                <strong style="color: var(--text-main);">Q${index + 1}: ${q.question}</strong><br>
+                                <span style="color: var(--neon-red);">Your Answer: ${q.userAnswer}</span><br>
+                                <span style="color: var(--neon-green);">Correct Answer: ${q.correctAnswer}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        // Generate dynamic custom prompt and copy to clipboard
+        window.copyMistakePrompt = function(sessionId) {
+            const vaultData = JSON.parse(localStorage.getItem('nexus_vault') || '[]');
+            const session = vaultData.find(s => s.sessionId === sessionId);
+            
+            if (!session) return;
+
+            const mistakesList = session.mistakes.map((q, i) => 
+                `Question ${i + 1}: ${q.question}\nMy Wrong Answer: ${q.userAnswer}\nCorrect Answer: ${q.correctAnswer}`
+            ).join('\n\n');
+
+            const promptTemplate = `Act as an expert examiner for ${session.exam} (${session.subject} - ${session.topic}). 
+I recently took a test and made mistakes on the following concepts. 
+
+Here are the exact questions I got wrong:
+${mistakesList}
+
+Based strictly on the concepts and common pitfalls highlighted by my wrong answers above, generate 10 new, high-quality multiple-choice questions for me to practice. Make them slightly more challenging to ensure I have actually learned the underlying concept. Do not repeat the exact same questions.`;
+
+            navigator.clipboard.writeText(promptTemplate).then(() => {
+                alert('Prompt copied to clipboard! Paste it into NEXUS AI or any other LLM.');
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+                alert('Clipboard copy failed. Please check browser permissions.');
+            });
+        };
+
+        // Clear the vault securely
+        window.clearVault = function() {
+            if(confirm("Are you sure you want to purge all saved mistakes? This action cannot be undone.")) {
+                localStorage.setItem('nexus_vault', '[]');
+                window.renderVault();
+            }
+        };
+
+        // Render Vault on initial load if the element exists
+        document.addEventListener('DOMContentLoaded', () => {
+            if(document.getElementById('vault-container')) {
+                window.renderVault();
+            }
+        });
+    </script>
+
+    <!-- EXTERNAL SCRIPTS -->
     <script src="core.js"></script>
     <script src="aspirant.js"></script>
     <script src="creative.js"></script>
